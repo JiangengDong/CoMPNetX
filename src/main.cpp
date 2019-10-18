@@ -5,7 +5,7 @@
 
 using namespace OpenRAVE;
 
-
+// TODO: change openrave headers in other files
 // called to create a new plugin
 InterfaceBasePtr CreateInterfaceValidated(InterfaceType type, const std::string &interfacename, std::istream &sinput, EnvironmentBasePtr penv) {
     if (type == PT_Planner && interfacename == "atlasmpnet") {

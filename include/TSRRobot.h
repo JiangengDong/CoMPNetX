@@ -3,9 +3,7 @@
 Copyright (c) 2014, Carnegie Mellon University
 All rights reserved.
 
-Authors: Michael Koval <mkoval@cs.cmu.edu>
-         Matthew Klingensmith <mklingen@cs.cmu.edu>
-         Christopher Dellin <cdellin@cs.cmu.edu>
+Authors: Jennifer King <jeking04@gmail.com>
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -32,41 +30,69 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
 
-#ifndef ATLASMPNET_STATEVALIDITYCHECKER_H
-#define ATLASMPNET_STATEVALIDITYCHECKER_H
+#ifndef ATLASMPNET_TSRROBOT_H_
+#define ATLASMPNET_TSRROBOT_H_
 
 #include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
 #include <openrave/plugin.h>
-#include <ompl/base/StateSpace.h>
-#include <ompl/base/spaces/SO2StateSpace.h>
-#include <ompl/base/spaces/RealVectorStateSpace.h>
-#include <ompl/base/StateValidityChecker.h>
+
+#include "TSR.h"
 
 namespace AtlasMPNet {
+
+/**
+ * Decorator for an OpenRAVE Robot constructed to represent
+ * a TSR chain
+ */
+class TSRRobot {
+    
+public:
+
     /**
-     * StateRobotSetter for RealVectorStateSpaces
+     * Expose a shared ptr for the robot
      */
-    class StateValidityChecker : public ompl::base::StateValidityChecker {
-    public:
-        typedef std::shared_ptr<StateValidityChecker> Ptr;
-        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr& robot, std::vector<int> indices);
+    typedef boost::shared_ptr<TSRRobot> Ptr;
+    
+    /**
+     * Constructor
+     */
+    TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv);
 
-        bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
+    /**
+     * @return True if the construction was successful, false otherwise
+     */
+    bool construct();
 
-        bool isValid(const ompl::base::State *state) const override;
+    /**
+     * Finds the nearest reachable end-effector transform to the given transform
+     * @param Ttarget - The target end-effector transform
+     */
+    Eigen::Affine3d findNearestFeasibleTransform(const Eigen::Affine3d &Ttarget);
 
-    private:
-        const std::size_t _num_dof;
-        ompl::base::StateSpace *_stateSpace;
-        OpenRAVE::EnvironmentBasePtr _env;
-        OpenRAVE::RobotBasePtr _robot;
-        std::vector<int> const _indices;
-        mutable int _numCollisionChecks;
-        mutable double _totalCollisionTime;
-    };
+    /**
+     * @return True if this is a point TSR chain - meaning no TSRs have any freedom in the Bw matrix
+     */
+    bool isPointRobot() const { return _point_tsr; }
+
+    /**
+     * @return True if robot has been properly initialized, false otherwise
+     */
+    bool isInitialized() const { return _initialized; }
+
+private:
+
+    std::vector<TSR::Ptr> _tsrs;
+    OpenRAVE::EnvironmentBasePtr  _penv;
+    OpenRAVE::RobotBasePtr _probot;
+    std::string _solver;
+    OpenRAVE::IkSolverBasePtr _ik_solver;
+    std::vector<OpenRAVE::dReal> _upperlimits;
+    std::vector<OpenRAVE::dReal> _lowerlimits;
+    bool _initialized;
+    bool _point_tsr;
+    unsigned int _num_dof;
+};
 
 } // namespace AtlasMPNet
 
-
-#endif //ATLASMPNET_STATEVALIDITYCHECKER_H
+#endif // ATLASMPNET_TSRROBOT_H_
