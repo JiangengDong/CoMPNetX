@@ -5,7 +5,7 @@
 #ifndef ATLASMPNET_PARAMETERS_H
 #define ATLASMPNET_PARAMETERS_H
 
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 #include <Eigen/Dense>
 #include <ompl/base/ScopedState.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>

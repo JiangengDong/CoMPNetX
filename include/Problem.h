@@ -5,7 +5,7 @@
 #ifndef ATLASMPNET_PROBLEM_H
 #define ATLASMPNET_PROBLEM_H
 
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/Constraint.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>

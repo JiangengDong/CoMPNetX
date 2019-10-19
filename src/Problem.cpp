@@ -1,7 +1,7 @@
 //
 // Created by jiangeng on 10/11/19.
 //
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 #include <utility>
 
 #include <ompl/base/spaces/RealVectorStateSpace.h>
@@ -31,28 +31,32 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, std::istream &i
 }
 
 bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::PlannerBase::PlannerParametersConstPtr params) {
+    RAVELOG_INFO("Start to init planner.");
     initialized_ = false;
     if (robot == nullptr || params == nullptr) {
-        RAVELOG_ERROR("Robot and params must not be NULL.\n"); // NOLINT(hicpp-signed-bitwise)
+                RAVELOG_ERROR("Robot and params must not be NULL.\n"); // NOLINT(hicpp-signed-bitwise)
         return initialized_;
     }
     robot_ = std::move(robot);
-    parameters_->copy(params);  // TODO: figure out why std::move is not suitable here.
-    if (setAmbientStateSpace()
-        && setConstrainedStateSpace()
-        && simpleSetup()
-        && setStartAndGoalStates()
-        && setStateValidityChecker()
-        && setPlanner()) {
-        initialized_ = true;
-    }
+    parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
+    std::cout << *params;
+    parameters_->copy(params);
+    std::cout << *parameters_;
+    // TODO: check the serialize and deserialize process
+    setAmbientStateSpace();
+    setConstrainedStateSpace();
+    simpleSetup();
+    setStartAndGoalStates();
+    setStateValidityChecker();
+    setPlanner();
+    initialized_ = true;
     return initialized_;
 }
 
 OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
     OpenRAVE::PlannerStatus plannerStatus = OpenRAVE::PS_Failed;
     if (!initialized_) {
-        RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
+                RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
     simple_setup_->setup();
@@ -68,17 +72,17 @@ OpenRAVE::PlannerBase::PlannerParametersConstPtr AtlasMPNet::Problem::GetParamet
 }
 
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
-    // TODO: implement our own state space
     const int dof = robot_->GetActiveDOF();
     // Set bounds
-    std::vector<OpenRAVE::dReal> lower_limits, upper_limit;
+    std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
     ompl::base::RealVectorBounds bounds(dof);
-    for(size_t i = 0; i < dof; ++i) {
+    robot_ -> GetActiveDOFLimits(lower_limits, upper_limits);
+    for (size_t i = 0; i < dof; ++i) {
         bounds.setLow(i, lower_limits[i]);
-        bounds.setHigh(i, upper_limit[i]);
+        bounds.setHigh(i, upper_limits[i]);
     }
-    ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(3);
-    ambient_state_space_ -> as<ompl::base::RealVectorStateSpace>() -> setBounds(bounds);
+    ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof);
+    ambient_state_space_->as<ompl::base::RealVectorStateSpace>()->setBounds(bounds);
     // Set resolution
     std::vector<OpenRAVE::dReal> dof_resolutions;
     robot_->GetActiveDOFResolutions(dof_resolutions);
@@ -90,7 +94,8 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
-    return false;
+    RAVELOG_INFO("Set ambient configuration space.");
+    return true;
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
@@ -123,22 +128,27 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     if (!parameters_->using_tb_)
         constrained_state_space_->setSeparated(parameters_->separate);
     constrained_state_space_->setup();
+    RAVELOG_INFO("Set constrained configuration space.");
     return true;
 }
 
 bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_ = std::make_shared<ompl::geometric::SimpleSetup>(constrained_space_info_);
+    RAVELOG_INFO("Create simple setup.");
     return true;
 }
 
 bool AtlasMPNet::Problem::setStartAndGoalStates() {
+    // TODO: fix the get state and goal function in parameter class
     ompl::base::ScopedState<> start(constrained_state_space_);
     ompl::base::ScopedState<> goal(constrained_state_space_);
     parameters_->getStartState(start);
     parameters_->getGoalState(goal);
-    constrained_state_space_->anchorChart(start.get());
-    constrained_state_space_->anchorChart(goal.get());
-    simple_setup_->setStartAndGoalStates(start, goal);
+    // TODO: Sphere constraint need to adjusted
+//    constrained_state_space_->anchorChart(start.get());
+//    constrained_state_space_->anchorChart(goal.get());
+//    simple_setup_->setStartAndGoalStates(start, goal);
+    RAVELOG_INFO("Set start and goal configurations.");
     return true;
 }
 
@@ -146,14 +156,17 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
     state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, dof_indices));
     simple_setup_->setStateValidityChecker(state_validity_checker_);
+    RAVELOG_INFO("Set validity checker.");
     return true;
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
     planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
-    if (parameters_->range==0)
+    if (parameters_->range == 0)
         planner_->as<ompl::geometric::RRTstar>()->setRange(constrained_state_space_->getRho_s());
     else
         planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->range);
-    simple_setup_ -> setPlanner(planner_);
+    simple_setup_->setPlanner(planner_);
+    RAVELOG_INFO("Set planner.");
+    return true;
 }

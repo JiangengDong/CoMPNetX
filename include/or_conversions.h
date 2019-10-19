@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ATLASMPNET_OR_CONVERSIONS_H_
 
 #include <Eigen/Dense>
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 
 namespace AtlasMPNet {
 

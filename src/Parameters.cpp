@@ -3,7 +3,7 @@
 //
 #include "Parameters.h"
 
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 #include <Eigen/Dense>
 #include <ompl/base/StateSpace.h>
 #include <ompl/base/ScopedState.h>
@@ -29,9 +29,11 @@ Parameters::~Parameters() = default;
 
 bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
     const int dof = GetDOF();// TODO: is this the right dof?
+    RAVELOG_DEBUG("dof %d", dof);
     for (int i = 0; i < dof; i++) {
         start[i] = vinitialconfig[i];
     }
+    RAVELOG_DEBUG("length vinitialconfig %d", vinitialconfig.size());
     return true;
 }
 
@@ -43,24 +45,24 @@ bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
     return true;
 }
 
-bool Parameters::serialize(std::ostream &O, int options) const {
+bool Parameters::serialize(std::ostream &O, int options=0) const {
     if (!OpenRAVE::PlannerBase::PlannerParameters::serialize(O, options)) {
         return false;
     }
-    O << "<tolerance>" << tolerance << "</tolerance>"
-      << "<max_iter>" << max_iter << "</max_iter>"
-      << "<delta>" << delta << "</delta>"
-      << "<lambda>" << lambda << "</lambda>"
-      << "<time>" << time << "</time>"
-      << "<range>" << range << "</range>"
-      << "<exploration>" << exploration << "</exploration>"
-      << "<epsilon>" << epsilon << "</epsilon>"
-      << "<rho>" << rho << "</rho>"
-      << "<alpha>" << alpha << "</alpha>"
-      << "<max_chart>" << max_charts << "</max_chart>"
-      << "<using_bias>" << using_bias_ << "</using_bias>"
-      << "<using_tb>" << using_tb_ << "</using_tb>"
-      << "<separate>" << separate << "</separate>";
+    O << "<tolerance>" << tolerance << "</tolerance>" << std::endl
+      << "<max_iter>" << max_iter << "</max_iter>" << std::endl
+      << "<delta>" << delta << "</delta>" << std::endl
+      << "<lambda>" << lambda << "</lambda>" << std::endl
+      << "<time>" << time << "</time>" << std::endl
+      << "<range>" << range << "</range>" << std::endl
+      << "<exploration>" << exploration << "</exploration>" << std::endl
+      << "<epsilon>" << epsilon << "</epsilon>" << std::endl
+      << "<rho>" << rho << "</rho>" << std::endl
+      << "<alpha>" << alpha << "</alpha>" << std::endl
+      << "<max_chart>" << max_charts << "</max_chart>" << std::endl
+      << "<using_bias>" << using_bias_ << "</using_bias>" << std::endl
+      << "<using_tb>" << using_tb_ << "</using_tb>" << std::endl
+      << "<separate>" << separate << "</separate>" << std::endl;
     return !!O;
 }
 

@@ -26,7 +26,7 @@ namespace AtlasMPNet {
 
     class SphereConstraint : public ompl::base::Constraint {
     public:
-        SphereConstraint() : ompl::base::Constraint(3, 1) {
+        SphereConstraint() : ompl::base::Constraint(11, 1) {
         }
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override {

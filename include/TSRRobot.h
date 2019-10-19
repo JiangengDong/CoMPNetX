@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ATLASMPNET_TSRROBOT_H_
 
 #include <boost/shared_ptr.hpp>
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 
 #include "TSR.h"
 

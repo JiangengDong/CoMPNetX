@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "TSRRobot.h"
 #include "or_conversions.h"
-#include <openrave/plugin.h>
+#include <openrave/openrave.h>
 
 using namespace AtlasMPNet;
 
