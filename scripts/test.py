@@ -13,10 +13,10 @@
 
 from openravepy import *
 
-start_config = [  0.80487864,  0.42326865, -0.54016693,  2.28895761,
-                  -0.34930645, -1.19702164,  1.95971213 ]
-goal_config  = [  2.41349473, -1.43062044, -2.69016693,  2.12681216,
-                  -0.75643783, -1.52392537,  1.01239878 ]
+start_config = [0.80487864, 0.42326865, -0.54016693, 2.28895761,
+                -0.34930645, -1.19702164, 1.95971213]
+goal_config = [2.41349473, -1.43062044, -2.69016693, 2.12681216,
+               -0.75643783, -1.52392537, 1.01239878]
 
 # Setup the environment.
 env = Environment()
@@ -37,20 +37,9 @@ params = Planner.PlannerParameters()
 params.SetRobotActiveJoints(robot)
 params.SetGoalConfig(goal_config)
 params.SetExtraParameters(
-"""<tolerance>0.0001</tolerance>
-<max_iter>50</max_iter>
-<delta>0.05</delta>
-<lambda>2</lambda>
-<time>5</time>
-<range>0</range>
-<exploration>0.75</exploration>
-<epsilon>0.05</epsilon>
-<rho>5</rho>
-<alpha>0.392699</alpha>
-<max_chart>200</max_chart>
-<using_bias>0</using_bias>
-<using_tb>0</using_tb>
-<separate>0</separate>""")
+    """<planner_parameters time="5" range="0"/>
+    <constraint_parameters tolerance="0.0001" max_iter="50" delta="0.05" lambda="2"/>
+    <atlas_parameters exploration="0.75" epsilon="0.05" rho="5" alpha="0.5" max_charts="200" using_bias="0" using_tb="0" separate="0"/>""")
 #
 # # Set the timeout and planner-specific parameters. You can view a list of
 # # supported parameters by calling: planner.SendCommand('GetParameters')

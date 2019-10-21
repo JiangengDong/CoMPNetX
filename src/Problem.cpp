@@ -18,8 +18,9 @@
 #include "Constraint.h"
 #include "StateValidityChecker.h"
 
-AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(
-        std::move(penv)) {
+AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
+        OpenRAVE::PlannerBase(std::move(penv)),
+        parameters_(boost::make_shared<AtlasMPNet::Parameters>()) {
 }
 
 AtlasMPNet::Problem::~Problem() = default;
@@ -38,11 +39,7 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         return initialized_;
     }
     robot_ = std::move(robot);
-    parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
-    std::cout << *params;
     parameters_->copy(params);
-    std::cout << *parameters_;
-    // TODO: check the serialize and deserialize process
     setAmbientStateSpace();
     setConstrainedStateSpace();
     simpleSetup();
@@ -60,7 +57,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
         return plannerStatus;
     }
     simple_setup_->setup();
-    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->time);
+    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->planner_parameters_.time);
     if (status) {
         plannerStatus = OpenRAVE::PS_HasSolution;
     }
@@ -101,7 +98,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     constraint_ = std::make_shared<AtlasMPNet::SphereConstraint>();
     // create the constrained configuration space
-    if (parameters_->using_tb_) {
+    if (parameters_->atlas_parameters_.using_tb) {
         constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
         constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
     } else {
@@ -109,24 +106,24 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
         constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
     }
     // setup parameters
-    constraint_->setTolerance(parameters_->tolerance);
-    constraint_->setMaxIterations(parameters_->max_iter);
-    constrained_state_space_->setDelta(parameters_->delta);
-    constrained_state_space_->setLambda(parameters_->lambda);
-    constrained_state_space_->setExploration(parameters_->exploration);
-    constrained_state_space_->setEpsilon(parameters_->epsilon);
-    constrained_state_space_->setRho(parameters_->rho);
-    constrained_state_space_->setAlpha(parameters_->alpha);
-    constrained_state_space_->setMaxChartsPerExtension(parameters_->max_charts);
+    constraint_->setTolerance(parameters_->constraint_parameters_.tolerance);
+    constraint_->setMaxIterations(parameters_->constraint_parameters_.max_iter);
+    constrained_state_space_->setDelta(parameters_->constraint_parameters_.delta);
+    constrained_state_space_->setLambda(parameters_->constraint_parameters_.lambda);
+    constrained_state_space_->setExploration(parameters_->atlas_parameters_.exploration);
+    constrained_state_space_->setEpsilon(parameters_->atlas_parameters_.epsilon);
+    constrained_state_space_->setRho(parameters_->atlas_parameters_.rho);
+    constrained_state_space_->setAlpha(parameters_->atlas_parameters_.alpha);
+    constrained_state_space_->setMaxChartsPerExtension(parameters_->atlas_parameters_.max_charts);
 
     auto &&atlas = constrained_state_space_;
-    if (parameters_->using_bias_) { // add different weight for sampling to different charts
+    if (parameters_->atlas_parameters_.using_bias) { // add different weight for sampling to different charts
         constrained_state_space_->setBiasFunction([atlas](ompl::base::AtlasChart *c) -> double {
             return 1.0 + atlas->getChartCount() - c->getNeighborCount();
         });
     }
-    if (!parameters_->using_tb_)
-        constrained_state_space_->setSeparated(parameters_->separate);
+    if (!parameters_->atlas_parameters_.using_tb)
+        constrained_state_space_->setSeparated(parameters_->atlas_parameters_.separate);
     constrained_state_space_->setup();
     RAVELOG_INFO("Set constrained configuration space.");
     return true;
@@ -162,10 +159,10 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {
 
 bool AtlasMPNet::Problem::setPlanner() {
     planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
-    if (parameters_->range == 0)
+    if (parameters_->planner_parameters_.range == 0)
         planner_->as<ompl::geometric::RRTstar>()->setRange(constrained_state_space_->getRho_s());
     else
-        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->range);
+        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->planner_parameters_.range);
     simple_setup_->setPlanner(planner_);
     RAVELOG_INFO("Set planner.");
     return true;
