@@ -27,11 +27,11 @@ manipulator = robot.GetManipulator('arm')
 
 planner = RaveCreatePlanner(env, 'AtlasMPNet')
 
-# with env:
-#     robot.SetActiveDOFs(manipulator.GetArmIndices())
-#     robot.SetActiveDOFValues(start_config)
-#     robot.SetActiveManipulator(manipulator)
-#
+with env:
+    robot.SetActiveDOFs(manipulator.GetArmIndices())
+    robot.SetActiveDOFValues(start_config)
+    robot.SetActiveManipulator(manipulator)
+
 # Setup the planning instance.
 params = Planner.PlannerParameters()
 params.SetRobotActiveJoints(robot)
@@ -40,14 +40,16 @@ params.SetExtraParameters(
     """<planner_parameters time="5" range="0"/>
     <constraint_parameters tolerance="0.0001" max_iter="50" delta="0.05" lambda="2"/>
     <atlas_parameters exploration="0.75" epsilon="0.05" rho="5" alpha="0.5" max_charts="200" using_bias="0" using_tb="0" separate="0"/>""")
-#
-# # Set the timeout and planner-specific parameters. You can view a list of
-# # supported parameters by calling: planner.SendCommand('GetParameters')
-# print 'Parameters:'
-# print planner.SendCommand('GetParameters')
-#
-# params.SetExtraParameters('<range>0.02</range>')
 
-planner.InitPlan(robot, params)
+print 'Parameters:'
+print planner.SendCommand('GetParameters')
+
+with env:
+    with robot:
+        print 'Calling the OMPL_RRTConnect planner.'
+        traj = RaveCreateTrajectory(env, '')
+        planner.InitPlan(robot, params)
+        result = planner.PlanPath(traj)
+
 env.GetViewer().quitmainloop()
 env.Destroy()

@@ -114,12 +114,10 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
 Parameters::~Parameters() = default;
 
 bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
-    const int dof = GetDOF();// TODO: is this the right dof?
-    RAVELOG_DEBUG("dof %d", dof);
+    const int dof = GetDOF();
     for (int i = 0; i < dof; i++) {
         start[i] = vinitialconfig[i];
     }
-    RAVELOG_DEBUG("length vinitialconfig %d", vinitialconfig.size());
     return true;
 }
 
@@ -168,7 +166,7 @@ bool Parameters::endElement(std::string const &name) {
     if (name == "planner_parameters" || name == "constraint_parameters" || name == "atlas_parameters") {
         if (!_ss.str().empty()) {
             std::ostringstream info;
-            info << "The " << name << " tag cannot have children.";
+            info << "The " << name << " tag should not have children.";
                     RAVELOG_WARN(info.str());
         }
         _tagOpen = false;

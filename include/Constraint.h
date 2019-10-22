@@ -12,7 +12,7 @@
 #include "TSRRobot.h"
 
 namespace AtlasMPNet {
-    // TODO: implement this
+    // TODO: implement TSR or any other constraint
     class TSRChainConstraint : public ompl::base::Constraint {
     public:
         typedef std::shared_ptr<TSRChainConstraint> Ptr;
@@ -26,7 +26,7 @@ namespace AtlasMPNet {
 
     class SphereConstraint : public ompl::base::Constraint {
     public:
-        SphereConstraint() : ompl::base::Constraint(11, 1) {
+        explicit SphereConstraint(const unsigned int dim) : ompl::base::Constraint(dim, 1) {
         }
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override {

@@ -17,6 +17,7 @@
 #include "Parameters.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
+#include "SemiToroidalStateSpace.h"
 
 namespace AtlasMPNet {
     class Problem : public OpenRAVE::PlannerBase {
@@ -33,6 +34,8 @@ namespace AtlasMPNet {
         OpenRAVE::PlannerStatus PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) override;
 
         OpenRAVE::PlannerBase::PlannerParametersConstPtr GetParameters() const override;
+
+        bool GetParametersCommand(std::ostream &sout, std::istream &sin) const;
 
     private:
         bool setAmbientStateSpace();
@@ -51,7 +54,7 @@ namespace AtlasMPNet {
 
         OpenRAVE::RobotBasePtr robot_;
 
-        ompl::base::StateSpacePtr ambient_state_space_;
+        SemiToroidalStateSpace::Ptr ambient_state_space_;
         ompl::base::ConstraintPtr constraint_;
         ompl::base::AtlasStateSpacePtr constrained_state_space_;
         ompl::base::ConstrainedSpaceInformationPtr constrained_space_info_;
