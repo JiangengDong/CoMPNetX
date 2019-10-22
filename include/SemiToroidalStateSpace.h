@@ -67,8 +67,9 @@ namespace AtlasMPNet {
 
         void enforceBounds(ompl::base::State *state) const override;
 
-        // WARNING: if you want to use this class, you must always call the setBounds method with a SemiToroidalStateSpace object or pointer,
-        // because I cannot override this function but only hide the version of the base class.
+        /*! \attention if you want to use this class, you must always call the setBounds method with a SemiToroidalStateSpace object or pointer,
+         * because I cannot override this function but only hide the version of the base class.
+         */
         void setBounds(const ompl::base::RealVectorBounds &bounds);
 
     private:

@@ -44,8 +44,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/base/StateValidityChecker.h>
 
 namespace AtlasMPNet {
-    /**
-     * StateRobotSetter for RealVectorStateSpaces
+    /*! \brief The Wrapper of the OpenRAVE collision checker for use in OMPL
+     *
+     * Use the OpenRAVE collision checker (usually the fcl) to check it a state is valid.
      */
     class StateValidityChecker : public ompl::base::StateValidityChecker {
     public:

@@ -20,6 +20,11 @@
 #include "SemiToroidalStateSpace.h"
 
 namespace AtlasMPNet {
+    /*! \brief The main class in this plugin.
+     *
+     * It accepts a OpenRAVE Environtment and a Robot, and generates the corresponding OMPL StateSpace.
+     * Then a planner can be called to planning a path in the StateSpace.
+     */
     class Problem : public OpenRAVE::PlannerBase {
     public:
         Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss);

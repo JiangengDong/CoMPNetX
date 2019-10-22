@@ -11,8 +11,8 @@ using namespace AtlasMPNet;
 
 std::ostream &AtlasMPNet::operator<<(std::ostream &O, const SolverParameters &v) {
     O << "<planner_parameters"
-      << " time=\"" << v.time << "\""
-      << " range=\"" << v.range << "\""
+      << " time=\"" << v.time_ << "\""
+      << " range=\"" << v.range_ << "\""
       << "/>";
     return O;
 }
@@ -24,9 +24,9 @@ bool SolverParameters::deserialize(std::list<std::pair<std::string, std::string>
         value.clear();
         value.str(att.second);
         if (name == "time")
-            value >> time;
+            value >> time_;
         else if (name == "range")
-            value >> range;
+            value >> range_;
         else
                     RAVELOG_WARN ("Unrecognized attribute.");
     }
@@ -35,10 +35,10 @@ bool SolverParameters::deserialize(std::list<std::pair<std::string, std::string>
 
 std::ostream &AtlasMPNet::operator<<(std::ostream &O, const ConstraintParameters &v) {
     O << "<constraint_parameters"
-      << " tolerance=\"" << v.tolerance << "\""
-      << " max_iter=\"" << v.max_iter << "\""
-      << " delta=\"" << v.delta << "\""
-      << " lambda=\"" << v.lambda << "\""
+      << " tolerance=\"" << v.tolerance_ << "\""
+      << " max_iter=\"" << v.max_iter_ << "\""
+      << " delta=\"" << v.delta_ << "\""
+      << " lambda=\"" << v.lambda_ << "\""
       << "/>";
     return O;
 }
@@ -50,13 +50,13 @@ bool ConstraintParameters::deserialize(std::list<std::pair<std::string, std::str
         value.clear();
         value.str(att.second);
         if (name == "tolerance")
-            value >> tolerance;
+            value >> tolerance_;
         else if (name == "max_iter")
-            value >> max_iter;
+            value >> max_iter_;
         else if (name == "delta")
-            value >> delta;
+            value >> delta_;
         else if (name == "lambda")
-            value >> lambda;
+            value >> lambda_;
         else
                     RAVELOG_WARN ("Unrecognized attribute.");
     }
@@ -65,14 +65,14 @@ bool ConstraintParameters::deserialize(std::list<std::pair<std::string, std::str
 
 std::ostream &AtlasMPNet::operator<<(std::ostream &O, const AtlasParameters &v) {
     O << "<atlas_parameters"
-      << " exploration=\"" << v.exploration << "\""
-      << " epsilon=\"" << v.epsilon << "\""
-      << " rho=\"" << v.rho << "\""
-      << " alpha=\"" << v.alpha << "\""
-      << " max_charts=\"" << v.max_charts << "\""
-      << " using_bias=\"" << v.using_bias << "\""
-      << " using_tb=\"" << v.using_tb << "\""
-      << " separate=\"" << v.separate << "\""
+      << " exploration=\"" << v.exploration_ << "\""
+      << " epsilon=\"" << v.epsilon_ << "\""
+      << " rho=\"" << v.rho_ << "\""
+      << " alpha=\"" << v.alpha_ << "\""
+      << " max_charts=\"" << v.max_charts_ << "\""
+      << " using_bias=\"" << v.using_bias_ << "\""
+      << " using_tb=\"" << v.using_tb_ << "\""
+      << " separate=\"" << v.separate_ << "\""
       << "/>";
     return O;
 }
@@ -84,21 +84,21 @@ bool AtlasParameters::deserialize(std::list<std::pair<std::string, std::string>>
         value.clear();
         value.str(att.second);
         if (name == "exploration")
-            value >> exploration;
+            value >> exploration_;
         else if (name == "epsilon")
-            value >> epsilon;
+            value >> epsilon_;
         else if (name == "rho")
-            value >> rho;
+            value >> rho_;
         else if (name == "alpha")
-            value >> alpha;
+            value >> alpha_;
         else if (name == "max_charts")
-            value >> max_charts;
+            value >> max_charts_;
         else if (name == "using_bias")
-            value >> using_bias;
+            value >> using_bias_;
         else if (name == "using_tb")
-            value >> using_tb;
+            value >> using_tb_;
         else if (name == "separate")
-            value >> separate;
+            value >> separate_;
         else
                     RAVELOG_WARN ("Unrecognized attribute.");
     }

@@ -11,44 +11,64 @@
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
 namespace AtlasMPNet {
+
+    /*! \brief General planner parameters
+     *
+     * This class is named after "SolverParameters" to avoid the conflict with OpenRAVE::PlannnerBase::PlannerParameters.
+     * It contains parameters for planners such as planning time, and provides input and output behaviors in the XML format.
+     */
     class SolverParameters {
     public:
-        double time = 5.0; // Planning time allowed.
-        double range = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
+        double time_ = 5.0; // Planning time allowed.
+        double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 
         friend std::ostream &operator<<(std::ostream &O, const SolverParameters &v);
 
         bool deserialize(std::list<std::pair<std::string, std::string>> const &atts);
     };
 
+    /*! \brief Parameters for constraint and constrained configuration space
+     *
+     * Provides input and output behaviors in the XML format.
+     */
     class ConstraintParameters {
     public:
-        double tolerance = ompl::magic::CONSTRAINT_PROJECTION_TOLERANCE; // Constraint satisfaction tolerance.
-        unsigned int max_iter = ompl::magic::CONSTRAINT_PROJECTION_MAX_ITERATIONS; // Maximum number sample tries per sample.
-        double delta = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA; // Step-size for discrete geodesic on manifold.
-        double lambda = ompl::magic::CONSTRAINED_STATE_SPACE_LAMBDA; // Maximum `wandering` allowed during traversal. Must be greater than 1.
+        double tolerance_ = ompl::magic::CONSTRAINT_PROJECTION_TOLERANCE; // Constraint satisfaction tolerance.
+        unsigned int max_iter_ = ompl::magic::CONSTRAINT_PROJECTION_MAX_ITERATIONS; // Maximum number sample tries per sample.
+        double delta_ = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA; // Step-size for discrete geodesic on manifold.
+        double lambda_ = ompl::magic::CONSTRAINED_STATE_SPACE_LAMBDA; // Maximum `wandering` allowed during traversal. Must be greater than 1.
 
         friend std::ostream &operator<<(std::ostream &O, const ConstraintParameters &v);
 
         bool deserialize(std::list<std::pair<std::string, std::string>> const &atts);
     };
 
+    /*! \brief Parameters for Atlas configuration space
+     *
+     * Provides input and output behaviors in the XML format.
+     */
     class AtlasParameters {
     public:
-        double exploration = ompl::magic::ATLAS_STATE_SPACE_EXPLORATION; // Value in [0, 1] which tunes balance of refinement and exploration in atlas sampling.
-        double epsilon = ompl::magic::ATLAS_STATE_SPACE_EPSILON; // Maximum distance from an atlas chart to the manifold. Must be positive.
-        double rho = ompl::magic::ATLAS_STATE_SPACE_RHO_MULTIPLIER; // Maximum radius for an atlas chart. Must be positive.
-        double alpha = ompl::magic::ATLAS_STATE_SPACE_ALPHA; // Maximum angle between an atlas chart and the manifold. Must be in [0, PI/2].
-        unsigned int max_charts = ompl::magic::ATLAS_STATE_SPACE_MAX_CHARTS_PER_EXTENSION; // Maximum number of atlas charts that can be generated during one manifold traversal.
-        bool using_bias = false; // Sets whether the atlas should use frontier-biased chart sampling rather than uniform.
-        bool using_tb = false; // Sets whether the constrained configuration space will use tangent bundle.
+        double exploration_ = ompl::magic::ATLAS_STATE_SPACE_EXPLORATION; // Value in [0, 1] which tunes balance of refinement and exploration in atlas sampling.
+        double epsilon_ = ompl::magic::ATLAS_STATE_SPACE_EPSILON; // Maximum distance from an atlas chart to the manifold. Must be positive.
+        double rho_ = ompl::magic::ATLAS_STATE_SPACE_RHO_MULTIPLIER; // Maximum radius for an atlas chart. Must be positive.
+        double alpha_ = ompl::magic::ATLAS_STATE_SPACE_ALPHA; // Maximum angle between an atlas chart and the manifold. Must be in [0, PI/2].
+        unsigned int max_charts_ = ompl::magic::ATLAS_STATE_SPACE_MAX_CHARTS_PER_EXTENSION; // Maximum number of atlas charts that can be generated during one manifold traversal.
+        bool using_bias_ = false; // Sets whether the atlas should use frontier-biased chart sampling rather than uniform.
+        bool using_tb_ = false; // Sets whether the constrained configuration space will use tangent bundle.
 
-        bool separate = false; // Sets that the atlas should not compute chart separating halfspaces.
+        bool separate_ = false; // Sets that the atlas should not compute chart separating halfspaces.
 
         friend std::ostream &operator<<(std::ostream &O, const AtlasParameters &v);
 
         bool deserialize(std::list<std::pair<std::string, std::string>> const &atts);
     };
+
+    /*! \brief The parameters consisting of SolverParameters, ConstraintParameters and AtlasParameters.
+     *
+     * This is a complete class that is able to read from and write to a XML format string.
+     * It will detect three tags, which are "planner_parameters", "constraint_parameters" and "atlas_parameters", and will relay the attribute list to corresponding class.
+     */
     class Parameters : public OpenRAVE::PlannerBase::PlannerParameters {
     public:
         typedef boost::shared_ptr<Parameters> Ptr;
