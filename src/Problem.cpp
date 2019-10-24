@@ -143,7 +143,9 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
-    constraint_ = std::make_shared<AtlasMPNet::SphereConstraint>(robot_->GetActiveDOF());
+    parameters_->tsrchain_parameters_->setEnv(GetEnv());
+    constraint_ = std::make_shared<TSRChainConstraint>(robot_, parameters_->tsrchain_parameters_);
+//    constraint_ = std::make_shared<AtlasMPNet::SphereConstraint>(robot_->GetActiveDOF());
     // create the constrained configuration space
     if (parameters_->atlas_parameters_.using_tb_) {
         constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
@@ -187,7 +189,8 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     ompl::base::ScopedState<> goal(constrained_state_space_);
     parameters_->getStartState(start);
     parameters_->getGoalState(goal);
-    constrained_state_space_->anchorChart(start.get());
+    auto aa = start.get();
+    constrained_state_space_->anchorChart(aa);
     constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
             RAVELOG_INFO("Set start and goal configurations.");

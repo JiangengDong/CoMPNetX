@@ -61,7 +61,7 @@ namespace AtlasMPNet {
 
         SemiToroidalStateSpace::Ptr ambient_state_space_;
         ompl::base::ConstraintPtr constraint_;
-        ompl::base::AtlasStateSpacePtr constrained_state_space_;
+        ompl::base::AtlasStateSpacePtr constrained_state_space_; // TODO: define our own constrained state space
         ompl::base::ConstrainedSpaceInformationPtr constrained_space_info_;
         ompl::base::PlannerPtr planner_;
         ompl::base::StateValidityCheckerPtr state_validity_checker_;

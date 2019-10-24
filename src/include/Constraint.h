@@ -6,22 +6,24 @@
 #define ATLASMPNET_CONSTRAINT_H
 
 #include <ompl/base/Constraint.h>
+#include <openrave/openrave.h>
 
-#include "Parameters.h"
-#include "TSR.h"
-#include "TSRRobot.h"
+#include "TSRChain.h"
 
 namespace AtlasMPNet {
-    // TODO: implement TSR or any other constraint
     class TSRChainConstraint : public ompl::base::Constraint {
     public:
         typedef std::shared_ptr<TSRChainConstraint> Ptr;
 
-        TSRChainConstraint(unsigned int ambientDim, unsigned int coDim);
+        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TSRChain::Ptr &tsr_chain);
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
-        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+    private:
+        TSRChain::Ptr _tsr_chain;
+        OpenRAVE::RobotBasePtr _robot;
+
+        Eigen::Affine3d robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
     };
 
     class SphereConstraint : public ompl::base::Constraint {

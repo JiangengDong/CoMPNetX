@@ -13,7 +13,7 @@ find_package(Boost 1.58 QUIET REQUIRED COMPONENTS serialization filesystem syste
 find_package(ompl REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-include_directories(${OpenRAVE_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${OMPL_INCLUDE_DIRS} include)
+include_directories(${OpenRAVE_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${OMPL_INCLUDE_DIRS})
 link_directories(${OpenRAVE_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${OMPL_LIBRARY_DIRS})
 
 add_subdirectory(src bin)

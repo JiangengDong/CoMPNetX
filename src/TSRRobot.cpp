@@ -40,10 +40,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace AtlasMPNet;
 
 TSRRobot::TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv) :
-        _tsrs(std::move(tsrs)), _penv(std::move(penv)), _solver("GeneralIK"), _initialized(false) {
+        _tsrs(std::move(tsrs)), _env(std::move(penv)), _solver("GeneralIK"), _initialized(false) {
 }
 
 bool TSRRobot::construct() {
+    // TODO: read in detail how this works
     if (_initialized) {
                 RAVELOG_ERROR("[TSRRobot] Already initialized. TSRRobot::construct cannot be called twice.");
         throw OpenRAVE::openrave_exception("TSRRobot::construct cannot be called twice", OpenRAVE::ORE_Failed);
@@ -52,8 +53,8 @@ bool TSRRobot::construct() {
     _initialized = false;
 
     // Create an emtpy robot of the correct type
-    _probot = RaveCreateRobot(_penv, "GenericRobot");
-    if (_probot.get() == nullptr) {
+    _robot = RaveCreateRobot(_env, "GenericRobot");
+    if (_robot.get() == nullptr) {
                 RAVELOG_ERROR("[TSRRobot] Failed to create robot of type GenericRobot");
         return _initialized;
     }
@@ -71,8 +72,9 @@ bool TSRRobot::construct() {
     for (const auto &tsr : _tsrs) {
         Eigen::Matrix<double, 6, 2> Bw = tsr->getBounds();
 
+        // TODO: delete attribute relative_body_name in TSR
         if (tsr->relative_body_name() != "NULL") {
-            RAVELOG_ERROR("[TSRRobot] ERROR: TSRs relative to a body is not supported.\n");
+                    RAVELOG_ERROR("[TSRRobot] ERROR: TSRs relative to a body is not supported.\n");
             return _initialized;
         }
 
@@ -84,7 +86,7 @@ bool TSRRobot::construct() {
             // If the bounds are equal and non-zero, we should do something reasonable
             //  For now, this isn't supported
             if (Bw(j, 0) == Bw(j, 1)) {
-                RAVELOG_ERROR(
+                        RAVELOG_ERROR(
                         "[TSRRobot] ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
                 return _initialized;
             }
@@ -106,14 +108,14 @@ bool TSRRobot::construct() {
             std::string prev_bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber - 1)).str();
             std::string bodyname = (boost::format("%s%d") % bodyprefix % bodynumber).str();
             OpenRAVE::KinBody::LinkInfoPtr link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-            link_info->_name = bodyname;
+            link_info->_name = prev_bodyname;
             link_info->_t = toOR<double>(Tw0_e); // transform
 
 
             OpenRAVE::KinBody::GeometryInfoPtr geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
-            if (j < 3) {
+            if (j < 3)
                 geom_info->_type = OpenRAVE::GT_Box;
-            } else {
+            else {
                 geom_info->_type = OpenRAVE::GT_Cylinder;
                 geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.0); //cylinder radius, height, ignored
             }
@@ -167,7 +169,6 @@ bool TSRRobot::construct() {
 
             bodynumber++;
         }
-
         Tw0_e = Tw0_e * tsr->getEndEffectorOffsetTransform();
     }
     _num_dof = bodynumber - 1;
@@ -211,20 +212,20 @@ bool TSRRobot::construct() {
     }
 
     // If we made it this far, then we can build the robot.
-    _probot->Init(link_infos, joint_infos, manip_infos, sensor_infos);
+    _robot->Init(link_infos, joint_infos, manip_infos, sensor_infos);
 
     // Set the name properly
     std::string robotname = (boost::format("TSRChain%lu") % (unsigned long int) this).str();
-    _probot->SetName(robotname);
+    _robot->SetName(robotname);
 
     // Add it to the environment
-    _penv->Add(_probot, true);
+    _env->Add(_robot, true);
 
     // Set the pose
-    _probot->SetTransform(toOR<double>(_tsrs[0]->getOriginTransform()));
+    _robot->SetTransform(toOR<double>(_tsrs[0]->getOriginTransform()));
 
     // Create an IK Solver
-    _ik_solver = OpenRAVE::RaveCreateIkSolver(_penv, _solver);
+    _ik_solver = OpenRAVE::RaveCreateIkSolver(_env, _solver);
     if (_ik_solver.get() == nullptr) {
                 RAVELOG_ERROR("[TSRRobot] Cannot create IK solver, make sure you have the GeneralIK plugin loadable by OpenRAVE\n");
         _initialized = false;
@@ -232,11 +233,11 @@ bool TSRRobot::construct() {
     }
 
     // Grab the active manipulator on our newly created robot
-    OpenRAVE::RobotBase::ManipulatorPtr pmanip = _probot->GetActiveManipulator();
+    OpenRAVE::RobotBase::ManipulatorPtr pmanip = _robot->GetActiveManipulator();
     _ik_solver->Init(pmanip);
 
     // Finally, disable the robot so we don't do collision checking against it
-    _probot->Enable(false);
+    _robot->Enable(false);
     _initialized = true;
 
     return _initialized;
@@ -280,8 +281,8 @@ Eigen::Affine3d TSRRobot::findNearestFeasibleTransform(const Eigen::Affine3d &Tt
     _ik_solver->Solve(OpenRAVE::IkParameterization(), q0, ikfreeparams, OpenRAVE::IKFO_IgnoreSelfCollisions, solution);
 
     // Set the dof values to the solution and grab the end-effector transform in world coordinates
-    _probot->SetDOFValues(*solution);
-    Eigen::Affine3d ee_pose = toEigen(_probot->GetActiveManipulator()->GetEndEffectorTransform());
+    _robot->SetDOFValues(*solution);
+    Eigen::Affine3d ee_pose = toEigen(_robot->GetActiveManipulator()->GetEndEffectorTransform());
 
     // Convert to proper frame
     Eigen::Affine3d closest = ee_pose * _tsrs.back()->getEndEffectorOffsetTransform();

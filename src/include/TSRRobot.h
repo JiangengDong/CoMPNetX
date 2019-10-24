@@ -40,58 +40,60 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace AtlasMPNet {
 
-/**
- * Decorator for an OpenRAVE Robot constructed to represent
- * a TSR chain
- */
-class TSRRobot {
-    
-public:
-
     /**
-     * Expose a shared ptr for the robot
+     * Decorator for an OpenRAVE Robot constructed to represent
+     * a TSR chain
      */
-    typedef boost::shared_ptr<TSRRobot> Ptr;
-    
-    /**
-     * Constructor
-     */
-    TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv);
+    class TSRRobot {
 
-    /**
-     * @return True if the construction was successful, false otherwise
-     */
-    bool construct();
+    public:
 
-    /**
-     * Finds the nearest reachable end-effector transform to the given transform
-     * @param Ttarget - The target end-effector transform
-     */
-    Eigen::Affine3d findNearestFeasibleTransform(const Eigen::Affine3d &Ttarget);
+        /**
+         * Expose a shared ptr for the robot
+         */
+        typedef boost::shared_ptr<TSRRobot> Ptr;
 
-    /**
-     * @return True if this is a point TSR chain - meaning no TSRs have any freedom in the Bw matrix
-     */
-    bool isPointRobot() const { return _point_tsr; }
+        /**
+         * Constructor
+         */
+        TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv);
 
-    /**
-     * @return True if robot has been properly initialized, false otherwise
-     */
-    bool isInitialized() const { return _initialized; }
+        /**
+         * @return True if the construction was successful, false otherwise
+         */
+        bool construct();
 
-private:
+        /**
+         * Finds the nearest reachable end-effector transform to the given transform
+         * @param Ttarget - The target end-effector transform
+         */
+        Eigen::Affine3d findNearestFeasibleTransform(const Eigen::Affine3d &Ttarget);
 
-    std::vector<TSR::Ptr> _tsrs;
-    OpenRAVE::EnvironmentBasePtr  _penv;
-    OpenRAVE::RobotBasePtr _probot;
-    std::string _solver;
-    OpenRAVE::IkSolverBasePtr _ik_solver;
-    std::vector<OpenRAVE::dReal> _upperlimits;
-    std::vector<OpenRAVE::dReal> _lowerlimits;
-    bool _initialized;
-    bool _point_tsr;
-    unsigned int _num_dof;
-};
+        /**
+         * @return True if this is a point TSR chain - meaning no TSRs have any freedom in the Bw matrix
+         */
+        bool isPointRobot() const { return _point_tsr; }
+
+        /**
+         * @return True if robot has been properly initialized, false otherwise
+         */
+        bool isInitialized() const { return _initialized; }
+
+        unsigned int GetDOF() const { return _num_dof; }
+
+    private:
+
+        std::vector<TSR::Ptr> _tsrs;
+        OpenRAVE::EnvironmentBasePtr _env;
+        OpenRAVE::RobotBasePtr _robot;
+        std::string _solver;
+        OpenRAVE::IkSolverBasePtr _ik_solver;
+        std::vector<OpenRAVE::dReal> _upperlimits;
+        std::vector<OpenRAVE::dReal> _lowerlimits;
+        bool _initialized;
+        bool _point_tsr;
+        unsigned int _num_dof;
+    };
 
 } // namespace AtlasMPNet
 

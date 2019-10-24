@@ -12,6 +12,7 @@
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
 #include "TSR.h"
+#include "TSRChain.h"
 
 namespace AtlasMPNet {
     class SimpleXMLReader : public OpenRAVE::BaseXMLReader {
@@ -30,22 +31,6 @@ namespace AtlasMPNet {
     protected:
         bool _tag_open = false;
         const std::string _tag_name;
-    };
-
-    class TSRChainParameters : public SimpleXMLReader {
-    public:
-        std::vector<AtlasMPNet::TSR::Ptr> TSRs_;
-
-        TSRChainParameters() : SimpleXMLReader("tsr_chain") {}
-
-        ProcessElement startElement(const std::string &name, const OpenRAVE::AttributesList &atts) override;
-
-        bool endElement(const std::string &name) override;
-
-        bool serialize(std::ostream &O) const override;
-
-    private:
-        AtlasMPNet::TSR::Ptr _active_tsr;
     };
 
     /*! \brief General planner parameters
@@ -141,7 +126,7 @@ namespace AtlasMPNet {
         SolverParameters planner_parameters_;
         ConstraintParameters constraint_parameters_;
         AtlasParameters atlas_parameters_;
-        TSRChainParameters tsrchain_parameters_;
+        TSRChain::Ptr tsrchain_parameters_;
     };
 }
 

@@ -9,54 +9,6 @@
 
 using namespace AtlasMPNet;
 
-
-/*
- * implementation of TSRChain
- */
-SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::string &name, const OpenRAVE::AttributesList &atts) {
-    if (name == _tag_name) {
-        if (_tag_open) {
-            return PE_Ignore;
-        } else {
-            _tag_open = true;
-            return PE_Support;
-        }
-    } else if (name == "tsr") {
-        if (_tag_open) {
-            _active_tsr = std::make_shared<TSR>();
-            _active_tsr->startElement(name, atts);
-            return PE_Support;
-        } else {
-                    RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
-            return PE_Ignore;
-        }
-    } else {
-        return PE_Pass;
-    }
-}
-
-bool TSRChainParameters::endElement(const std::string &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
-        return true;
-    } else {
-        if (_tag_open) {
-            _active_tsr->endElement(name);
-            TSRs_.emplace_back(_active_tsr);
-        }
-        return false;
-    }
-}
-
-bool TSRChainParameters::serialize(std::ostream &O) const {
-    O << "<" << _tag_name << ">" << std::endl;
-    for (const auto &tsr:TSRs_) {
-        O << *tsr << std::endl;
-    }
-    O << "</" << _tag_name << ">" << std::endl;
-    return true;
-}
-
 /*
  * implementation of SolverParameters
  */
@@ -219,6 +171,7 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back("atlas_parameters");
     _vXMLParameters.emplace_back("tsr_chain");
     _vXMLParameters.emplace_back("tsr");
+    tsrchain_parameters_ = std::make_shared<TSRChain>();
 }
 
 Parameters::~Parameters() = default;
@@ -246,7 +199,7 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     O << planner_parameters_ << std::endl
       << constraint_parameters_ << std::endl
       << atlas_parameters_ << std::endl
-      << tsrchain_parameters_ << std::endl;
+      << *tsrchain_parameters_ << std::endl;
     return !!O;
 }
 
@@ -268,13 +221,13 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
     if (status != PE_Pass)
         return status;
 
-    status = tsrchain_parameters_.startElement(name, atts);
+    status = tsrchain_parameters_->startElement(name, atts);
     if (status != PE_Pass)
         return status;
 }
 
 bool Parameters::endElement(std::string const &name) {
-    return !tsrchain_parameters_.endElement(name) &&
+    return !tsrchain_parameters_->endElement(name) &&
            !atlas_parameters_.endElement(name) &&
            !constraint_parameters_.endElement(name) &&
            !planner_parameters_.endElement(name) &&
