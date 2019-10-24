@@ -9,106 +9,216 @@
 
 using namespace AtlasMPNet;
 
-std::ostream &AtlasMPNet::operator<<(std::ostream &O, const SolverParameters &v) {
-    O << "<planner_parameters"
-      << " time=\"" << v.time_ << "\""
-      << " range=\"" << v.range_ << "\""
-      << "/>";
-    return O;
+
+/*
+ * implementation of TSRChain
+ */
+SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::string &name, const OpenRAVE::AttributesList &atts) {
+    if (name == _tag_name) {
+        if (_tag_open) {
+            return PE_Ignore;
+        } else {
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else if (name == "tsr") {
+        if (_tag_open) {
+            _active_tsr = std::make_shared<TSR>();
+            _active_tsr->startElement(name, atts);
+            return PE_Support;
+        } else {
+                    RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
+            return PE_Ignore;
+        }
+    } else {
+        return PE_Pass;
+    }
 }
 
-bool SolverParameters::deserialize(std::list<std::pair<std::string, std::string>> const &atts) {
-    std::istringstream value;
-    for (const auto &att:atts) {
-        auto name = att.first;
-        value.clear();
-        value.str(att.second);
-        if (name == "time")
-            value >> time_;
-        else if (name == "range")
-            value >> range_;
-        else
-                    RAVELOG_WARN ("Unrecognized attribute.");
+bool TSRChainParameters::endElement(const std::string &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else {
+        if (_tag_open) {
+            _active_tsr->endElement(name);
+            TSRs_.emplace_back(_active_tsr);
+        }
+        return false;
     }
+}
+
+bool TSRChainParameters::serialize(std::ostream &O) const {
+    O << "<" << _tag_name << ">" << std::endl;
+    for (const auto &tsr:TSRs_) {
+        O << *tsr << std::endl;
+    }
+    O << "</" << _tag_name << ">" << std::endl;
     return true;
 }
 
-std::ostream &AtlasMPNet::operator<<(std::ostream &O, const ConstraintParameters &v) {
-    O << "<constraint_parameters"
-      << " tolerance=\"" << v.tolerance_ << "\""
-      << " max_iter=\"" << v.max_iter_ << "\""
-      << " delta=\"" << v.delta_ << "\""
-      << " lambda=\"" << v.lambda_ << "\""
-      << "/>";
-    return O;
+/*
+ * implementation of SolverParameters
+ */
+SimpleXMLReader::ProcessElement SolverParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    if (name == _tag_name) {
+        if (_tag_open)
+            return PE_Ignore;
+        else {
+            std::istringstream value;
+            for (const auto &att:atts) {
+                auto key = att.first;
+                value.clear();
+                value.str(att.second);
+                if (key == "time")
+                    value >> time_;
+                else if (key == "range")
+                    value >> range_;
+                else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else
+        return PE_Pass;
 }
 
-bool ConstraintParameters::deserialize(std::list<std::pair<std::string, std::string>> const &atts) {
-    std::istringstream value;
-    for (const auto &att : atts) {
-        auto name = att.first;
-        value.clear();
-        value.str(att.second);
-        if (name == "tolerance")
-            value >> tolerance_;
-        else if (name == "max_iter")
-            value >> max_iter_;
-        else if (name == "delta")
-            value >> delta_;
-        else if (name == "lambda")
-            value >> lambda_;
-        else
-                    RAVELOG_WARN ("Unrecognized attribute.");
-    }
+bool SolverParameters::endElement(std::string const &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else
+        return false;
+}
+
+bool SolverParameters::serialize(std::ostream &O) const {
+    O << "<" << _tag_name
+      << " time=\"" << time_ << "\""
+      << " range=\"" << range_ << "\""
+      << "/>";
     return true;
 }
 
-std::ostream &AtlasMPNet::operator<<(std::ostream &O, const AtlasParameters &v) {
-    O << "<atlas_parameters"
-      << " exploration=\"" << v.exploration_ << "\""
-      << " epsilon=\"" << v.epsilon_ << "\""
-      << " rho=\"" << v.rho_ << "\""
-      << " alpha=\"" << v.alpha_ << "\""
-      << " max_charts=\"" << v.max_charts_ << "\""
-      << " using_bias=\"" << v.using_bias_ << "\""
-      << " using_tb=\"" << v.using_tb_ << "\""
-      << " separate=\"" << v.separate_ << "\""
-      << "/>";
-    return O;
+/*
+ * implementation of ConstraintParameters
+ */
+SimpleXMLReader::ProcessElement ConstraintParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    if (name == _tag_name) {
+        if (_tag_open)
+            return PE_Ignore;
+        else {
+            std::istringstream value;
+            for (const auto &att : atts) {
+                auto key = att.first;
+                value.clear();
+                value.str(att.second);
+                if (key == "tolerance")
+                    value >> tolerance_;
+                else if (key == "max_iter")
+                    value >> max_iter_;
+                else if (key == "delta")
+                    value >> delta_;
+                else if (key == "lambda")
+                    value >> lambda_;
+                else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else
+        return PE_Pass;
 }
 
-bool AtlasParameters::deserialize(std::list<std::pair<std::string, std::string>> const &atts) {
-    std::istringstream value;
-    for (const auto &att:atts) {
-        auto name = att.first;
-        value.clear();
-        value.str(att.second);
-        if (name == "exploration")
-            value >> exploration_;
-        else if (name == "epsilon")
-            value >> epsilon_;
-        else if (name == "rho")
-            value >> rho_;
-        else if (name == "alpha")
-            value >> alpha_;
-        else if (name == "max_charts")
-            value >> max_charts_;
-        else if (name == "using_bias")
-            value >> using_bias_;
-        else if (name == "using_tb")
-            value >> using_tb_;
-        else if (name == "separate")
-            value >> separate_;
-        else
-                    RAVELOG_WARN ("Unrecognized attribute.");
-    }
+bool ConstraintParameters::endElement(std::string const &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else
+        return false;
+}
+
+bool ConstraintParameters::serialize(std::ostream &O) const {
+    O << "<" << _tag_name
+      << " tolerance=\"" << tolerance_ << "\""
+      << " max_iter=\"" << max_iter_ << "\""
+      << " delta=\"" << delta_ << "\""
+      << " lambda=\"" << lambda_ << "\""
+      << "/>";
+}
+
+/*
+ * implementation of AtlasParameters
+ */
+
+SimpleXMLReader::ProcessElement AtlasParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    if (name == _tag_name) {
+        if (_tag_open)
+            return PE_Ignore;
+        else {
+            std::istringstream value;
+            for (const auto &att:atts) {
+                auto key = att.first;
+                value.clear();
+                value.str(att.second);
+                if (key == "exploration")
+                    value >> exploration_;
+                else if (key == "epsilon")
+                    value >> epsilon_;
+                else if (key == "rho")
+                    value >> rho_;
+                else if (key == "alpha")
+                    value >> alpha_;
+                else if (key == "max_charts")
+                    value >> max_charts_;
+                else if (key == "using_bias")
+                    value >> using_bias_;
+                else if (key == "using_tb")
+                    value >> using_tb_;
+                else if (key == "separate")
+                    value >> separate_;
+                else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else
+        return PE_Pass;
+}
+
+bool AtlasParameters::endElement(std::string const &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else
+        return false;
+}
+
+bool AtlasParameters::serialize(std::ostream &O) const {
+    O << "<" << _tag_name
+      << " exploration=\"" << exploration_ << "\""
+      << " epsilon=\"" << epsilon_ << "\""
+      << " rho=\"" << rho_ << "\""
+      << " alpha=\"" << alpha_ << "\""
+      << " max_charts=\"" << max_charts_ << "\""
+      << " using_bias=\"" << using_bias_ << "\""
+      << " using_tb=\"" << using_tb_ << "\""
+      << " separate=\"" << separate_ << "\""
+      << "/>";
     return true;
 }
 
+/*
+ * implementation of PlannnerParameters
+ */
 Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back("planner_parameters");
     _vXMLParameters.emplace_back("constraint_parameters");
     _vXMLParameters.emplace_back("atlas_parameters");
+    _vXMLParameters.emplace_back("tsr_chain");
+    _vXMLParameters.emplace_back("tsr");
 }
 
 Parameters::~Parameters() = default;
@@ -129,50 +239,45 @@ bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
     return true;
 }
 
-bool Parameters::serialize(std::ostream &O, int options=0) const {
+bool Parameters::serialize(std::ostream &O, int options) const {
     if (!OpenRAVE::PlannerBase::PlannerParameters::serialize(O, options)) {
         return false;
     }
     O << planner_parameters_ << std::endl
       << constraint_parameters_ << std::endl
-      << atlas_parameters_ << std::endl;
+      << atlas_parameters_ << std::endl
+      << tsrchain_parameters_ << std::endl;
     return !!O;
 }
 
 OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
-    if (_tagOpen) {
-        return PE_Ignore;
-    }
-    switch (OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts)) {
-        case PE_Support:
-            return PE_Support;
-        case PE_Ignore:
-            return PE_Ignore;
-        case PE_Pass:
-            break;
-    }
-    if (name == "planner_parameters")
-        _tagOpen = planner_parameters_.deserialize(atts);
-    else if (name == "constraint_parameters")
-        _tagOpen = constraint_parameters_.deserialize(atts);
-    else if (name == "atlas_parameters")
-        _tagOpen = atlas_parameters_.deserialize(atts);
-    else
-        return PE_Pass;
-    return _tagOpen ? PE_Support : PE_Pass;
+    OpenRAVE::BaseXMLReader::ProcessElement status;
+    status = OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts);
+    if (status != PE_Pass)
+        return status;
+
+    status = planner_parameters_.startElement(name, atts);
+    if (status != PE_Pass)
+        return status;
+
+    status = constraint_parameters_.startElement(name, atts);
+    if (status != PE_Pass)
+        return status;
+
+    status = atlas_parameters_.startElement(name, atts);
+    if (status != PE_Pass)
+        return status;
+
+    status = tsrchain_parameters_.startElement(name, atts);
+    if (status != PE_Pass)
+        return status;
 }
 
 bool Parameters::endElement(std::string const &name) {
-    if (name == "planner_parameters" || name == "constraint_parameters" || name == "atlas_parameters") {
-        if (!_ss.str().empty()) {
-            std::ostringstream info;
-            info << "The " << name << " tag should not have children.";
-                    RAVELOG_WARN(info.str());
-        }
-        _tagOpen = false;
-        return false;
-    }
-    else
-        return PlannerParameters::endElement(name);
+    return !tsrchain_parameters_.endElement(name) &&
+           !atlas_parameters_.endElement(name) &&
+           !constraint_parameters_.endElement(name) &&
+           !planner_parameters_.endElement(name) &&
+           PlannerParameters::endElement(name);
 }
 

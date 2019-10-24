@@ -10,7 +10,8 @@ add_library(AtlasMPNet SHARED
         StateValidityChecker.cpp
         TSR.cpp
         TSRRobot.cpp
-        SemiToroidalStateSpace.cpp)
+        SemiToroidalStateSpace.cpp
+        or_conversions.cpp)
 set_target_properties(AtlasMPNet PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
 target_link_libraries(AtlasMPNet
         ${OpenRAVE_LIBRARIES}

@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <Eigen/Dense>
 #include <openrave/openrave.h>
+#include <ompl/geometric/PathGeometric.h>
 
 namespace AtlasMPNet {
 
@@ -83,6 +84,8 @@ namespace AtlasMPNet {
         or_matrix.trans.z = tf(2, 3);
         return or_matrix;
     }
+
+    OpenRAVE::PlannerStatus ToORTrajectory(OpenRAVE::RobotBasePtr const &robot, ompl::geometric::PathGeometric &ompl_traj, OpenRAVE::TrajectoryBasePtr or_traj);
 
 } // namespace AtlasMPNet
 

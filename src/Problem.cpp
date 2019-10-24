@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Constraint.h"
 #include "StateValidityChecker.h"
 #include "SemiToroidalStateSpace.h"
+#include "or_conversions.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
         OpenRAVE::PlannerBase(std::move(penv)),
@@ -96,7 +97,8 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             RAVELOG_DEBUG("Finish path planning.");
     if (status) {
         plannerStatus = OpenRAVE::PS_HasSolution;
-        // TODO: copy the result path to ptraj
+        ToORTrajectory(robot_, simple_setup_->getSolutionPath(), ptraj);
+        // TODO: detailed behavior w.r.t planner status
     }
     return plannerStatus;
 }
@@ -108,7 +110,8 @@ OpenRAVE::PlannerBase::PlannerParametersConstPtr AtlasMPNet::Problem::GetParamet
 bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream &sin) const {
     sout << parameters_->planner_parameters_ << std::endl
          << parameters_->constraint_parameters_ << std::endl
-         << parameters_->atlas_parameters_ << std::endl;
+         << parameters_->atlas_parameters_ << std::endl
+         << parameters_->tsrchain_parameters_ << std::endl;
     return true;
 }
 

@@ -35,13 +35,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/shared_ptr.hpp>
 #include <Eigen/Dense>
+#include <openrave/openrave.h>
 
 namespace AtlasMPNet {
 
-    class TSR {
+    class TSR : public OpenRAVE::BaseXMLReader {
 
     public:
-        typedef boost::shared_ptr<TSR> Ptr;
+        typedef std::shared_ptr<TSR> Ptr;
+
         /**
          * Constructor
          */
@@ -70,16 +72,18 @@ namespace AtlasMPNet {
          *
          * @param ss The stream to read the serialized TSR from
          */
-        bool deserialize(std::stringstream &ss);
+        ProcessElement startElement(const std::string &name, const OpenRAVE::AttributesList &atts) override;
 
-        bool deserialize(std::istream &ss);
+        bool endElement(const std::string &name) override;
+
+        void characters(const std::string &ch) override {}
 
         /**
          * Serialize a TSR Chain.
          *
          * @param ss The stream to read the serialized TSR from
          */
-        void serialize(std::ostream &ss);
+        bool serialize(std::ostream &O) const;
 
         /**
          * Compute the distance to the TSR
@@ -126,13 +130,9 @@ namespace AtlasMPNet {
         /**
          * Output operator
          */
-        friend std::ostream &operator<<(std::ostream &out, const TSR &tsr) {
-            out << "TSR: " << std::endl;
-            out << "\tT0_w: " << tsr._T0_w.matrix() << std::endl;
-            out << "\tTw_e: " << tsr._Tw_e.matrix() << std::endl;
-            out << "\tBw: " << tsr._Bw << std::endl;
-
-            return out;
+        friend std::ostream &operator<<(std::ostream &O, const TSR &v) {
+            v.serialize(O);
+            return O;
         }
 
     protected:
@@ -145,6 +145,8 @@ namespace AtlasMPNet {
         std::string _relative_body_name;
         std::string _relative_link_name;
         bool _initialized;
+        bool _tag_open = false;
+        const std::string _tag_name = "tsr";
     };
 
 } // namespace AtlasMPNet
