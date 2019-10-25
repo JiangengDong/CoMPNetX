@@ -74,12 +74,38 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     }
     robot_ = std::move(robot);
     parameters_->copy(params);
+    parameters_->tsrchain_parameters_->setEnv(GetEnv());
     initialized_ = setAmbientStateSpace() &&
                    setConstrainedStateSpace() &&
                    simpleSetup() &&
                    setStartAndGoalStates() &&
                    setStateValidityChecker() &&
                    setPlanner();
+    // if success, we should print the problem infos out
+    if (initialized_) {
+                RAVELOG_INFO("The problem to be solved is as follows:");
+        std::stringstream ss;
+        ss << std::endl;
+        ss << "Ambient configuration space dim: " << constrained_state_space_->getAmbientDimension() << std::endl
+           << "Constrained manifold dim: " << constrained_state_space_->getManifoldDimension() << std::endl
+           << "Planner: " << planner_->getName() << std::endl;
+
+        unsigned int am_dim = constrained_state_space_->getAmbientDimension();
+        ss << "Start:";
+        ompl::base::ScopedState<> state(constrained_state_space_);
+        parameters_->getStartState(state);
+        for(unsigned int i=0;i < am_dim; ++i){
+            ss <<" " << state[i] ;
+        }
+        ss << std::endl;
+        ss << "Goal: ";
+        parameters_->getGoalState(state);
+        for(unsigned int i=0;i < am_dim; ++i){
+            ss <<" " << state[i] ;
+        }
+        ss << std::endl;
+        RAVELOG_INFO(ss.str());
+    }
     return initialized_;
 }
 
@@ -111,7 +137,7 @@ bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream 
     sout << parameters_->planner_parameters_ << std::endl
          << parameters_->constraint_parameters_ << std::endl
          << parameters_->atlas_parameters_ << std::endl
-         << parameters_->tsrchain_parameters_ << std::endl;
+         << *(parameters_->tsrchain_parameters_) << std::endl;
     return true;
 }
 
@@ -143,7 +169,6 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
-    parameters_->tsrchain_parameters_->setEnv(GetEnv());
     constraint_ = std::make_shared<TSRChainConstraint>(robot_, parameters_->tsrchain_parameters_);
 //    constraint_ = std::make_shared<AtlasMPNet::SphereConstraint>(robot_->GetActiveDOF());
     // create the constrained configuration space
@@ -189,9 +214,12 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     ompl::base::ScopedState<> goal(constrained_state_space_);
     parameters_->getStartState(start);
     parameters_->getGoalState(goal);
-    auto aa = start.get();
-    constrained_state_space_->anchorChart(aa);
+    // TODO: test the time for projection
+    boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
+    constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
+    boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
+    RAVELOG_DEBUG("It takes %f s to project two points to Atlas.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
     simple_setup_->setStartAndGoalStates(start, goal);
             RAVELOG_INFO("Set start and goal configurations.");
     return true;

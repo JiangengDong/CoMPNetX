@@ -141,9 +141,9 @@ namespace AtlasMPNet {
         Eigen::Affine3d _Tw_e;
         Eigen::Affine3d _Tw_e_inv;
         Eigen::Matrix<double, 6, 2> _Bw;
-        int _manipulator_index{};
-        std::string _relative_body_name;
-        std::string _relative_link_name;
+        int _manipulator_index = 0;
+        std::string _relative_body_name = "NULL";
+        std::string _relative_link_name = "NULL";
         bool _initialized;
         bool _tag_open = false;
         const std::string _tag_name = "tsr";

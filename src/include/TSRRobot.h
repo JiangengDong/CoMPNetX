@@ -86,7 +86,7 @@ namespace AtlasMPNet {
         std::vector<TSR::Ptr> _tsrs;
         OpenRAVE::EnvironmentBasePtr _env;
         OpenRAVE::RobotBasePtr _robot;
-        std::string _solver;
+        std::string _solver_name;
         OpenRAVE::IkSolverBasePtr _ik_solver;
         std::vector<OpenRAVE::dReal> _upperlimits;
         std::vector<OpenRAVE::dReal> _lowerlimits;

@@ -128,14 +128,17 @@ bool TSR::serialize(std::ostream &O) const {
     if (!_initialized)
         throw std::runtime_error("TSR is not initialized.");
     O << "<" << _tag_name;
-    O << " manipulator_index=\"" << _manipulator_index << "\""
-      << " relative_body_name=\"" << _relative_body_name << "\""
-      << " relative_link_name=\"" << _relative_link_name << "\"";
+//    O << " manipulator_index=\"" << _manipulator_index << "\""
+//      << " relative_body_name=\"" << _relative_body_name << "\""
+//      << " relative_link_name=\"" << _relative_link_name << "\"";
     // T0_w matrix
     O << " T0_w=\"";
     for (unsigned int c = 0; c < 3; c++)
         for (unsigned int r = 0; r < 3; r++)
-            O << ' ' << _T0_w.matrix()(r, c);
+            if (c==0 && r==0)
+                O  << _T0_w.matrix()(r, c);
+            else
+                O << ' ' << _T0_w.matrix()(r, c);
     for (unsigned int idx = 0; idx < 3; idx++)
         O << ' ' << _T0_w.translation()(idx);
     O << "\"";
@@ -143,7 +146,10 @@ bool TSR::serialize(std::ostream &O) const {
     O << " Tw_e=\"";
     for (unsigned int c = 0; c < 3; c++)
         for (unsigned int r = 0; r < 3; r++)
-            O << ' ' << _Tw_e.matrix()(r, c);
+            if (c==0 && r==0)
+                O  << _Tw_e.matrix()(r, c);
+            else
+                O << ' ' << _Tw_e.matrix()(r, c);
     for (unsigned int idx = 0; idx < 3; idx++)
         O << ' ' << _Tw_e.translation()(idx);
     O << "\"";
@@ -151,7 +157,10 @@ bool TSR::serialize(std::ostream &O) const {
     O << " Bw=\"";
     for (unsigned int r = 0; r < 6; r++)
         for (unsigned int c = 0; c < 2; c++)
-            O << ' ' << _Bw(r, c);
+            if (c==0 && r==0)
+                O  << _Bw.matrix()(r, c);
+            else
+                O << ' ' << _Bw.matrix()(r, c);
     O << "\"";
     O << "/>";
     return true;

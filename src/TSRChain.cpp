@@ -77,8 +77,8 @@ Eigen::Matrix<double, 6, 1> TSRChain::distance(const Eigen::Affine3d &ee_pose) c
         throw OpenRAVE::openrave_exception("Failed to compute distance to TSRChain. Did you set the environment by calling the setEnv function?",
                                            OpenRAVE::ORE_InvalidState);
 
-    if (!_tsr_robot->construct())
-        throw OpenRAVE::openrave_exception("Failed to robotize TSR.", OpenRAVE::ORE_Failed);
+//    if (!_tsr_robot->construct())
+//        throw OpenRAVE::openrave_exception("Failed to robotize TSR.", OpenRAVE::ORE_Failed);    // TODO: delete this
 
 
             RAVELOG_DEBUG("[TSRChain] Solving IK to compute distance");

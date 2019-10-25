@@ -12,6 +12,7 @@
 # the command to match your acutal install destination.
 
 from openravepy import *
+import time
 
 start_config = [0.80487864, 0.42326865, -0.54016693, 2.28895761,
                 -0.34930645, -1.19702164, 1.95971213]
@@ -21,9 +22,13 @@ goal_config = [2.41349473, -1.43062044, -2.69016693, 2.12681216,
 # Setup the environment.
 env = Environment()
 env.SetViewer('qtcoin')
-env.Load('/home/jiangeng/workspace/openrave/src/data/wamtest1.env.xml')
-robot = env.GetRobot('BarrettWAM')
-manipulator = robot.GetManipulator('arm')
+# env.Reset()
+# env.Load("../robots/herb2_padded.robot.xml")
+# targobject = env.ReadKinBodyXMLFile("../scenes/liftingbox.kinbody.xml")
+# env.AddKinBody(targobject)
+env.Load('scenes/herb2_liftingbox.env.xml')
+robot = env.GetRobot("Herb2")
+manipulator = robot.GetManipulator('left_wam')
 
 planner = RaveCreatePlanner(env, 'AtlasMPNet')
 
@@ -41,17 +46,21 @@ params.SetExtraParameters(
     <constraint_parameters tolerance="0.0001" max_iter="50" delta="0.05" lambda="2"/>
     <atlas_parameters exploration="0.75" epsilon="0.05" rho="5" alpha="0.5" max_charts="200" using_bias="0" using_tb="0" separate="0"/>
     <tsr_chain>
-    <tsr manipulator_index="1" relative_body_name="NULL" relative_link_name="NULL" 
-    T0_w=" 1 0 0 0 1 0 0 0 1 0 0 0" Tw_e=" 1 0 0 0 1 0 0 0 1 0 0 0" Bw=" 0 1 0 0 0 0 0 0 0 0 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0.6923 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 1 0 0 0 0 0 0 0 0 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 1 0 0 0 0 0 0 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 1 0 0 0 0 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 1 0 0 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 0 0 1 0 0" />
+    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 0 0 0 0 1" />
     </tsr_chain>""")
 
 with env:
     with robot:
         traj = RaveCreateTrajectory(env, '')
         planner.InitPlan(robot, params)
-        result = planner.PlanPath(traj)
+        # result = planner.PlanPath(traj)
 
-# print planner.SendCommand("GetParameters")
+raw_input('Press q to execute trajectory.\n')
 
 env.GetViewer().quitmainloop()
 env.Destroy()

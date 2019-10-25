@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace AtlasMPNet;
 
 TSRRobot::TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv) :
-        _tsrs(std::move(tsrs)), _env(std::move(penv)), _solver("GeneralIK"), _initialized(false) {
+        _tsrs(std::move(tsrs)), _env(std::move(penv)), _solver_name("GeneralIK"), _initialized(false) {
 }
 
 bool TSRRobot::construct() {
@@ -69,6 +69,18 @@ bool TSRRobot::construct() {
     int bodynumber = 1;
     Eigen::Affine3d Tw0_e = Eigen::Affine3d::Identity();
 
+    std::string bodyname = (boost::format("%s%d") % bodyprefix % 0).str();
+    OpenRAVE::KinBody::LinkInfoPtr link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
+    link_info->_name = bodyname;
+    link_info->_t = toOR<double>(Tw0_e); // transform
+
+    OpenRAVE::KinBody::GeometryInfoPtr geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
+    geom_info->_type = OpenRAVE::GT_Box;
+    geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.03, 0.03); // box extents
+    geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
+    link_info->_vgeometryinfos.push_back(geom_info);
+    link_infos.emplace_back(link_info);
+
     for (const auto &tsr : _tsrs) {
         Eigen::Matrix<double, 6, 2> Bw = tsr->getBounds();
 
@@ -77,7 +89,7 @@ bool TSRRobot::construct() {
                     RAVELOG_ERROR("[TSRRobot] ERROR: TSRs relative to a body is not supported.\n");
             return _initialized;
         }
-
+        // TODO: I think the right order is to create Body0 first and to create Bodyi and joint between i and i-1
         for (int j = 0; j < 6; j++) {
             // Don't add a body if there is no freedom in this dimension
             if (Bw(j, 0) == 0.0 && Bw(j, 1) == 0.0) {
@@ -106,13 +118,13 @@ bool TSRRobot::construct() {
 
             // Create a Link
             std::string prev_bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber - 1)).str();
-            std::string bodyname = (boost::format("%s%d") % bodyprefix % bodynumber).str();
-            OpenRAVE::KinBody::LinkInfoPtr link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-            link_info->_name = prev_bodyname;
+            bodyname = (boost::format("%s%d") % bodyprefix % bodynumber).str();
+            link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
+            link_info->_name = bodyname;
             link_info->_t = toOR<double>(Tw0_e); // transform
 
 
-            OpenRAVE::KinBody::GeometryInfoPtr geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
+            geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
             if (j < 3)
                 geom_info->_type = OpenRAVE::GT_Box;
             else {
@@ -127,13 +139,13 @@ bool TSRRobot::construct() {
             } else if (j == 2) {
                 geom_info->_vGeomData = OpenRAVE::Vector(0.02, 0.02, 0.04); // box extents
             } else if (j == 3) {
-                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 0, 1), 90.);
+                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 0, 1), 1.57);
                 geom_info->_t = t;
             } else if (j == 4) {
-                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), 90.);
+                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), 1.57);
                 geom_info->_t = t;
             } else if (j == 5) {
-                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), 90.);
+                OpenRAVE::RaveTransformMatrix<OpenRAVE::dReal> t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), 1.57);
                 geom_info->_t = t;
             }
 
@@ -175,14 +187,14 @@ bool TSRRobot::construct() {
 
     // now add a geometry to the last body with the offset of the last TSR, this will be the target for the manipulator 
     TSR::Ptr last_tsr = _tsrs.back();
-    Tw0_e = last_tsr->getEndEffectorOffsetTransform();
+//    Tw0_e = last_tsr->getEndEffectorOffsetTransform(); // TODO: position of end effector is not right
 
-    OpenRAVE::KinBody::LinkInfoPtr link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-    std::string bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber - 1)).str();
+    link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
+    bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber )).str();
     link_info->_name = bodyname;
     link_info->_bStatic = false;
 
-    OpenRAVE::KinBody::GeometryInfoPtr geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
+    geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
     geom_info->_t = toOR<double>(Tw0_e);
     geom_info->_type = OpenRAVE::GT_Sphere;
     geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0., 0.); //radius, ignored, ignored
@@ -225,7 +237,7 @@ bool TSRRobot::construct() {
     _robot->SetTransform(toOR<double>(_tsrs[0]->getOriginTransform()));
 
     // Create an IK Solver
-    _ik_solver = OpenRAVE::RaveCreateIkSolver(_env, _solver);
+    _ik_solver = OpenRAVE::RaveCreateIkSolver(_env, _solver_name);
     if (_ik_solver.get() == nullptr) {
                 RAVELOG_ERROR("[TSRRobot] Cannot create IK solver, make sure you have the GeneralIK plugin loadable by OpenRAVE\n");
         _initialized = false;
@@ -247,7 +259,7 @@ Eigen::Affine3d TSRRobot::findNearestFeasibleTransform(const Eigen::Affine3d &Tt
 
     OpenRAVE::Transform or_target = toOR<double>(Ttarget);
 
-    if (_solver != "GeneralIK") {
+    if (_solver_name != "GeneralIK") {
                 RAVELOG_ERROR("[TSRRobot] Only GeneralIK solver supported.");
         throw OpenRAVE::openrave_exception("Only GeneralIK solver supported.", OpenRAVE::ORE_Failed);
     }
