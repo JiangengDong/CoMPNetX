@@ -44,7 +44,6 @@ TSRRobot::TSRRobot(std::vector<TSR::Ptr> tsrs, OpenRAVE::EnvironmentBasePtr penv
 }
 
 bool TSRRobot::construct() {
-    // TODO: read in detail how this works
     if (_initialized) {
                 RAVELOG_ERROR("[TSRRobot] Already initialized. TSRRobot::construct cannot be called twice.");
         throw OpenRAVE::openrave_exception("TSRRobot::construct cannot be called twice", OpenRAVE::ORE_Failed);
@@ -89,7 +88,6 @@ bool TSRRobot::construct() {
                     RAVELOG_ERROR("[TSRRobot] ERROR: TSRs relative to a body is not supported.\n");
             return _initialized;
         }
-        // TODO: I think the right order is to create Body0 first and to create Bodyi and joint between i and i-1
         for (int j = 0; j < 6; j++) {
             // Don't add a body if there is no freedom in this dimension
             if (Bw(j, 0) == 0.0 && Bw(j, 1) == 0.0) {
@@ -149,7 +147,7 @@ bool TSRRobot::construct() {
                 geom_info->_t = t;
             }
 
-            geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
+            geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
             link_info->_vgeometryinfos.push_back(geom_info);
             link_infos.emplace_back(link_info);
 
@@ -187,20 +185,29 @@ bool TSRRobot::construct() {
 
     // now add a geometry to the last body with the offset of the last TSR, this will be the target for the manipulator 
     TSR::Ptr last_tsr = _tsrs.back();
-//    Tw0_e = last_tsr->getEndEffectorOffsetTransform(); // TODO: position of end effector is not right
 
     link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-    bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber )).str();
+    bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber)).str();
+    std::string prev_bodyname = (boost::format("%s%d") % bodyprefix % (bodynumber - 1)).str();
     link_info->_name = bodyname;
     link_info->_bStatic = false;
+    link_info->_t = toOR<double>(Tw0_e);
 
     geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
-    geom_info->_t = toOR<double>(Tw0_e);
+//    geom_info->_t = toOR<double>(Tw0_e);
     geom_info->_type = OpenRAVE::GT_Sphere;
     geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0., 0.); //radius, ignored, ignored
     geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
     link_info->_vgeometryinfos.push_back(geom_info);
     link_infos.emplace_back(link_info);
+
+    OpenRAVE::KinBody::JointInfoPtr joint_info = boost::make_shared<OpenRAVE::KinBody::JointInfo>();
+    std::string joint_name = (boost::format("J%d") % bodynumber).str();
+    joint_info->_name = joint_name;
+    joint_info->_type = OpenRAVE::KinBody::JointNone;
+    joint_info->_linkname0 = prev_bodyname;
+    joint_info->_linkname1 = bodyname;
+    joint_infos.emplace_back(joint_info);
 
     if (bodynumber > 1) {
         _point_tsr = false;
@@ -223,6 +230,19 @@ bool TSRRobot::construct() {
         return _initialized;
     }
 
+    std::ostringstream ss;
+    ss << "The TSRRobot is built as follows: " << std::endl;
+    ss << "Links: " << std::endl;
+    for (auto link_info_2:link_infos) {
+        ss << "\tName: " << link_info_2->_name << " Position: " << link_info_2->_t.trans.x << " "
+                                                                << link_info_2->_t.trans.y << " "
+                                                                << link_info_2->_t.trans.z << std::endl;
+    }
+    ss << "Joints: " << std::endl;
+    for (auto joint_info_2:joint_infos) {
+        ss << "\tFrom: " << joint_info_2->_linkname0 << " To: " << joint_info_2->_linkname1 << " Type: " << joint_info_2->_type << std::endl;
+    }
+            RAVELOG_DEBUG(ss.str());
     // If we made it this far, then we can build the robot.
     _robot->Init(link_infos, joint_infos, manip_infos, sensor_infos);
 

@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/base/ConstrainedSpaceInformation.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
 #include <boost/make_shared.hpp>
 
 #include "Problem.h"
@@ -83,9 +84,8 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
                    setPlanner();
     // if success, we should print the problem infos out
     if (initialized_) {
-                RAVELOG_INFO("The problem to be solved is as follows:");
         std::stringstream ss;
-        ss << std::endl;
+        ss << "The problem to be solved is defined as follows:" << std::endl;
         ss << "Ambient configuration space dim: " << constrained_state_space_->getAmbientDimension() << std::endl
            << "Constrained manifold dim: " << constrained_state_space_->getManifoldDimension() << std::endl
            << "Planner: " << planner_->getName() << std::endl;
@@ -105,25 +105,50 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         }
         ss << std::endl;
         RAVELOG_INFO(ss.str());
+
+        Eigen::VectorXd aa(7);
+        for(int i=0;i<7;i++) {
+            aa[i] = state[i];
+        }
+        static_cast<TSRChainConstraint *>(&(*constraint_))->testNewtonRaphson(aa);
     }
     return initialized_;
 }
 
 OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
-            RAVELOG_DEBUG("Enter PlanPath.");
     OpenRAVE::PlannerStatus plannerStatus = OpenRAVE::PS_Failed;
     if (!initialized_) {
                 RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
-            RAVELOG_DEBUG("Start to set SimpleSetup.");
     simple_setup_->setup();
             RAVELOG_DEBUG("Start to plan path.");
-    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->planner_parameters_.time_);
-            RAVELOG_DEBUG("Finish path planning.");
+    boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
+    ompl::base::PlannerStatus status = simple_setup_->solve(/*parameters_->planner_parameters_.time_*/);
+    boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
+            RAVELOG_DEBUG("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
+            RAVELOG_DEBUG("Atlas charts: %d", constrained_state_space_->getChartCount());
+//            planner_->printSettings(std::cout);
     if (status) {
+        // TODO:delete debug log here
         plannerStatus = OpenRAVE::PS_HasSolution;
-        ToORTrajectory(robot_, simple_setup_->getSolutionPath(), ptraj);
+        auto ompl_traj = simple_setup_->getSolutionPath();
+        size_t const num_dof = robot_->GetActiveDOF();
+        ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
+        ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace(); //TODO: is this the constrained state space
+        std::stringstream ss;
+        ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
+        for (size_t i = 0; i < ompl_traj.getStateCount(); ++i) {
+            std::vector<double> values;
+            space->copyToReals(values, ompl_traj.getState(i));
+            ptraj->Insert(i, values, true);
+            ss << "state " << i << ": ";
+            for(auto value:values) {
+                ss << value << " ";
+            }
+            ss << " \tdistance to manifold: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
+        }
+        RAVELOG_INFO(ss.str());
         // TODO: detailed behavior w.r.t planner status
     }
     return plannerStatus;
@@ -164,7 +189,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
-            RAVELOG_INFO("Set ambient configuration space.");
+            RAVELOG_DEBUG("Set ambient configuration space.");
     return true;
 }
 
@@ -199,13 +224,13 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     if (!parameters_->atlas_parameters_.using_tb_)
         constrained_state_space_->setSeparated(parameters_->atlas_parameters_.separate_);
     constrained_state_space_->setup();
-            RAVELOG_INFO("Set constrained configuration space.");
+            RAVELOG_DEBUG("Set constrained configuration space.");
     return true;
 }
 
 bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_ = std::make_shared<ompl::geometric::SimpleSetup>(constrained_space_info_);
-            RAVELOG_INFO("Create simple setup.");
+            RAVELOG_DEBUG("Create simple setup.");
     return true;
 }
 
@@ -215,13 +240,10 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     parameters_->getStartState(start);
     parameters_->getGoalState(goal);
     // TODO: test the time for projection
-    boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
     constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
-    boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
-    RAVELOG_DEBUG("It takes %f s to project two points to Atlas.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
     simple_setup_->setStartAndGoalStates(start, goal);
-            RAVELOG_INFO("Set start and goal configurations.");
+            RAVELOG_DEBUG("Set start and goal configurations.");
     return true;
 }
 
@@ -229,17 +251,17 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
     state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, dof_indices));
     simple_setup_->setStateValidityChecker(state_validity_checker_);
-            RAVELOG_INFO("Set validity checker.");
+            RAVELOG_DEBUG("Set validity checker.");
     return true;
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
-    planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
+    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
     if (parameters_->planner_parameters_.range_ == 0)
-        planner_->as<ompl::geometric::RRTstar>()->setRange(constrained_state_space_->getRho_s());
+        planner_->as<ompl::geometric::RRT>()->setRange(constrained_state_space_->getRho_s());
     else
-        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->planner_parameters_.range_);
+        planner_->as<ompl::geometric::RRT>()->setRange(parameters_->planner_parameters_.range_);
     simple_setup_->setPlanner(planner_);
-            RAVELOG_INFO("Set planner.");
+            RAVELOG_DEBUG("Set planner.");
     return true;
 }

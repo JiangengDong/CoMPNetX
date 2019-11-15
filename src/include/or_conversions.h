@@ -85,8 +85,6 @@ namespace AtlasMPNet {
         return or_matrix;
     }
 
-    OpenRAVE::PlannerStatus ToORTrajectory(OpenRAVE::RobotBasePtr const &robot, ompl::geometric::PathGeometric &ompl_traj, OpenRAVE::TrajectoryBasePtr or_traj);
-
 } // namespace AtlasMPNet
 
 #endif // ATLASMPNET_OR_CONVERSIONS_H_

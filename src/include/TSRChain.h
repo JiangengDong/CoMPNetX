@@ -65,7 +65,7 @@ namespace AtlasMPNet {
 
         unsigned int GetDOF() const { return _tsr_robot->GetDOF(); }
 
-    private:
+//    private: //TODO: recover this
         AtlasMPNet::TSR::Ptr _active_tsr;
         bool _tag_open = false;
         const std::string _tag_name = "tsr_chain";

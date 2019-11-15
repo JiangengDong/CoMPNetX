@@ -70,7 +70,7 @@ Eigen::Matrix<double, 6, 1> TSRChain::distance(const Eigen::Affine3d &ee_pose) c
 
     if (_tsrs.size() == 1) {
         TSR::Ptr tsr = _tsrs.front();
-        return tsr->distance(ee_pose);
+        return tsr->displacement(ee_pose);
     }
 
     if (!_tsr_robot)
@@ -83,7 +83,9 @@ Eigen::Matrix<double, 6, 1> TSRChain::distance(const Eigen::Affine3d &ee_pose) c
 
             RAVELOG_DEBUG("[TSRChain] Solving IK to compute distance");
     // Compute the ideal pose of the end-effector
-    Eigen::Affine3d Ttarget = ee_pose * _tsrs.back()->getEndEffectorOffsetTransform().inverse();
+//    Eigen::Affine3d Ttarget = ee_pose * _tsrs.back()->getEndEffectorOffsetTransform().inverse();
+    Eigen::Affine3d Ttarget = ee_pose;
+
 
     // Ask the robot to solve ik to find the closest possible end-effector transform
     Eigen::Affine3d Tnear = _tsr_robot->findNearestFeasibleTransform(Ttarget);

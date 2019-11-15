@@ -1,7 +1,3 @@
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    add_compile_definitions(ATLASMPNET_DEBUG)
-endif()
-
 include_directories(./include)
 
 add_library(AtlasMPNet SHARED
@@ -14,7 +10,9 @@ add_library(AtlasMPNet SHARED
         TSRRobot.cpp
         TSRChain.cpp
         SemiToroidalStateSpace.cpp
-        or_conversions.cpp)
+        TaskSpaceRegion.cpp
+        TaskSpaceRegionChain.cpp
+        )
 set_target_properties(AtlasMPNet PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
 target_link_libraries(AtlasMPNet
         ${OpenRAVE_LIBRARIES}

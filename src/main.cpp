@@ -2,13 +2,12 @@
 #include <boost/bind.hpp>
 
 #include "Problem.h"
-#include "cmake_config.h"
 
 using namespace OpenRAVE;
 
 // called to create a new plugin
 InterfaceBasePtr CreateInterfaceValidated(InterfaceType type, const std::string &interfacename, std::istream &sinput, EnvironmentBasePtr penv) {
-    OpenRAVE::RaveSetDebugLevel(ATLASMPNET_DEBUGLEVEL);
+//    OpenRAVE::RaveSetDebugLevel(ATLASMPNET_DEBUGLEVEL);
     if (type == PT_Planner && interfacename == "atlasmpnet") {
         return InterfaceBasePtr(new AtlasMPNet::Problem(std::move(penv), sinput));
     }

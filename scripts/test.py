@@ -11,56 +11,143 @@
 # This path assumes that you installed OpenRAVE to /usr. You may need to alter
 # the command to match your acutal install destination.
 
-from openravepy import *
+import openravepy as orpy
+from TransformMatrix import SerializeTransform
 import time
+import numpy as np
 
-start_config = [0.80487864, 0.42326865, -0.54016693, 2.28895761,
-                -0.34930645, -1.19702164, 1.95971213]
-goal_config = [2.41349473, -1.43062044, -2.69016693, 2.12681216,
-               -0.75643783, -1.52392537, 1.01239878]
 
-# Setup the environment.
-env = Environment()
-env.SetViewer('qtcoin')
-# env.Reset()
-# env.Load("../robots/herb2_padded.robot.xml")
-# targobject = env.ReadKinBodyXMLFile("../scenes/liftingbox.kinbody.xml")
-# env.AddKinBody(targobject)
-env.Load('scenes/herb2_liftingbox.env.xml')
-robot = env.GetRobot("Herb2")
-manipulator = robot.GetManipulator('left_wam')
+class LiftingBoxProblem:
+    def __init__(self, initial_config=tuple([0] * 14)):
+        if initial_config is None:
+            initial_config = [0] * 14
+        self.env = orpy.Environment()
+        self.env.SetViewer('qtcoin')
+        self.env.SetDebugLevel(orpy.DebugLevel.Debug)
+        self.env.Load('scenes/herb2_liftingbox.env.xml')
+        self.robot = self.env.GetRobot("Herb2")
+        self.manipulator_left = self.robot.GetManipulator('left_wam')
+        self.manipulator_right = self.robot.GetManipulator('right_wam')
+        self.box = self.env.GetKinBody("box")
 
-planner = RaveCreatePlanner(env, 'AtlasMPNet')
+        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
+        self.env.LoadProblem(self.cbirrt, "Herb2")
 
-with env:
-    robot.SetActiveDOFs(manipulator.GetArmIndices())
-    robot.SetActiveDOFValues(start_config)
-    robot.SetActiveManipulator(manipulator)
+        self.traj = orpy.RaveCreateTrajectory(self.env, '')
 
-# Setup the planning instance.
-params = Planner.PlannerParameters()
-params.SetRobotActiveJoints(robot)
-params.SetGoalConfig(goal_config)
-params.SetExtraParameters(
-    """<planner_parameters time="5" range="0"/>
-    <constraint_parameters tolerance="0.0001" max_iter="50" delta="0.05" lambda="2"/>
-    <atlas_parameters exploration="0.75" epsilon="0.05" rho="5" alpha="0.5" max_charts="200" using_bias="0" using_tb="0" separate="0"/>
-    <tsr_chain>
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0.6923 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 1 0 0 0 0 0 0 0 0 0 0" />
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 1 0 0 0 0 0 0 0 0" />
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 1 0 0 0 0 0 0" />
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 1 0 0 0 0" />
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 0 0 1 0 0" />
-    <tsr T0_w="1 0 0 0 1 0 0 0 1 0 0 0" Tw_e="1 0 0 0 1 0 0 0 1 0.1 0 0" Bw=" 0 0 0 0 0 0 0 0 0 0 0 1" />
-    </tsr_chain>""")
+        self.setHandsConfig(initial_config[7:], initial_config[:7])
 
-with env:
-    with robot:
-        traj = RaveCreateTrajectory(env, '')
-        planner.InitPlan(robot, params)
-        # result = planner.PlanPath(traj)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.env.GetViewer().quitmainloop()
+        self.env.Destroy()
 
-raw_input('Press q to execute trajectory.\n')
+    def inverseKinematic(self, manipulator, pose):
+        with self.env, self.robot:
+            self.robot.SetActiveDOFs(manipulator.GetArmIndices())
+            self.robot.SetActiveManipulator(manipulator)
+            q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
+                                            (self.robot.GetActiveManipulatorIndex(), SerializeTransform(pose)))
+        return [float(theta) for theta in q_str.split()]
 
-env.GetViewer().quitmainloop()
-env.Destroy()
+    def calculateHandsConfig(self, box_pose):
+        lefthand_offset = np.mat([[1, 0, 0, 0],
+                                  [0, 0, -1, 0.305],
+                                  [0, 1, 0, 0],
+                                  [0, 0, 0, 1]])
+        righthand_offset = np.mat([[1, 0, 0, 0],
+                                   [0, 0, 1, -0.285],
+                                   [0, -1, 0, 0],
+                                   [0, 0, 0, 1]])
+        lefthand_pose = box_pose * lefthand_offset
+        righthand_pose = box_pose * righthand_offset
+        lefthand_q = self.inverseKinematic(self.manipulator_left, lefthand_pose)
+        righthand_q = self.inverseKinematic(self.manipulator_right, righthand_pose)
+        return lefthand_q, righthand_q
+
+    def setHandsConfig(self, lefthand_q, righthand_q):
+        with self.env:
+            self.robot.SetActiveDOFs(self.manipulator_left.GetArmIndices())
+            self.robot.SetActiveDOFValues(lefthand_q)
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveDOFValues(righthand_q)
+
+    def grabBox(self):
+        with self.env:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+            self.robot.Grab(self.box)
+
+    def releaseBox(self):
+        with self.env:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+            self.robot.Release(self.box)
+
+    def liftBox(self, goal_pose):
+        pass
+
+    def setPlannerParameters(self, initial_config, goal_config):
+        with self.env:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+
+        params = orpy.Planner.PlannerParameters()
+        params.SetRobotActiveJoints(self.robot)
+        params.SetInitialConfig(initial_config)
+        params.SetGoalConfig(goal_config)
+        # TODO: the extra parameter is fixed now. Make it more flexible.
+        # TODO: change cpp code of TSRRobot to support relative body and manipulator index
+        params.SetExtraParameters(
+            """<planner_parameters time="5" range="0"/>
+                                    <constraint_parameters tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
+                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.5" alpha="0.3926990816987241" 
+                                        max_charts="500" using_bias="0" using_tb="0" separate="0"/>
+                                    <tsr_chain>
+                                        <tsr T0_w="1 0 0 0 1 0 0 0 1 0.6923 0 0" 
+                                             Tw_e="1 0 0 0 0 -1 0 1 0 0 -0.285 0" 
+                                             Bw="0 0 0 0 0 0 0 0 0 0 0 0" />
+                                    </tsr_chain>""")
+        return params
+
+    def solve(self, box_initial_pose, box_goal_pose):
+        self.box.SetTransform(np.array(box_initial_pose[:3, :]))
+        left_initial, right_initial = self.calculateHandsConfig(box_initial_pose)
+        left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
+        params = self.setPlannerParameters(right_initial, right_goal)
+        with self.env, self.robot:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+            self.planner.InitPlan(self.robot, params)
+            # self.planner.PlanPath(self.traj)
+        return self.traj
+
+    def display(self):
+        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+        self.robot.SetActiveManipulator(self.manipulator_right)
+        print self.traj.GetNumWaypoints()
+        self.robot.GetController().SetPath(self.traj)
+        self.robot.WaitForController(0)
+
+
+def main():
+    arm_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, 0.0000,
+                          2.6, -1.9, -0.0000, 2.2022, -0.0001, 0.0000, 0.0000]
+    box_initial_pose = np.mat([[1, 0, 0, 0.6923],
+                               [0, 1, 0, 0],
+                               [0, 0, 1, 0.5689],
+                               [0, 0, 0, 1]])
+    box_goal_pose = np.mat([[1, 0, 0, 0.6923],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 1.3989],
+                            [0, 0, 0, 1]])
+
+    problem = LiftingBoxProblem(arm_initial_config)
+    problem.solve(box_initial_pose, box_goal_pose)
+    # problem.display()
+
+    # raw_input('Press <ENTER> to execute trajectory.')
+
+if __name__ == '__main__':
+    main()
+    # TODO: multiple TSRs for different manipulators

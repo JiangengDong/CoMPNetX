@@ -19,9 +19,20 @@ namespace AtlasMPNet {
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
+        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+
+        double distance(const Eigen::Ref<const Eigen::VectorXd> &x) const override;
+
+        void functiontest(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const;
+
+        void jacobiantest(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const;
+
+        void testNewtonRaphson(const Eigen::Ref<Eigen::VectorXd> x0);
+
     private:
         TSRChain::Ptr _tsr_chain;
         OpenRAVE::RobotBasePtr _robot;
+        mutable int count_ = 0;
 
         Eigen::Affine3d robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
     };
