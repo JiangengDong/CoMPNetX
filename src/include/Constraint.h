@@ -8,14 +8,16 @@
 #include <ompl/base/Constraint.h>
 #include <openrave/openrave.h>
 
-#include "TSRChain.h"
+#include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {
     class TSRChainConstraint : public ompl::base::Constraint {
     public:
         typedef std::shared_ptr<TSRChainConstraint> Ptr;
 
-        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TSRChain::Ptr &tsr_chain);
+        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain &tsr_chain);
+
+        ~TSRChainConstraint() override { delete[] _tsrjointval; }
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
@@ -23,18 +25,17 @@ namespace AtlasMPNet {
 
         double distance(const Eigen::Ref<const Eigen::VectorXd> &x) const override;
 
-        void functiontest(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const;
+        void jacobian2(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const;
 
-        void jacobiantest(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const;
-
-        void testNewtonRaphson(const Eigen::Ref<Eigen::VectorXd> x0);
+        void function2(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const;
 
     private:
-        TSRChain::Ptr _tsr_chain;
+        TaskSpaceRegionChain _tsr_chain;
         OpenRAVE::RobotBasePtr _robot;
         mutable int count_ = 0;
+        mutable double* _tsrjointval = nullptr;
 
-        Eigen::Affine3d robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
+        OpenRAVE::Transform robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
     };
 
     class SphereConstraint : public ompl::base::Constraint {

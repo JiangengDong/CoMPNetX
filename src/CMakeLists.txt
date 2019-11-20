@@ -6,9 +6,6 @@ add_library(AtlasMPNet SHARED
         Parameters.cpp
         Constraint.cpp
         StateValidityChecker.cpp
-        TSR.cpp
-        TSRRobot.cpp
-        TSRChain.cpp
         SemiToroidalStateSpace.cpp
         TaskSpaceRegion.cpp
         TaskSpaceRegionChain.cpp

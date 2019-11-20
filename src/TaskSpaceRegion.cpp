@@ -32,9 +32,14 @@
 #include "TaskSpaceRegion.h"
 #include <openrave/openrave.h>
 
-using namespace Atlas_MPNet;
+using namespace AtlasMPNet;
 
-TaskSpaceRegion::TaskSpaceRegion() {
+OpenRAVE::Vector TaskSpaceRegion::RPYIdentityOffsets[8] = {OpenRAVE::Vector(M_PI, M_PI, M_PI), OpenRAVE::Vector(M_PI, M_PI, -M_PI),
+                                                           OpenRAVE::Vector(M_PI, -M_PI, M_PI), OpenRAVE::Vector(M_PI, -M_PI, -M_PI),
+                                                           OpenRAVE::Vector(-M_PI, M_PI, M_PI), OpenRAVE::Vector(-M_PI, M_PI, -M_PI),
+                                                           OpenRAVE::Vector(-M_PI, -M_PI, M_PI), OpenRAVE::Vector(-M_PI, -M_PI, -M_PI)};
+
+TaskSpaceRegion::TaskSpaceRegion() : BaseXMLReader() {
     manipind = -1;
     Bw[0][0] = 0;
     Bw[0][1] = 0;
@@ -52,7 +57,6 @@ TaskSpaceRegion::TaskSpaceRegion() {
     _volume = -1;
     _sumbounds = -1;
     _dimensionality = -1;
-
 }
 
 bool TaskSpaceRegion::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in) {
@@ -61,7 +65,7 @@ bool TaskSpaceRegion::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in) {
     _dimensionality = 0;
 
     for (auto &i : Bw) {
-        //compute volume in whatever dimensionality this defines                
+        //compute volume in whatever dimensionality this defines
         //when Bw values are backwards, it signifies an axis flip (not an error)
         if (i[1] != i[0]) {
             _volume = _volume * fabs(i[1] - i[0]);
@@ -97,17 +101,113 @@ bool TaskSpaceRegion::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in) {
         }
     }
 
-
-    //Print();
     return true;
 }
 
-OpenRAVE::Vector TaskSpaceRegion::RPYIdentityOffsets[8] = {OpenRAVE::Vector(M_PI, M_PI, M_PI), OpenRAVE::Vector(M_PI, M_PI, -M_PI),
-                                                           OpenRAVE::Vector(M_PI, -M_PI, M_PI), OpenRAVE::Vector(M_PI, -M_PI, -M_PI),
-                                                           OpenRAVE::Vector(-M_PI, M_PI, M_PI), OpenRAVE::Vector(-M_PI, M_PI, -M_PI),
-                                                           OpenRAVE::Vector(-M_PI, -M_PI, M_PI), OpenRAVE::Vector(-M_PI, -M_PI, -M_PI)};
+OpenRAVE::Transform TaskSpaceRegion::GetClosestTransform(const OpenRAVE::Transform &T0_s) const {
+    //dw_sample is just used here b/c it's convenient, it's not actually sampling anything
+    if (prelativetolink.get() == nullptr)
+        T0_link = OpenRAVE::Transform();
+    else
+        T0_link = prelativetolink->GetTransform();
 
-void TaskSpaceRegion::QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &psi, OpenRAVE::dReal &theta, OpenRAVE::dReal &phi) {
+    Tw_s1 = (T0_link * T0_w).inverse() * T0_s * Tw_e.inverse();
+
+    //convert to task coordinates
+    dw_sample[0] = Tw_s1.trans.x;
+    dw_sample[1] = Tw_s1.trans.y;
+    dw_sample[2] = Tw_s1.trans.z;
+    QuatToRPY(&Tw_s1.rot[0], dw_sample[3], dw_sample[4], dw_sample[5]);
+    //RAVELOG_INFO("dw_s: %f %f %f %f %f %f\n",dw_sample[0],dw_sample[1],dw_sample[2],dw_sample[3],dw_sample[4],dw_sample[5]);
+
+    for (int i = 0; i < 6; i++) {
+        if (dw_sample[i] > Bw[i][1])
+            dw_sample[i] = Bw[i][1];
+        else if (dw_sample[i] < Bw[i][0])
+            dw_sample[i] = Bw[i][0];
+    }
+
+    //RAVELOG_INFO("closest: %f %f %f %f %f %f\n",dw_sample[0],dw_sample[1],dw_sample[2],dw_sample[3],dw_sample[4],dw_sample[5]);
+
+    Tw_rand.trans.x = dw_sample[0];
+    Tw_rand.trans.y = dw_sample[1];
+    Tw_rand.trans.z = dw_sample[2];
+    RPYToQuat(&dw_sample[3], &Tw_rand.rot[0]);
+
+    if (prelativetolink.get() == nullptr)
+        T0_link = OpenRAVE::Transform();
+    else
+        T0_link = prelativetolink->GetTransform();
+
+    return (T0_link * T0_w * Tw_rand * Tw_e);
+}
+
+OpenRAVE::dReal TaskSpaceRegion::DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx) const {
+    dx.resize(6);
+
+    if (prelativetolink.get() == nullptr)
+        T0_link = OpenRAVE::Transform();
+    else
+        T0_link = prelativetolink->GetTransform();
+
+    Tw_s1 = (T0_link * T0_w).inverse() * T0_s * Tw_e.inverse();
+
+    //convert to task coordinates
+    dx[0] = Tw_s1.trans.x;
+    dx[1] = Tw_s1.trans.y;
+    dx[2] = Tw_s1.trans.z;
+
+    QuatToRPY(&Tw_s1.rot[0], dx[3], dx[4], dx[5]);
+
+    sumsqr = 0;
+    for (int i = 0; i < 6; i++) {
+        if (dx[i] > Bw[i][1])
+            dx[i] = dx[i] - Bw[i][1];
+        else if (dx[i] < Bw[i][0])
+            dx[i] = dx[i] - Bw[i][0];
+        else
+            dx[i] = 0;
+        sumsqr += dx[i] * dx[i];
+    }
+
+    return sqrt(sumsqr);
+}
+
+OpenRAVE::Transform TaskSpaceRegion::GenerateSample() const {
+    for (int i = 0; i < 6; i++) {
+        frand = RANDOM_FLOAT();
+        dw_sample[i] = Bw[i][1] * frand + Bw[i][0] * (1 - frand);
+    }
+
+    RPYToQuat(&dw_sample[3], &Tw_rand.rot[0]);
+
+    Tw_rand.trans.x = dw_sample[0];
+    Tw_rand.trans.y = dw_sample[1];
+    Tw_rand.trans.z = dw_sample[2];
+
+    if (prelativetolink.get() == nullptr)
+        T0_link = OpenRAVE::Transform();
+    else
+        T0_link = prelativetolink->GetTransform();
+
+    return (T0_link * T0_w * Tw_rand * Tw_e);
+}
+
+void TaskSpaceRegion::RPYToQuat(const OpenRAVE::dReal *rpy, OpenRAVE::dReal *quat) const {
+    _cphi = cos(rpy[0] / 2);
+    _sphi = sin(rpy[0] / 2);
+    _ctheta = cos(rpy[1] / 2);
+    _stheta = sin(rpy[1] / 2);
+    _cpsi = cos(rpy[2] / 2);
+    _spsi = sin(rpy[2] / 2);
+
+    quat[0] = _cphi * _ctheta * _cpsi + _sphi * _stheta * _spsi;
+    quat[1] = _sphi * _ctheta * _cpsi - _cphi * _stheta * _spsi;
+    quat[2] = _cphi * _stheta * _cpsi + _sphi * _ctheta * _spsi;
+    quat[3] = _cphi * _ctheta * _spsi - _sphi * _stheta * _cpsi;
+}
+
+void TaskSpaceRegion::QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &psi, OpenRAVE::dReal &theta, OpenRAVE::dReal &phi) const {
     a = quat[0];
     b = quat[1];
     c = quat[2];
@@ -117,7 +217,6 @@ void TaskSpaceRegion::QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &ps
     psi = atan2(2 * a * b + 2 * c * d, a * a - b * b - c * c + d * d); //psi
     theta = -asin(2 * b * d - 2 * a * c); //theta
     phi = atan2(2 * a * d + 2 * b * c, a * a + b * b - c * c - d * d); //phi
-
 
     //go through all the identities and find which one minimizes the total rotational distance
     //don't need to consider +/-2pi b/c all three angles are between -pi and pi
@@ -146,120 +245,7 @@ void TaskSpaceRegion::QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &ps
     //RAVELOG_INFO("psi: %f, theta: %f, phi: %f\n",psi,theta,phi);
 }
 
-
-void TaskSpaceRegion::RPYToQuat(const OpenRAVE::dReal *rpy, OpenRAVE::dReal *quat) {
-    _cphi = cos(rpy[0] / 2);
-    _sphi = sin(rpy[0] / 2);
-    _ctheta = cos(rpy[1] / 2);
-    _stheta = sin(rpy[1] / 2);
-    _cpsi = cos(rpy[2] / 2);
-    _spsi = sin(rpy[2] / 2);
-
-    quat[0] = _cphi * _ctheta * _cpsi + _sphi * _stheta * _spsi;
-    quat[1] = _sphi * _ctheta * _cpsi - _cphi * _stheta * _spsi;
-    quat[2] = _cphi * _stheta * _cpsi + _sphi * _ctheta * _spsi;
-    quat[3] = _cphi * _ctheta * _spsi - _sphi * _stheta * _cpsi;
-
-}
-
-OpenRAVE::dReal TaskSpaceRegion::DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx) {
-    dx.resize(6);
-
-    if (prelativetolink.get() == nullptr)
-        T0_link = OpenRAVE::Transform();
-    else
-        T0_link = prelativetolink->GetTransform();
-
-    Tw_s1 = (T0_link * T0_w).inverse() * T0_s * Tw_e.inverse();
-
-
-    //convert to task coordinates
-    dx[0] = Tw_s1.trans.x;
-    dx[1] = Tw_s1.trans.y;
-    dx[2] = Tw_s1.trans.z;
-
-    QuatToRPY(&Tw_s1.rot[0], dx[3], dx[4], dx[5]);
-
-
-    sumsqr = 0;
-
-    for (int i = 0; i < 6; i++) {
-        if (dx[i] > Bw[i][1])
-            dx[i] = dx[i] - Bw[i][1];
-        else if (dx[i] < Bw[i][0])
-            dx[i] = dx[i] - Bw[i][0];
-        else
-            dx[i] = 0;
-        sumsqr += dx[i] * dx[i];
-    }
-
-    return sqrt(sumsqr);
-}
-
-
-OpenRAVE::Transform TaskSpaceRegion::GetClosestTransform(const OpenRAVE::Transform &T0_s) {
-    //dw_sample is just used here b/c it's convenient, it's not actually sampling anything
-
-    if (prelativetolink.get() == nullptr)
-        T0_link = OpenRAVE::Transform();
-    else
-        T0_link = prelativetolink->GetTransform();
-
-    Tw_s1 = (T0_link * T0_w).inverse() * T0_s * Tw_e.inverse();
-
-    //convert to task coordinates
-    dw_sample[0] = Tw_s1.trans.x;
-    dw_sample[1] = Tw_s1.trans.y;
-    dw_sample[2] = Tw_s1.trans.z;
-    QuatToRPY(&Tw_s1.rot[0], dw_sample[3], dw_sample[4], dw_sample[5]);
-
-    //RAVELOG_INFO("dw_s: %f %f %f %f %f %f\n",dw_sample[0],dw_sample[1],dw_sample[2],dw_sample[3],dw_sample[4],dw_sample[5]);
-
-    for (int i = 0; i < 6; i++) {
-        if (dw_sample[i] > Bw[i][1])
-            dw_sample[i] = Bw[i][1];
-        else if (dw_sample[i] < Bw[i][0])
-            dw_sample[i] = Bw[i][0];
-    }
-    //RAVELOG_INFO("closest: %f %f %f %f %f %f\n",dw_sample[0],dw_sample[1],dw_sample[2],dw_sample[3],dw_sample[4],dw_sample[5]);
-
-    Tw_rand.trans.x = dw_sample[0];
-    Tw_rand.trans.y = dw_sample[1];
-    Tw_rand.trans.z = dw_sample[2];
-    RPYToQuat(&dw_sample[3], &Tw_rand.rot[0]);
-
-
-    if (prelativetolink.get() == nullptr)
-        T0_link = OpenRAVE::Transform();
-    else
-        T0_link = prelativetolink->GetTransform();
-
-    return (T0_link * T0_w * Tw_rand * Tw_e);
-
-}
-
-OpenRAVE::Transform TaskSpaceRegion::GenerateSample() {
-    for (int i = 0; i < 6; i++) {
-        frand = RANDOM_FLOAT();
-        dw_sample[i] = Bw[i][1] * frand + Bw[i][0] * (1 - frand);
-    }
-
-    RPYToQuat(&dw_sample[3], &Tw_rand.rot[0]);
-
-    Tw_rand.trans.x = dw_sample[0];
-    Tw_rand.trans.y = dw_sample[1];
-    Tw_rand.trans.z = dw_sample[2];
-
-    if (prelativetolink.get() == nullptr)
-        T0_link = OpenRAVE::Transform();
-    else
-        T0_link = prelativetolink->GetTransform();
-
-    return (T0_link * T0_w * Tw_rand * Tw_e);
-}
-
-
-void TaskSpaceRegion::Print() {
+void TaskSpaceRegion::Print() const {
     std::stringstream O;
     O << std::endl;
     O << "Manipulator Pointer: " << manipind << " ";
@@ -304,50 +290,97 @@ void TaskSpaceRegion::Print() {
             RAVELOG_INFO(O.str().c_str());
 }
 
+bool TaskSpaceRegion::serialize(std::ostream &O, int type) const {
+    if (type == 0) {     // default: simple format
+        O << manipind << " ";
 
-bool TaskSpaceRegion::serialize(std::ostream &O) const {
-    O << manipind << " ";
+        if (prelativetolink.get() == nullptr) {
+            O << "NULL" << " ";
+        } else {
+            O << prelativetolink->GetParent()->GetName() << " ";
+            O << prelativetolink->GetName() << " ";
+        }
 
-    if (prelativetolink.get() == nullptr) {
-        O << "NULL" << " ";
-    } else {
-        O << prelativetolink->GetParent()->GetName() << " ";
-        O << prelativetolink->GetName() << " ";
+        std::streamsize old_precision = O.precision();
+        O.precision(2 + std::numeric_limits<OpenRAVE::dReal>::digits10);
+
+        O << T0_w.rot.x << " " << T0_w.rot.y << " " << T0_w.rot.z << " " << T0_w.rot.w << " ";
+        O << T0_w.trans.x << " " << T0_w.trans.y << " " << T0_w.trans.z << " ";
+
+        O << Tw_e.rot.x << " " << Tw_e.rot.y << " " << Tw_e.rot.z << " " << Tw_e.rot.w << " ";
+        O << Tw_e.trans.x << " " << Tw_e.trans.y << " " << Tw_e.trans.z << " ";
+
+        O << Bw[0][0] << " ";
+        O << Bw[0][1] << " ";
+
+        O << Bw[1][0] << " ";
+        O << Bw[1][1] << " ";
+
+        O << Bw[2][0] << " ";
+        O << Bw[2][1] << " ";
+
+        O << Bw[3][0] << " ";
+        O << Bw[3][1] << " ";
+
+        O << Bw[4][0] << " ";
+        O << Bw[4][1] << " ";
+
+        O << Bw[5][0] << " ";
+        O << Bw[5][1] << " ";
+
+        O.precision(old_precision);
+        return true;
+    } else {  // xml format
+        O << "<" << _tag_name;
+        O << " manipulator_index=\"" << manipind << "\""
+          << " relative_body_name=\"" << relativebodyname << "\""
+          << " relative_link_name=\"" << relativelinkname << "\"";
+        // T0_w matrix
+        OpenRAVE::TransformMatrix temptm(T0_w);
+        O << " T0_w=\""
+          << temptm.m[0] << " "
+          << temptm.m[4] << " "
+          << temptm.m[8] << " "
+          << temptm.m[1] << " "
+          << temptm.m[5] << " "
+          << temptm.m[9] << " "
+          << temptm.m[2] << " "
+          << temptm.m[6] << " "
+          << temptm.m[10] << " "
+          << temptm.trans.x << " "
+          << temptm.trans.y << " "
+          << temptm.trans.z << "\"";
+        // Tw_e matrix
+        OpenRAVE::TransformMatrix temptm2(Tw_e);
+        O << " Tw_e=\""
+          << temptm2.m[0] << " "
+          << temptm2.m[4] << " "
+          << temptm2.m[8] << " "
+          << temptm2.m[1] << " "
+          << temptm2.m[5] << " "
+          << temptm2.m[9] << " "
+          << temptm2.m[2] << " "
+          << temptm2.m[6] << " "
+          << temptm2.m[10] << " "
+          << temptm2.trans.x << " "
+          << temptm2.trans.y << " "
+          << temptm2.trans.z << "\"";
+        // Read in the Bw matrix
+        O << " Bw=\"";
+        for (unsigned int i = 0; i < 6; i++)
+            for (unsigned int j = 0; j < 2; j++)
+                if (j == 0 && i == 0)
+                    O << Bw[i][j];
+                else
+                    O << " " << Bw[i][j];
+        O << "\"";
+        // close tag
+        O << "/>";
+        return true;
     }
-
-    std::streamsize old_precision = O.precision();
-    O.precision(2 + std::numeric_limits<OpenRAVE::dReal>::digits10);
-
-    O << T0_w.rot.x << " " << T0_w.rot.y << " " << T0_w.rot.z << " " << T0_w.rot.w << " ";
-    O << T0_w.trans.x << " " << T0_w.trans.y << " " << T0_w.trans.z << " ";
-
-    O << Tw_e.rot.x << " " << Tw_e.rot.y << " " << Tw_e.rot.z << " " << Tw_e.rot.w << " ";
-    O << Tw_e.trans.x << " " << Tw_e.trans.y << " " << Tw_e.trans.z << " ";
-
-    O << Bw[0][0] << " ";
-    O << Bw[0][1] << " ";
-
-    O << Bw[1][0] << " ";
-    O << Bw[1][1] << " ";
-
-    O << Bw[2][0] << " ";
-    O << Bw[2][1] << " ";
-
-    O << Bw[3][0] << " ";
-    O << Bw[3][1] << " ";
-
-    O << Bw[4][0] << " ";
-    O << Bw[4][1] << " ";
-
-    O << Bw[5][0] << " ";
-    O << Bw[5][1] << " ";
-
-    O.precision(old_precision);
-    return true;
 }
 
 bool TaskSpaceRegion::deserialize(std::stringstream &_ss) {
-
     //RAVELOG_INFO(_ss.str().c_str());
     _ss >> manipind;
 
@@ -413,7 +446,6 @@ bool TaskSpaceRegion::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robo
     } else
         manipind = tempint;
 
-
     _ss >> tempstring;
     if (strcasecmp(tempstring.c_str(), "NULL") == 0) {
         prelativetolink.reset();
@@ -441,7 +473,6 @@ bool TaskSpaceRegion::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robo
             return false;
         }
     }
-
 
     _ss >> temptm.m[0];
     _ss >> temptm.m[4];
@@ -493,4 +524,71 @@ bool TaskSpaceRegion::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robo
     return true;
 }
 
+OpenRAVE::BaseXMLReader::ProcessElement TaskSpaceRegion::startElement(const std::string &name, const OpenRAVE::AttributesList &atts) {
+    if (name == _tag_name) {
+        if (_tag_open)
+            return PE_Ignore;
+        else {
+            std::istringstream value;
+            for (const auto &att:atts) {
+                auto key = att.first;
+                value.clear();
+                value.str(att.second);
+                if (key == "manipulator_index")
+                    value >> manipind;
+                else if (key == "relative_body_name")
+                    value >> relativebodyname;
+                else if (key == "relative_link_name")
+                    value >> relativelinkname;
+                else if (key == "t0_w") {
+                    OpenRAVE::TransformMatrix temptm;
+                    value >> temptm.m[0]
+                          >> temptm.m[4]
+                          >> temptm.m[8]
+                          >> temptm.m[1]
+                          >> temptm.m[5]
+                          >> temptm.m[9]
+                          >> temptm.m[2]
+                          >> temptm.m[6]
+                          >> temptm.m[10]
+                          >> temptm.trans.x
+                          >> temptm.trans.y
+                          >> temptm.trans.z;
+                    T0_w = OpenRAVE::Transform(temptm);
+                } else if (key == "tw_e") {
+                    OpenRAVE::TransformMatrix temptm;
+                    value >> temptm.m[0]
+                          >> temptm.m[4]
+                          >> temptm.m[8]
+                          >> temptm.m[1]
+                          >> temptm.m[5]
+                          >> temptm.m[9]
+                          >> temptm.m[2]
+                          >> temptm.m[6]
+                          >> temptm.m[10]
+                          >> temptm.trans.x
+                          >> temptm.trans.y
+                          >> temptm.trans.z;
+                    Tw_e = OpenRAVE::Transform(temptm);
+                } else if (key == "bw") {
+                    // Read in the Bw matrix
+                    for (auto &row : Bw)
+                        for (double &element : row)
+                            value >> element;
+                } else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else
+        return PE_Pass;
+}
 
+bool TaskSpaceRegion::endElement(const std::string &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else
+        return false;
+}

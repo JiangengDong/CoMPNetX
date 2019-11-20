@@ -11,8 +11,7 @@
 #include <ompl/base/ScopedState.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
-#include "TSR.h"
-#include "TSRChain.h"
+#include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {
     class SimpleXMLReader : public OpenRAVE::BaseXMLReader {
@@ -126,7 +125,7 @@ namespace AtlasMPNet {
         SolverParameters planner_parameters_;
         ConstraintParameters constraint_parameters_;
         AtlasParameters atlas_parameters_;
-        TSRChain::Ptr tsrchain_parameters_;
+        TaskSpaceRegionChain tsrchain_parameters_;
     };
 }
 

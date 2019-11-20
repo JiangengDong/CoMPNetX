@@ -35,9 +35,9 @@
 #include <openrave/openrave.h>
 
 
-namespace Atlas_MPNet {
+namespace AtlasMPNet {
     /// Class defining a TSR: a simple representation of pose constraints
-    class TaskSpaceRegion {
+    class TaskSpaceRegion : public OpenRAVE::BaseXMLReader {
     public:
         int manipind; ///< this specifies the index of the manipulator of the robot that is associated with this TSR
         std::string relativebodyname; ///< name of the body T0_w is attached to (NULL = world frame)
@@ -54,19 +54,52 @@ namespace Atlas_MPNet {
         // initialize the TSR
         bool Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in);
 
+        // get the closest transform in the TSR to a query transform
+        OpenRAVE::Transform GetClosestTransform(const OpenRAVE::Transform &T0_s) const;   // TODO: read this
+
+        // get the distance to the TSR from a query transform
+        OpenRAVE::dReal DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx) const;   // TODO: read this
+
+        // generate a sample from this TSR
+        OpenRAVE::Transform GenerateSample() const;
+
+        // covert roll-pitch-yaw to a quaternion
+        void RPYToQuat(const OpenRAVE::dReal *rpy, OpenRAVE::dReal *quat) const;
+
+        // convert a quaternion to roll-pitch-yaw
+        void QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &psi, OpenRAVE::dReal &theta, OpenRAVE::dReal &phi) const;
+
         // print the TSR
-        void Print();
+        void Print() const;
+
+        // write the TSR to a string
+        bool serialize(std::ostream &O, int type=0) const;
+
+        friend std::ostream &operator<<(std::ostream &O, const TaskSpaceRegion &v) {
+            v.serialize(O, 1);
+            return O;
+        }
+
+        // parse a string to set the values of the TSR
+        bool deserialize(std::stringstream &_ss);
+
+        // parse a string from matlab to set the values of the TSR
+        bool deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss);
+
+        // xml input routine
+        ProcessElement startElement(const std::string &name, const OpenRAVE::AttributesList &atts) override;
+
+        bool endElement(const std::string &name) override;
+
+        void characters(const std::string &ch) override {}
 
         // return the manipulator id of this TSR
-        int GetManipInd() {
+        int GetManipInd() const {
             return manipind;
         }
 
-        // generate a sample from this TSR
-        OpenRAVE::Transform GenerateSample();
-
         // return the 6D volume of this TSR
-        OpenRAVE::dReal GetVolume() {
+        OpenRAVE::dReal GetVolume() const {
             if (_volume < 0)
                         RAVELOG_INFO ("ERROR TSR not initialized\n");
             else
@@ -74,47 +107,30 @@ namespace Atlas_MPNet {
         }
 
         // return the sum of the length of the bounds
-        OpenRAVE::dReal GetSumOfBounds() {
+        OpenRAVE::dReal GetSumOfBounds() const {
             if (_sumbounds < 0)
                         RAVELOG_INFO ("ERROR TSR not initialized\n");
-            else return _sumbounds;
+            else
+                return _sumbounds;
         }
-
-        // get the closest transform in the TSR to a query transform
-        OpenRAVE::Transform GetClosestTransform(const OpenRAVE::Transform &T0_s);   // TODO: read this
-
-        // get the distance to the TSR from a query transform
-        OpenRAVE::dReal DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx);   // TODO: read this
-
-        // covert roll-pitch-yaw to a quaternion
-        void RPYToQuat(const OpenRAVE::dReal *rpy, OpenRAVE::dReal *quat);
-
-        // convert a quaternion to roll-pitch-yaw
-        void QuatToRPY(const OpenRAVE::dReal *quat, OpenRAVE::dReal &psi, OpenRAVE::dReal &theta, OpenRAVE::dReal &phi);
-
-        // write the TSR to a string
-        bool serialize(std::ostream &O) const;
-
-        // parse a string to set the values of the TSR
-        bool deserialize(std::stringstream &_ss);   // TODO: add xml input routine
-
-        // parse a string from matlab to set the values of the TSR
-        bool deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss);
 
     private:
         OpenRAVE::dReal _volume;
         OpenRAVE::dReal _sumbounds;
         OpenRAVE::dReal _dimensionality;
         //these are temporary variables used in TSR computations
-        OpenRAVE::Transform Tw_s1, T0_link, Tw_rand;
-        OpenRAVE::dReal dw_sample[6];
-        OpenRAVE::dReal frand;
-        OpenRAVE::dReal sumsqr;
-        OpenRAVE::dReal a, b, c, d;
-        OpenRAVE::dReal _cphi, _sphi, _ctheta, _stheta, _cpsi, _spsi;
-        OpenRAVE::dReal _min_dist;
-        OpenRAVE::Vector _temp_vec;
-        OpenRAVE::dReal _temp_dist;
+        mutable OpenRAVE::Transform Tw_s1, T0_link, Tw_rand;
+        mutable OpenRAVE::dReal dw_sample[6];
+        mutable OpenRAVE::dReal frand;
+        mutable OpenRAVE::dReal sumsqr;
+        mutable OpenRAVE::dReal a, b, c, d;
+        mutable OpenRAVE::dReal _cphi, _sphi, _ctheta, _stheta, _cpsi, _spsi;
+        mutable OpenRAVE::dReal _min_dist;
+        mutable OpenRAVE::Vector _temp_vec;
+        mutable OpenRAVE::dReal _temp_dist;
+        // inner variable for xml input
+        bool _tag_open = false;
+        std::string _tag_name = "tsr";
     };
 
     inline float RANDOM_FLOAT() {

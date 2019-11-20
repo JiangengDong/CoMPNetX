@@ -171,7 +171,6 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back("atlas_parameters");
     _vXMLParameters.emplace_back("tsr_chain");
     _vXMLParameters.emplace_back("tsr");
-    tsrchain_parameters_ = std::make_shared<TSRChain>();
 }
 
 Parameters::~Parameters() = default;
@@ -199,35 +198,26 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     O << planner_parameters_ << std::endl
       << constraint_parameters_ << std::endl
       << atlas_parameters_ << std::endl
-      << *tsrchain_parameters_ << std::endl;
+      << tsrchain_parameters_ << std::endl;
     return !!O;
 }
 
 OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
     OpenRAVE::BaseXMLReader::ProcessElement status;
-    status = OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts);
-    if (status != PE_Pass)
+    if ((status = OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts)) != PE_Pass)
         return status;
-
-    status = planner_parameters_.startElement(name, atts);
-    if (status != PE_Pass)
+    if ((status = planner_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
-
-    status = constraint_parameters_.startElement(name, atts);
-    if (status != PE_Pass)
+    if ((status = constraint_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
-
-    status = atlas_parameters_.startElement(name, atts);
-    if (status != PE_Pass)
+    if ((status = atlas_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
-
-    status = tsrchain_parameters_->startElement(name, atts);
-    if (status != PE_Pass)
+    if ((status = tsrchain_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
 }
 
 bool Parameters::endElement(std::string const &name) {
-    return !tsrchain_parameters_->endElement(name) &&
+    return !tsrchain_parameters_.endElement(name) &&
            !atlas_parameters_.endElement(name) &&
            !constraint_parameters_.endElement(name) &&
            !planner_parameters_.endElement(name) &&

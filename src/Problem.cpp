@@ -35,8 +35,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utility>
 
 #include <ompl/base/spaces/RealVectorStateSpace.h>
-#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
-#include <ompl/base/spaces/constraint/TangentBundleStateSpace.h>
 #include <ompl/base/ConstrainedSpaceInformation.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
@@ -49,6 +47,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StateValidityChecker.h"
 #include "SemiToroidalStateSpace.h"
 #include "or_conversions.h"
+#include "AtlasStateSpace.h"
+#include "TangentBundleStateSpace.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
         OpenRAVE::PlannerBase(std::move(penv)),
@@ -75,7 +75,6 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     }
     robot_ = std::move(robot);
     parameters_->copy(params);
-    parameters_->tsrchain_parameters_->setEnv(GetEnv());
     initialized_ = setAmbientStateSpace() &&
                    setConstrainedStateSpace() &&
                    simpleSetup() &&
@@ -105,12 +104,6 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         }
         ss << std::endl;
         RAVELOG_INFO(ss.str());
-
-        Eigen::VectorXd aa(7);
-        for(int i=0;i<7;i++) {
-            aa[i] = state[i];
-        }
-        static_cast<TSRChainConstraint *>(&(*constraint_))->testNewtonRaphson(aa);
     }
     return initialized_;
 }
@@ -122,16 +115,13 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
         return plannerStatus;
     }
     simple_setup_->setup();
-            RAVELOG_DEBUG("Start to plan path.");
     boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
     ompl::base::PlannerStatus status = simple_setup_->solve(/*parameters_->planner_parameters_.time_*/);
     boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
-            RAVELOG_DEBUG("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
-            RAVELOG_DEBUG("Atlas charts: %d", constrained_state_space_->getChartCount());
+            RAVELOG_INFO("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
+            RAVELOG_INFO("Atlas charts: %d", constrained_state_space_->getChartCount());
 //            planner_->printSettings(std::cout);
     if (status) {
-        // TODO:delete debug log here
-        plannerStatus = OpenRAVE::PS_HasSolution;
         auto ompl_traj = simple_setup_->getSolutionPath();
         size_t const num_dof = robot_->GetActiveDOF();
         ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
@@ -149,6 +139,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             ss << " \tdistance to manifold: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
         }
         RAVELOG_INFO(ss.str());
+        plannerStatus = OpenRAVE::PS_HasSolution;
         // TODO: detailed behavior w.r.t planner status
     }
     return plannerStatus;
@@ -162,7 +153,7 @@ bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream 
     sout << parameters_->planner_parameters_ << std::endl
          << parameters_->constraint_parameters_ << std::endl
          << parameters_->atlas_parameters_ << std::endl
-         << *(parameters_->tsrchain_parameters_) << std::endl;
+         << parameters_->tsrchain_parameters_ << std::endl;
     return true;
 }
 
@@ -239,7 +230,6 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     ompl::base::ScopedState<> goal(constrained_state_space_);
     parameters_->getStartState(start);
     parameters_->getGoalState(goal);
-    // TODO: test the time for projection
     constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);

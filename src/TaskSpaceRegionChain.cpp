@@ -32,219 +32,7 @@
 
 #include "TaskSpaceRegion.h"
 
-using namespace Atlas_MPNet;
-
-OpenRAVE::Transform TaskSpaceRegionChain::GenerateSample() {
-    for (int i = 1; i < TSRChain.size(); i++)
-        TSRChain[i].T0_w = TSRChain[i - 1].GenerateSample();
-
-    return TSRChain[TSRChain.size() - 1].GenerateSample();
-}
-
-
-bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) {
-    for (int i = 0; i < _lowerlimits.size(); i++) {
-        lowerlimits[i] = _lowerlimits[i];
-        upperlimits[i] = _upperlimits[i];
-                RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
-    }
-
-    return true;
-}
-
-
-OpenRAVE::dReal TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, OpenRAVE::dReal *TSRJointVals, OpenRAVE::Transform &T0_closeset) {
-    assert(robot.get() != nullptr);
-
-
-    if (_bPointTSR) {
-        T0_closeset = TSRChain[0].GetClosestTransform(T0_s);
-        return TSRChain[0].DistanceToTSR(T0_s, _dx);
-    }
-
-    assert(TSRJointVals != nullptr);
-
-
-    OpenRAVE::Transform Ttarg = T0_s * TSRChain[TSRChain.size() - 1].Tw_e.inverse();
-
-    ikparams[2] = Ttarg.rot.x;
-    ikparams[3] = Ttarg.rot.y;
-    ikparams[4] = Ttarg.rot.z;
-    ikparams[5] = Ttarg.rot.w;
-    ikparams[6] = Ttarg.trans.x;
-    ikparams[7] = Ttarg.trans.y;
-    ikparams[8] = Ttarg.trans.z;
-
-
-    std::vector<OpenRAVE::dReal> q0, q_s;
-    q_s.resize(robot->GetDOF());
-    robot->GetDOFValues(q_s);
-
-    //RAVELOG_INFO("TSRJointVals: %f %f\n",TSRJointVals[0],TSRJointVals[1]);
-
-    for (int i = 0; i < q_s.size(); i++)
-        q_s[i] = TSRJointVals[i];
-
-    q0 = q_s;
-    boost::shared_ptr<std::vector<OpenRAVE::dReal> > pq_s(new std::vector<OpenRAVE::dReal>);
-
-    _pIkSolver->Solve(OpenRAVE::IkParameterization(), q0, ikparams, false, pq_s);
-    q_s = *pq_s;
-
-    robot->SetJointValues(q_s, true);
-    for (int i = 0; i < q_s.size(); i++)
-        TSRJointVals[i] = q_s[i];
-
-    //RAVELOG_INFO("TSRJointVals: %f %f\n",TSRJointVals[0],TSRJointVals[1]);
-    T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform() * TSRChain[TSRChain.size() - 1].Tw_e;
-    return TransformDifference(T0_s, T0_closeset);
-}
-
-//NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
-bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dReal *TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
-    if (_pmimicbody == nullptr)
-        return false;
-
-    mimicbodyvals.resize(_pmimicbody->GetDOF());
-    _pmimicbody->GetDOFValues(mimicbodyvals);
-    for (int i = 0; i < _mimicinds.size(); i++) {
-        mimicbodyvals[_mimicinds[i]] = _mimicjointoffsets[_mimicinds[i]] + TSRJointVals[i];
-    }
-
-    return true;
-}
-
-
-bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals) {
-    if (_pmimicbody == nullptr)
-        return false;
-
-    MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);
-
-    _pmimicbody->SetJointValues(_mimicjointvals_temp, true);
-    return true;
-}
-
-
-bool TaskSpaceRegionChain::ExtractMimicDOFValues(const OpenRAVE::dReal *TSRValues, OpenRAVE::dReal *MimicDOFVals) {
-    //NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
-    for (int i = 0; i < _mimicinds.size(); i++)
-        MimicDOFVals[i] = TSRValues[i];
-
-
-    return true;
-}
-
-
-bool TaskSpaceRegionChain::serialize(std::ostream &O) const {
-
-    O << " ";
-
-    O << (int) bSampleStartFromChain << " ";
-    O << (int) bSampleGoalFromChain << " ";
-
-    O << (int) bConstrainToChain << " ";
-
-
-    O << TSRChain.size();
-    for (const auto &i : TSRChain) {
-        O << " ";
-        if (!i.serialize(O)) {
-                    RAVELOG_INFO("ERROR SERIALIZING TSR CHAIN\n");
-            return false;
-        }
-        O << " ";
-    }
-
-    if (_pmimicbody.get() == nullptr)
-        O << " " << "NULL" << " ";
-    else
-        O << " " << _pmimicbody->GetName() << " ";
-
-
-    O << " " << _mimicinds.size() << " ";
-    for (int _mimicind : _mimicinds) {
-        O << " " << _mimicind << " ";
-    }
-
-    return true;
-}
-
-bool TaskSpaceRegionChain::deserialize(std::stringstream &_ss) {
-
-    _ss >> bSampleStartFromChain;
-    _ss >> bSampleGoalFromChain;
-    _ss >> bConstrainToChain;
-
-    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
-                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
-
-    int temp;
-    _ss >> temp;
-    TSRChain.resize(temp);
-
-
-    for (int i = 0; i < temp; i++) {
-        if (!TSRChain[i].deserialize(_ss)) {
-                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN\n");
-            return false;
-        }
-    }
-
-    _ss >> mimicbodyname;
-
-    if (mimicbodyname != "NULL") {
-        _ss >> temp;
-        _mimicinds.resize(temp);
-        for (int i = 0; i < temp; i++) {
-            _ss >> _mimicinds[i];
-        }
-    }
-
-    return true;
-}
-
-bool TaskSpaceRegionChain::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot_in, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss) {
-    _ss >> bSampleStartFromChain;
-    _ss >> bSampleGoalFromChain;
-    _ss >> bConstrainToChain;
-
-    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
-                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
-
-
-    int temp;
-    std::string tempstring;
-
-    _ss >> temp;
-
-    TSRChain.resize(temp);
-
-    for (int i = 0; i < temp; i++) {
-        if (!TSRChain[i].deserialize_from_matlab(robot_in, penv_in, _ss)) {
-                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN FROM MATLAB\n");
-            return false;
-        }
-    }
-
-    _ss >> tempstring;
-    if (strcasecmp(tempstring.c_str(), "NULL") == 0) {
-        _pmimicbody.reset();
-    } else {
-        _pmimicbody = penv_in->GetRobot(tempstring);
-        if (_pmimicbody.get() == nullptr) {
-                    RAVELOG_INFO("Error: could not find the specified mimic body\n");
-            return false;
-        }
-
-        _ss >> temp;
-        _mimicinds.resize(temp);
-        for (int i = 0; i < temp; i++) {
-            _ss >> _mimicinds[i];
-        }
-    }
-    return true;
-}
+using namespace AtlasMPNet;
 
 bool TaskSpaceRegionChain::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in) {
     _sumbounds = 0;
@@ -532,7 +320,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     //initialize parameters to send to ik solver
     ikparams.resize(12);
     ikparams[0] = 1;
-    ikparams[1] = 0;
+    ikparams[1] = robot->GetActiveManipulatorIndex();
     ikparams[9] = 0; //don't do any balancing
     ikparams[10] = 0; //select the mode
     ikparams[11] = 0; //do rotation
@@ -545,7 +333,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     return true;
 }
 
-OpenRAVE::dReal TaskSpaceRegionChain::TransformDifference(const OpenRAVE::Transform &tm_ref, const OpenRAVE::Transform &tm_targ) {
+OpenRAVE::dReal TaskSpaceRegionChain::TransformDifference(const OpenRAVE::Transform &tm_ref, const OpenRAVE::Transform &tm_targ) const {
     _tmtemp = tm_ref.inverse() * tm_targ;
 
     _dx[0] = _tmtemp.trans.x;
@@ -562,10 +350,298 @@ OpenRAVE::dReal TaskSpaceRegionChain::TransformDifference(const OpenRAVE::Transf
     return sqrt(_sumsqr);
 }
 
+OpenRAVE::dReal TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, OpenRAVE::dReal *TSRJointVals, OpenRAVE::Transform &T0_closeset) const {
+    if (_bPointTSR || TSRChain.size() == 1) {   // TODO: change this to test TSRChain
+        T0_closeset = TSRChain[0].GetClosestTransform(T0_s);
+        return TSRChain[0].DistanceToTSR(T0_s, _dx);
+    }
+
+    assert(robot.get() != nullptr);
+
+    assert(TSRJointVals != nullptr);
+
+
+    OpenRAVE::Transform Ttarg = T0_s * TSRChain.back().Tw_e.inverse();
+
+    ikparams[2] = Ttarg.rot.x;
+    ikparams[3] = Ttarg.rot.y;
+    ikparams[4] = Ttarg.rot.z;
+    ikparams[5] = Ttarg.rot.w;
+    ikparams[6] = Ttarg.trans.x;
+    ikparams[7] = Ttarg.trans.y;
+    ikparams[8] = Ttarg.trans.z;
+
+
+    std::vector<OpenRAVE::dReal> q0, q_s;
+    q_s.resize(robot->GetDOF());
+    robot->GetDOFValues(q_s);
+
+    //RAVELOG_INFO("TSRJointVals: %f %f\n",TSRJointVals[0],TSRJointVals[1]);
+
+    for (int i = 0; i < q_s.size(); i++)
+        q_s[i] = TSRJointVals[i];
+
+    q0 = q_s;
+    boost::shared_ptr<std::vector<OpenRAVE::dReal> > pq_s(new std::vector<OpenRAVE::dReal>);
+
+    _pIkSolver->Solve(OpenRAVE::IkParameterization(), q0, ikparams, false, pq_s);
+    q_s = *pq_s;
+
+    robot->SetJointValues(q_s, true);
+    for (int i = 0; i < q_s.size(); i++)
+        TSRJointVals[i] = q_s[i];
+
+    //RAVELOG_INFO("TSRJointVals: %f %f\n",TSRJointVals[0],TSRJointVals[1]);
+    T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform() * TSRChain.back().Tw_e;
+    return TransformDifference(T0_s* TSRChain.back().Tw_e.inverse(), T0_closeset* TSRChain.back().Tw_e.inverse()); // TODO: just a test
+}
+
+bool TaskSpaceRegionChain::serialize(std::ostream &O, int type) const {
+    if (type == 0) {     // simple format
+        O << " ";
+
+        O << (int) bSampleStartFromChain << " ";
+        O << (int) bSampleGoalFromChain << " ";
+
+        O << (int) bConstrainToChain << " ";
+
+
+        O << TSRChain.size();
+        for (const auto &i : TSRChain) {
+            O << " ";
+            if (!i.serialize(O)) {
+                        RAVELOG_INFO("ERROR SERIALIZING TSR CHAIN\n");
+                return false;
+            }
+            O << " ";
+        }
+
+        if (_pmimicbody.get() == nullptr)
+            O << " " << "NULL" << " ";
+        else
+            O << " " << _pmimicbody->GetName() << " ";
+
+
+        O << " " << _mimicinds.size() << " ";
+        for (int _mimicind : _mimicinds) {
+            O << " " << _mimicind << " ";
+        }
+
+        return true;
+    } else {      // xml format
+        O << "<" << _tag_name << " ";
+        O << "purpose=\""
+          << (int) bSampleStartFromChain << " "
+          << (int) bSampleGoalFromChain << " "
+          << (int) bConstrainToChain << "\" ";
+        O << "mimic_body_name=\""
+          << mimicbodyname << "\" ";
+        O << "mimic_body_index=\"";
+        for (int i = 0; i < _mimicinds.size(); i++) {
+            if (i == 0)
+                O << _mimicinds[i];
+            else
+                O << " " << _mimicinds[i];
+        }
+        O << "\">" << std::endl;
+        for (const auto &tsr:TSRChain) {
+            O << tsr << std::endl;
+        }
+        O << "</" << _tag_name << ">" << std::endl;
+        return true;
+    }
+}
+
+bool TaskSpaceRegionChain::deserialize(std::stringstream &_ss) {
+
+    _ss >> bSampleStartFromChain;
+    _ss >> bSampleGoalFromChain;
+    _ss >> bConstrainToChain;
+
+    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
+                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
+
+    int temp;
+    _ss >> temp;
+    TSRChain.resize(temp);
+
+
+    for (int i = 0; i < temp; i++) {
+        if (!TSRChain[i].deserialize(_ss)) {
+                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN\n");
+            return false;
+        }
+    }
+
+    _ss >> mimicbodyname;
+
+    if (mimicbodyname != "NULL") {
+        _ss >> temp;
+        _mimicinds.resize(temp);
+        for (int i = 0; i < temp; i++) {
+            _ss >> _mimicinds[i];
+        }
+    }
+
+    return true;
+}
+
+bool TaskSpaceRegionChain::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot_in, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss) {
+    _ss >> bSampleStartFromChain;
+    _ss >> bSampleGoalFromChain;
+    _ss >> bConstrainToChain;
+
+    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
+                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
+
+
+    int temp;
+    std::string tempstring;
+
+    _ss >> temp;
+
+    TSRChain.resize(temp);
+
+    for (int i = 0; i < temp; i++) {
+        if (!TSRChain[i].deserialize_from_matlab(robot_in, penv_in, _ss)) {
+                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN FROM MATLAB\n");
+            return false;
+        }
+    }
+
+    _ss >> tempstring;
+    if (strcasecmp(tempstring.c_str(), "NULL") == 0) {
+        _pmimicbody.reset();
+    } else {
+        _pmimicbody = penv_in->GetRobot(tempstring);
+        if (_pmimicbody.get() == nullptr) {
+                    RAVELOG_INFO("Error: could not find the specified mimic body\n");
+            return false;
+        }
+
+        _ss >> temp;
+        _mimicinds.resize(temp);
+        for (int i = 0; i < temp; i++) {
+            _ss >> _mimicinds[i];
+        }
+    }
+    return true;
+}
+
+OpenRAVE::BaseXMLReader::ProcessElement TaskSpaceRegionChain::startElement(const std::string &name, const OpenRAVE::AttributesList &atts) {
+    if (name == _tag_name) {
+        if (_tag_open) {
+            return PE_Ignore;
+        } else {
+            std::istringstream value;
+            for (const auto &att:atts) {
+                auto key = att.first;
+                value.clear();
+                auto value_str = att.second;
+                value.str(value_str.erase(value_str.find_last_not_of(' ') + 1));
+                if (key == "purpose") {
+                    value >> bSampleStartFromChain >> bSampleGoalFromChain >> bConstrainToChain;
+                    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
+                                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
+                } else if (key == "mimic_body_name") {
+                    value >> mimicbodyname;
+                } else if (key == "mimic_body_index") {
+                    int temp;
+                    while (!value.eof()) {
+                        temp = -1;
+                        value >> temp;
+                        if (temp == -1) {
+                                    RAVELOG_ERROR ("Unexpected character.");
+                            break;
+                        }
+                        _mimicinds.emplace_back(temp);
+                    }
+                } else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else if (name == "tsr") {
+        if (_tag_open) {
+            _temp_tsr.startElement(name, atts);
+            return PE_Support;
+        } else {
+                    RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
+            return PE_Ignore;
+        }
+    } else {
+        return PE_Pass;
+    }
+}
+
+bool TaskSpaceRegionChain::endElement(const std::string &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else if (name == "tsr") {
+        if (_tag_open) {
+            _temp_tsr.endElement(name);
+            TSRChain.emplace_back(_temp_tsr);
+        }
+        return false;
+    } else {
+        return false;
+    }
+}
+
+OpenRAVE::Transform TaskSpaceRegionChain::GenerateSample(){
+    for (int i = 1; i < TSRChain.size(); i++)
+        TSRChain[i].T0_w = TSRChain[i - 1].GenerateSample();
+
+    return TSRChain[TSRChain.size() - 1].GenerateSample();
+}
+
+bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const {
+    for (int i = 0; i < _lowerlimits.size(); i++) {
+        lowerlimits[i] = _lowerlimits[i];
+        upperlimits[i] = _upperlimits[i];
+                RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
+    }
+
+    return true;
+}
+
+bool TaskSpaceRegionChain::ExtractMimicDOFValues(const OpenRAVE::dReal *TSRValues, OpenRAVE::dReal *MimicDOFVals) const {
+    //NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
+    for (int i = 0; i < _mimicinds.size(); i++)
+        MimicDOFVals[i] = TSRValues[i];
+
+
+    return true;
+}
+
+//NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
+bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dReal *TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
+    if (_pmimicbody == nullptr)
+        return false;
+
+    mimicbodyvals.resize(_pmimicbody->GetDOF());
+    _pmimicbody->GetDOFValues(mimicbodyvals);
+    for (int i = 0; i < _mimicinds.size(); i++) {
+        mimicbodyvals[_mimicinds[i]] = _mimicjointoffsets[_mimicinds[i]] + TSRJointVals[i];
+    }
+
+    return true;
+}
+
+bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals) {
+    if (_pmimicbody == nullptr)
+        return false;
+
+    MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);
+
+    _pmimicbody->SetJointValues(_mimicjointvals_temp, true);
+    return true;
+}
+
 void TaskSpaceRegionChain::DestoryRobotizedTSRChain() {
     if (robot != nullptr) {
         penv->Remove(robot);
     }
 }
-
-

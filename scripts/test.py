@@ -23,7 +23,7 @@ class LiftingBoxProblem:
             initial_config = [0] * 14
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
-        self.env.SetDebugLevel(orpy.DebugLevel.Debug)
+        self.env.SetDebugLevel(orpy.DebugLevel.Info)
         self.env.Load('scenes/herb2_liftingbox.env.xml')
         self.robot = self.env.GetRobot("Herb2")
         self.manipulator_left = self.robot.GetManipulator('left_wam')
@@ -101,13 +101,14 @@ class LiftingBoxProblem:
         params.SetExtraParameters(
             """<planner_parameters time="5" range="0"/>
                                     <constraint_parameters tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
-                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.5" alpha="0.3926990816987241" 
+                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.1" alpha="0.3926990816987241" 
                                         max_charts="500" using_bias="0" using_tb="0" separate="0"/>
-                                    <tsr_chain>
-                                        <tsr T0_w="1 0 0 0 1 0 0 0 1 0.6923 0 0" 
-                                             Tw_e="1 0 0 0 0 -1 0 1 0 0 -0.285 0" 
-                                             Bw="0 0 0 0 0 0 0 0 0 0 0 0" />
-                                    </tsr_chain>""")
+                                    <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
+                                        <tsr manipulator_index="0" relative_body_name="NULL" 
+                                             T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
+                                             Tw_e="1 0 0 0 0 -1 0 1 0      0 -0.285 0" 
+                                             Bw="0 0 0 0 0 0 -4 4 -4 4 -4 4" />
+                                    </tsr_chain>""")    # TODO: constraint is wrong here
         return params
 
     def solve(self, box_initial_pose, box_goal_pose):
@@ -119,7 +120,7 @@ class LiftingBoxProblem:
             self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
             self.robot.SetActiveManipulator(self.manipulator_right)
             self.planner.InitPlan(self.robot, params)
-            # self.planner.PlanPath(self.traj)
+            self.planner.PlanPath(self.traj)
         return self.traj
 
     def display(self):
@@ -144,9 +145,7 @@ def main():
 
     problem = LiftingBoxProblem(arm_initial_config)
     problem.solve(box_initial_pose, box_goal_pose)
-    # problem.display()
-
-    # raw_input('Press <ENTER> to execute trajectory.')
+    # print problem.planner.SendCommand("GetParameters")
 
 if __name__ == '__main__':
     main()
