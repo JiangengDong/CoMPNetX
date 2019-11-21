@@ -34,11 +34,11 @@
 
 /* Author: Zachary Kingston, Caleb Voss */
 
-#include "ompl/base/spaces/constraint/AtlasStateSpace.h"
-#include "ompl/base/spaces/constraint/AtlasChart.h"
+#include "AtlasStateSpace.h"
+#include "AtlasChart.h"
 
-#include "ompl/base/SpaceInformation.h"
-#include "ompl/util/Exception.h"
+#include <ompl/base/SpaceInformation.h>
+#include <ompl/util/Exception.h>
 
 /// AtlasStateSampler
 

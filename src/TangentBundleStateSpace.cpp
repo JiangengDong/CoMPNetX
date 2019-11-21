@@ -34,10 +34,10 @@
 
 /* Author: Zachary Kingston */
 
-#include "ompl/base/spaces/constraint/TangentBundleStateSpace.h"
-#include "ompl/base/spaces/constraint/AtlasChart.h"
+#include "TangentBundleStateSpace.h"
+#include "AtlasChart.h"
 
-#include "ompl/util/Exception.h"
+#include <ompl/util/Exception.h>
 
 #include <Eigen/Core>
 

@@ -34,16 +34,16 @@
 
 /* Author: Caleb Voss */
 
-#include "ompl/base/spaces/constraint/AtlasChart.h"
 #include <boost/math/constants/constants.hpp>
 #include <Eigen/Dense>
+
+#include "AtlasChart.h"
 
 /// AtlasChart::Halfspace
 
 /// Public
 
-ompl::base::AtlasChart::Halfspace::Halfspace(const AtlasChart *owner, const AtlasChart *neighbor) : owner_(owner)
-{
+ompl::base::AtlasChart::Halfspace::Halfspace(const AtlasChart *owner, const AtlasChart *neighbor) : owner_(owner) {
     // Project neighbor's chart center onto our chart.
     Eigen::VectorXd u(owner_->k_);
     owner_->psiInverse(*neighbor->getOrigin(), u);
@@ -53,16 +53,13 @@ ompl::base::AtlasChart::Halfspace::Halfspace(const AtlasChart *owner, const Atla
     setU(1.05 * u);
 }
 
-bool ompl::base::AtlasChart::Halfspace::contains(const Eigen::Ref<const Eigen::VectorXd> &v) const
-{
+bool ompl::base::AtlasChart::Halfspace::contains(const Eigen::Ref<const Eigen::VectorXd> &v) const {
     return v.dot(u_) <= rhs_;
 }
 
-void ompl::base::AtlasChart::Halfspace::checkNear(const Eigen::Ref<const Eigen::VectorXd> &v) const
-{
+void ompl::base::AtlasChart::Halfspace::checkNear(const Eigen::Ref<const Eigen::VectorXd> &v) const {
     // Threshold is 10% of the distance from the boundary to the origin.
-    if (distanceToPoint(v) < 1.0 / 20)
-    {
+    if (distanceToPoint(v) < 1.0 / 20) {
         Eigen::VectorXd x(owner_->n_);
         owner_->psi(v, x);
         complement_->expandToInclude(x);
@@ -70,8 +67,7 @@ void ompl::base::AtlasChart::Halfspace::checkNear(const Eigen::Ref<const Eigen::
 }
 
 bool ompl::base::AtlasChart::Halfspace::circleIntersect(const double r, Eigen::Ref<Eigen::VectorXd> v1,
-                                                        Eigen::Ref<Eigen::VectorXd> v2) const
-{
+                                                        Eigen::Ref<Eigen::VectorXd> v2) const {
     if (owner_->getManifoldDimension() != 2)
         throw ompl::Exception("ompl::base::AtlasChart::Halfspace::circleIntersect() "
                               "Only works on 2D manifolds.");
@@ -98,8 +94,7 @@ bool ompl::base::AtlasChart::Halfspace::circleIntersect(const double r, Eigen::R
 /// Public static
 
 void ompl::base::AtlasChart::Halfspace::intersect(const Halfspace &l1, const Halfspace &l2,
-                                                  Eigen::Ref<Eigen::VectorXd> out)
-{
+                                                  Eigen::Ref<Eigen::VectorXd> out) {
     if (l1.owner_ != l2.owner_)
         throw ompl::Exception("Cannot intersect linear inequalities on different charts.");
     if (l1.owner_->getManifoldDimension() != 2)
@@ -116,8 +111,7 @@ void ompl::base::AtlasChart::Halfspace::intersect(const Halfspace &l1, const Hal
 
 /// Private
 
-void ompl::base::AtlasChart::Halfspace::setU(const Eigen::Ref<const Eigen::VectorXd> &u)
-{
+void ompl::base::AtlasChart::Halfspace::setU(const Eigen::Ref<const Eigen::VectorXd> &u) {
     u_ = u;
 
     // Precompute the squared norm of u.
@@ -127,14 +121,12 @@ void ompl::base::AtlasChart::Halfspace::setU(const Eigen::Ref<const Eigen::Vecto
     rhs_ = usqnorm_ / 2;
 }
 
-double ompl::base::AtlasChart::Halfspace::distanceToPoint(const Eigen::Ref<const Eigen::VectorXd> &v) const
-{
+double ompl::base::AtlasChart::Halfspace::distanceToPoint(const Eigen::Ref<const Eigen::VectorXd> &v) const {
     // Result is a scalar factor of u_.
     return (0.5 - v.dot(u_)) / usqnorm_;
 }
 
-void ompl::base::AtlasChart::Halfspace::expandToInclude(const Eigen::Ref<const Eigen::VectorXd> &x)
-{
+void ompl::base::AtlasChart::Halfspace::expandToInclude(const Eigen::Ref<const Eigen::VectorXd> &x) {
     // Compute how far v = psiInverse(x) lies past the boundary, if at all.
     Eigen::VectorXd v(owner_->k_);
     owner_->psiInverse(x, v);
@@ -150,52 +142,46 @@ void ompl::base::AtlasChart::Halfspace::expandToInclude(const Eigen::Ref<const E
 /// Public
 
 ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStateSpace::StateType *state)
-  : constraint_(atlas->getConstraint().get())
-  , n_(atlas->getAmbientDimension())
-  , k_(atlas->getManifoldDimension())
-  , state_(state)
-  , bigPhi_([&]() -> const Eigen::MatrixXd {
-      Eigen::MatrixXd j(n_ - k_, n_);
-      constraint_->jacobian(*state_, j);
+        : constraint_(atlas->getConstraint().get()), n_(atlas->getAmbientDimension()), k_(atlas->getManifoldDimension()), state_(state),
+          bigPhi_([&]() -> const Eigen::MatrixXd {
+              Eigen::MatrixXd j(n_ - k_, n_);
+              constraint_->jacobian(*state_, j);
 
-      Eigen::FullPivLU<Eigen::MatrixXd> decomp = j.fullPivLu();
-      if (!decomp.isSurjective())
-          throw ompl::Exception("Cannot compute full-rank tangent space.");
+              Eigen::FullPivLU<Eigen::MatrixXd> decomp = j.fullPivLu();
+              if (!decomp.isSurjective())
+                  throw ompl::Exception("Cannot compute full-rank tangent space.");
 
-      // Compute the null space and orthonormalize, which is a basis for the tangent space.
-      return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
-  }())
-  , radius_(atlas->getRho_s())
-{
+              // Compute the null space and orthonormalize, which is a basis for the tangent space.
+              return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
+          }()), radius_(atlas->getRho_s()) {
 }
 
-ompl::base::AtlasChart::~AtlasChart()
-{
+ompl::base::AtlasChart::~AtlasChart() {
     clear();
 }
 
-void ompl::base::AtlasChart::clear()
-{
+void ompl::base::AtlasChart::clear() {
     for (auto h : polytope_)
         delete h;
 
     polytope_.clear();
 }
 
-void ompl::base::AtlasChart::phi(const Eigen::Ref<const Eigen::VectorXd> &u, Eigen::Ref<Eigen::VectorXd> out) const
-{
+void ompl::base::AtlasChart::phi(const Eigen::Ref<const Eigen::VectorXd> &u, Eigen::Ref<Eigen::VectorXd> out) const {
     out = *state_ + bigPhi_ * u;
 }
 
-bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eigen::Ref<Eigen::VectorXd> out) const
-{
+bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eigen::Ref<Eigen::VectorXd> out) const {
     // Initial guess for Newton's method
     Eigen::VectorXd x0(n_);
     phi(u, x0);
 
     // Newton-Raphson to solve Ax = b
     unsigned int iter = 0;
-    double norm = 0;
+    double norm = 0, norm_old = 0;
+    double stepsize = 2;
+    Eigen::VectorXd out_old(n_);
+    Eigen::VectorXd direction(n_);
     Eigen::MatrixXd A(n_, n_);
     Eigen::VectorXd b(n_);
 
@@ -211,38 +197,63 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
     // Initialize b with initial f(out) = b
     constraint_->function(out, b.head(n_ - k_));
     b.tail(k_).setZero();
+    norm = b.squaredNorm();
+    out_old = out;
+    norm_old = norm;
 
-    while ((norm = b.squaredNorm()) > squaredTolerance && iter++ < constraint_->getMaxIterations())
-    {
+    while (norm > squaredTolerance && iter++ < constraint_->getMaxIterations()) {
         // Recompute the Jacobian at the new guess.
         constraint_->jacobian(out, A.block(0, 0, n_ - k_, n_));
 
-        // Move in the direction that decreases F(out) and is perpendicular to
-        // the chart.
-        out -= A.partialPivLu().solve(b);
+        // Move in the direction that decreases F(out) and is perpendicular to the chart.
+        direction = A.partialPivLu().solve(b);
+//        direction.normalize();
+        stepsize = 2;
+        static int count = 0;
+        do {
+            // Loop in this block means that an overshoot happens. Shrink the stepsize.
+            stepsize /= 2;
+            out = out_old - stepsize * direction;
 
-        // Recompute b with new guess.
-        constraint_->function(out, b.head(n_ - k_));
-        b.tail(k_) = bigPhi_.transpose() * (out - x0);
+            // Recompute b with new guess.
+            constraint_->function(out, b.head(n_ - k_));
+            b.tail(k_) = bigPhi_.transpose() * (out - x0);
+            norm = b.squaredNorm();
+        } while (norm >= norm_old - squaredTolerance   // no improvement means overshoot. repeat with smaller stepsize
+                 && norm > squaredTolerance     // no need to care about the improvement if the result is good enough
+                 && stepsize > tolerance);   // just give up after several repetition (the lower bound of stepsize is set casually)
+        // TODO: give up the total projection if the stepsize reaches its lower bound.
+        // TODO: here is a log. delete it later.
+        if (count % 50 == 0 && count < 2000) {
+            std::cout << iter
+                      << "\tstepsize:   " << stepsize << std::endl
+                      << "\tpre_norm:   " << sqrt(norm_old) << std::endl
+                      << "\tnorm:       " << sqrt(norm) << std::endl
+                      << "\tpre_config: " << out_old.transpose() << std::endl
+                      << "\tconfig:     " << out.transpose() << std::endl
+                      << "\tdirection:  " << direction.transpose() << std::endl
+                      << "\tunit_d:     " << (direction / direction.norm()).transpose() << std::endl
+                      << "\tjacobian:   " << A.block(0, 0, n_ - k_, n_) << std::endl
+                      << std::endl;
+        }
+        count++;
+        out_old = out;
+        norm_old = norm;
     }
-
     return norm < squaredTolerance;
 }
 
 void ompl::base::AtlasChart::psiInverse(const Eigen::Ref<const Eigen::VectorXd> &x,
-                                        Eigen::Ref<Eigen::VectorXd> out) const
-{
+                                        Eigen::Ref<Eigen::VectorXd> out) const {
     out = bigPhi_.transpose() * (x - *state_);
 }
 
 bool ompl::base::AtlasChart::inPolytope(const Eigen::Ref<const Eigen::VectorXd> &u, const Halfspace *const ignore1,
-                                        const Halfspace *const ignore2) const
-{
+                                        const Halfspace *const ignore2) const {
     if (u.norm() > radius_)
         return false;
 
-    for (Halfspace *h : polytope_)
-    {
+    for (Halfspace *h : polytope_) {
         if (h == ignore1 || h == ignore2)
             continue;
 
@@ -253,17 +264,14 @@ bool ompl::base::AtlasChart::inPolytope(const Eigen::Ref<const Eigen::VectorXd> 
     return true;
 }
 
-void ompl::base::AtlasChart::borderCheck(const Eigen::Ref<const Eigen::VectorXd> &v) const
-{
+void ompl::base::AtlasChart::borderCheck(const Eigen::Ref<const Eigen::VectorXd> &v) const {
     for (Halfspace *h : polytope_)
         h->checkNear(v);
 }
 
-const ompl::base::AtlasChart *ompl::base::AtlasChart::owningNeighbor(const Eigen::Ref<const Eigen::VectorXd> &x) const
-{
+const ompl::base::AtlasChart *ompl::base::AtlasChart::owningNeighbor(const Eigen::Ref<const Eigen::VectorXd> &x) const {
     Eigen::VectorXd projx(n_), proju(k_);
-    for (Halfspace *h : polytope_)
-    {
+    for (Halfspace *h : polytope_) {
         // Project onto the neighboring chart.
         const AtlasChart *c = h->getComplement()->getOwner();
         c->psiInverse(x, proju);
@@ -280,8 +288,7 @@ const ompl::base::AtlasChart *ompl::base::AtlasChart::owningNeighbor(const Eigen
     return nullptr;
 }
 
-bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) const
-{
+bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) const {
     if (k_ != 2)
         throw ompl::Exception("AtlasChart::toPolygon() only works on 2D manifold/charts.");
 
@@ -290,10 +297,8 @@ bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) c
     Eigen::VectorXd v(2);
     Eigen::VectorXd intersection(n_);
     vertices.clear();
-    for (std::size_t i = 0; i < polytope_.size(); i++)
-    {
-        for (std::size_t j = i + 1; j < polytope_.size(); j++)
-        {
+    for (std::size_t i = 0; i < polytope_.size(); i++) {
+        for (std::size_t j = i + 1; j < polytope_.size(); j++) {
             // Check if intersection of the lines is a part of the boundary and
             // within the circle.
             Halfspace::intersect(*polytope_[i], *polytope_[j], v);
@@ -304,15 +309,12 @@ bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) c
 
         // Check if intersection with circle is part of the boundary.
         Eigen::VectorXd v1(2), v2(2);
-        if ((polytope_[i])->circleIntersect(radius_, v1, v2))
-        {
-            if (inPolytope(v1, polytope_[i]))
-            {
+        if ((polytope_[i])->circleIntersect(radius_, v1, v2)) {
+            if (inPolytope(v1, polytope_[i])) {
                 phi(v1, intersection);
                 vertices.push_back(intersection);
             }
-            if (inPolytope(v2, polytope_[i]))
-            {
+            if (inPolytope(v2, polytope_[i])) {
                 phi(v2, intersection);
                 vertices.push_back(intersection);
             }
@@ -324,12 +326,10 @@ bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) c
     Eigen::VectorXd v0(2);
     v0 << radius_, 0;
     const double step = boost::math::constants::pi<double>() / 32.;
-    for (double a = 0.; a < 2. * boost::math::constants::pi<double>(); a += step)
-    {
+    for (double a = 0.; a < 2. * boost::math::constants::pi<double>(); a += step) {
         const Eigen::VectorXd vn = Eigen::Rotation2Dd(a) * v0;
 
-        if (inPolytope(vn))
-        {
+        if (inPolytope(vn)) {
             is_frontier = true;
             phi(vn, intersection);
             vertices.push_back(intersection);
@@ -349,12 +349,10 @@ bool ompl::base::AtlasChart::toPolygon(std::vector<Eigen::VectorXd> &vertices) c
     return is_frontier;
 }
 
-bool ompl::base::AtlasChart::estimateIsFrontier() const
-{
+bool ompl::base::AtlasChart::estimateIsFrontier() const {
     RNG rng;
     Eigen::VectorXd ru(k_);
-    for (int k = 0; k < 1000; k++)
-    {
+    for (int k = 0; k < 1000; k++) {
         for (int i = 0; i < ru.size(); i++)
             ru[i] = rng.gaussian01();
         ru *= radius_ / ru.norm();
@@ -366,8 +364,7 @@ bool ompl::base::AtlasChart::estimateIsFrontier() const
 
 /// Public Static
 
-void ompl::base::AtlasChart::generateHalfspace(AtlasChart *c1, AtlasChart *c2)
-{
+void ompl::base::AtlasChart::generateHalfspace(AtlasChart *c1, AtlasChart *c2) {
     if (c1 == c2)
         throw ompl::Exception("ompl::base::AtlasChart::generateHalfspace(): "
                               "Must use two different charts.");
@@ -384,7 +381,6 @@ void ompl::base::AtlasChart::generateHalfspace(AtlasChart *c1, AtlasChart *c2)
 
 /// Protected
 
-void ompl::base::AtlasChart::addBoundary(Halfspace *halfspace)
-{
+void ompl::base::AtlasChart::addBoundary(Halfspace *halfspace) {
     polytope_.push_back(halfspace);
 }

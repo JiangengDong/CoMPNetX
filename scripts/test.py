@@ -101,13 +101,13 @@ class LiftingBoxProblem:
         params.SetExtraParameters(
             """<planner_parameters time="5" range="0"/>
                                     <constraint_parameters tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
-                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.1" alpha="0.3926990816987241" 
+                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.01" alpha="0.3926990816987241" 
                                         max_charts="500" using_bias="0" using_tb="0" separate="0"/>
                                     <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
                                         <tsr manipulator_index="0" relative_body_name="NULL" 
                                              T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
                                              Tw_e="1 0 0 0 0 -1 0 1 0      0 -0.285 0" 
-                                             Bw="0 0 0 0 0 0 -4 4 -4 4 -4 4" />
+                                             Bw="-1000 1000 -1000 1000 -1000 1000 0 0 0 0 -4 4" />
                                     </tsr_chain>""")    # TODO: constraint is wrong here
         return params
 

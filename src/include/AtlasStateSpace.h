@@ -37,13 +37,13 @@
 #ifndef OMPL_BASE_SPACES_ATLAS_STATE_SPACE_
 #define OMPL_BASE_SPACES_ATLAS_STATE_SPACE_
 
-#include "ompl/base/StateSampler.h"
-#include "ompl/base/ValidStateSampler.h"
-#include "ompl/base/Constraint.h"
-#include "ompl/datastructures/NearestNeighborsGNAT.h"
-#include "ompl/datastructures/PDF.h"
+#include <ompl/base/StateSampler.h>
+#include <ompl/base/ValidStateSampler.h>
+#include <ompl/base/Constraint.h>
+#include <ompl/datastructures/NearestNeighborsGNAT.h>
+#include <ompl/datastructures/PDF.h>
 
-#include "ompl/base/spaces/constraint/ConstrainedStateSpace.h"
+#include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
 
 #include <boost/math/constants/constants.hpp>
 #include <Eigen/Core>
@@ -77,7 +77,7 @@ namespace ompl
         class AtlasStateSampler : public StateSampler
         {
         public:
-            AtlasStateSampler(const AtlasStateSpace *space);
+            explicit AtlasStateSampler(const AtlasStateSpace *space);
 
             /** \brief Sample a state uniformly from the charted regions of the
              * manifold. Return sample in \a state. */
@@ -137,7 +137,7 @@ namespace ompl
             {
             public:
                 /** \brief Construct state of size \a n. */
-                StateType(const ConstrainedStateSpace *space) : ConstrainedStateSpace::StateType(space)
+                explicit StateType(const ConstrainedStateSpace *space) : ConstrainedStateSpace::StateType(space)
                 {
                 }
 

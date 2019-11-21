@@ -96,12 +96,14 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         for(unsigned int i=0;i < am_dim; ++i){
             ss <<" " << state[i] ;
         }
+        ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
         ss << "Goal: ";
         parameters_->getGoalState(state);
         for(unsigned int i=0;i < am_dim; ++i){
             ss <<" " << state[i] ;
         }
+        ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
         RAVELOG_INFO(ss.str());
     }

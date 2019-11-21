@@ -37,11 +37,11 @@
 #ifndef OMPL_BASE_SPACES_ATLAS_CHART_
 #define OMPL_BASE_SPACES_ATLAS_CHART_
 
-#include "ompl/base/spaces/constraint/AtlasStateSpace.h"
-#include "ompl/datastructures/PDF.h"
-
+#include <ompl/datastructures/PDF.h>
 #include <vector>
 #include <Eigen/Core>
+
+#include "AtlasStateSpace.h"
 
 namespace ompl
 {

@@ -7,6 +7,9 @@ add_library(AtlasMPNet SHARED
         Constraint.cpp
         StateValidityChecker.cpp
         SemiToroidalStateSpace.cpp
+        AtlasChart.cpp
+        AtlasStateSpace.cpp
+        TangentBundleStateSpace.cpp
         TaskSpaceRegion.cpp
         TaskSpaceRegionChain.cpp
         )

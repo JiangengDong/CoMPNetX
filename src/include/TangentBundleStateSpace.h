@@ -37,7 +37,7 @@
 #ifndef OMPL_BASE_SPACES_TANGENTBUNDLE_STATE_SPACE_
 #define OMPL_BASE_SPACES_TANGENTBUNDLE_STATE_SPACE_
 
-#include "ompl/base/spaces/constraint/AtlasStateSpace.h"
+#include "AtlasStateSpace.h"
 
 namespace ompl
 {
