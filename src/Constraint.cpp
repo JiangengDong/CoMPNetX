@@ -74,7 +74,6 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
 double TSRChainConstraint::distance(const Eigen::Ref<const Eigen::VectorXd> &x) const {
     Eigen::VectorXd t(getCoDimension());
     function(x, t);
-    printHessian(x);
     return t[0];
 }
 

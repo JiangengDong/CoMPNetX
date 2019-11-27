@@ -222,9 +222,8 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         } while (norm >= norm_old - squaredTolerance   // no improvement means overshoot. repeat with smaller stepsize
                  && norm > squaredTolerance     // no need to care about the improvement if the result is good enough
                  && stepsize > tolerance);   // just give up after several repetition (the lower bound of stepsize is set casually)
-        // TODO: give up the total projection if the stepsize reaches its lower bound.
         // TODO: here is a log. delete it later.
-        if (count % 50 == 0 && count < 2000) {
+        if (false && iter == 50 && count < 20) {
             std::cout << iter
                       << "\tstepsize:   " << stepsize << std::endl
                       << "\tpre_norm:   " << sqrt(norm_old) << std::endl
@@ -235,11 +234,28 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
                       << "\tunit_d:     " << (direction / direction.norm()).transpose() << std::endl
                       << "\tjacobian:   " << A.block(0, 0, n_ - k_, n_) << std::endl
                       << std::endl;
+            count++;
         }
-        count++;
+        // give up the total projection if the stepsize reaches its lower bound.
+        if(stepsize <= tolerance) {
+            if(norm_old < norm) {
+                out = out_old;
+                norm = norm_old;
+            }
+            break;
+        }
         out_old = out;
         norm_old = norm;
     }
+
+//    static double cum_error = 0;
+//    static int cum_count = 0;
+//    cum_error += sqrt(norm);
+//    cum_count += 1;
+//    if (cum_count == 100) {
+//        std::cout <<std::endl << "average least norm:   " << cum_error / cum_count << std::endl << std::endl;
+//    }
+
     return norm < squaredTolerance;
 }
 
