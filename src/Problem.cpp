@@ -127,7 +127,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
         auto ompl_traj = simple_setup_->getSolutionPath();
         size_t const num_dof = robot_->GetActiveDOF();
         ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
-        ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace(); //TODO: is this the constrained state space
+        ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
         std::stringstream ss;
         ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
         for (size_t i = 0; i < ompl_traj.getStateCount(); ++i) {

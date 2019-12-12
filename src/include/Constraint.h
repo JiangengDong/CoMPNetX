@@ -23,13 +23,10 @@ namespace AtlasMPNet {
 
         void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
 
-        double distance(const Eigen::Ref<const Eigen::VectorXd> &x) const override;
-
-        void printHessian(const Eigen::Ref<const Eigen::VectorXd> &x) const;
-
     private:
         TaskSpaceRegionChain _tsr_chain;
         OpenRAVE::RobotBasePtr _robot;
+        OpenRAVE::RobotBasePtr _tsr_robot;
         mutable double* _tsrjointval = nullptr;
 
         OpenRAVE::Transform robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;

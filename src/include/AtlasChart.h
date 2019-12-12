@@ -262,6 +262,9 @@ namespace ompl
 
             /** \brief Maximum valid radius of this chart. */
             const double radius_;
+
+            /** \brief Number of vectors in bigPhi_. */
+            const unsigned int r_;
         };
     }
 }

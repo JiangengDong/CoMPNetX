@@ -143,7 +143,7 @@ void ompl::base::AtlasChart::Halfspace::expandToInclude(const Eigen::Ref<const E
 
 ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStateSpace::StateType *state)
         : constraint_(atlas->getConstraint().get()), n_(atlas->getAmbientDimension()), k_(atlas->getManifoldDimension()), state_(state),
-          bigPhi_([&]() -> const Eigen::MatrixXd {
+          bigPhi_([&]() -> Eigen::MatrixXd {
               Eigen::MatrixXd j(n_ - k_, n_);
               constraint_->jacobian(*state_, j);
 
@@ -153,8 +153,10 @@ ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStat
 
               // Compute the null space and orthonormalize, which is a basis for the tangent space.
               return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
-          }()), radius_(atlas->getRho_s()) {
-}
+              // TODO: I think this can work for redundent constraint functions, but I am not sure. Check this later.
+          }()), radius_(atlas->getRho_s()), r_(bigPhi_.cols()) {
+} // TODO: consider how to deal with singular points
+// TODO: A method for speed up: record which rows are linearly independent, are just consider them later.
 
 ompl::base::AtlasChart::~AtlasChart() {
     clear();
@@ -182,8 +184,8 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
     double stepsize = 2;
     Eigen::VectorXd out_old(n_);
     Eigen::VectorXd direction(n_);
-    Eigen::MatrixXd A(n_, n_);
-    Eigen::VectorXd b(n_);
+    Eigen::MatrixXd A(n_-k_+r_, n_);
+    Eigen::VectorXd b(n_-k_+r_);
 
     const double tolerance = constraint_->getTolerance();
     const double squaredTolerance = tolerance * tolerance;
@@ -192,11 +194,11 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
     out = x0;
 
     // Initialize A with orthonormal basis (constant)
-    A.block(n_ - k_, 0, k_, n_) = bigPhi_.transpose();
+    A.block(n_ - k_, 0, r_, n_) = bigPhi_.transpose();
 
     // Initialize b with initial f(out) = b
     constraint_->function(out, b.head(n_ - k_));
-    b.tail(k_).setZero();
+    b.tail(r_).setZero();
     norm = b.squaredNorm();
     out_old = out;
     norm_old = norm;
@@ -206,8 +208,8 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         constraint_->jacobian(out, A.block(0, 0, n_ - k_, n_));
 
         // Move in the direction that decreases F(out) and is perpendicular to the chart.
-        direction = A.partialPivLu().solve(b);
-//        direction.normalize();
+//        direction = A.partialPivLu().solve(b);
+        direction = (A.transpose()*A).inverse()*A.transpose()*b;
         stepsize = 2;
         static int count = 0;
         do {
@@ -217,11 +219,11 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
 
             // Recompute b with new guess.
             constraint_->function(out, b.head(n_ - k_));
-            b.tail(k_) = bigPhi_.transpose() * (out - x0);
+            b.tail(r_) = bigPhi_.transpose() * (out - x0);
             norm = b.squaredNorm();
         } while (norm >= norm_old - squaredTolerance   // no improvement means overshoot. repeat with smaller stepsize
                  && norm > squaredTolerance     // no need to care about the improvement if the result is good enough
-                 && stepsize > tolerance);   // just give up after several repetition (the lower bound of stepsize is set casually)
+                 && stepsize > tolerance);   // just give up after several repetition (the lower bound of stepsize is set casually ^_^)
         // TODO: here is a log. delete it later.
         if (false && iter == 50 && count < 20) {
             std::cout << iter
@@ -247,14 +249,6 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         out_old = out;
         norm_old = norm;
     }
-
-//    static double cum_error = 0;
-//    static int cum_count = 0;
-//    cum_error += sqrt(norm);
-//    cum_count += 1;
-//    if (cum_count == 100) {
-//        std::cout <<std::endl << "average least norm:   " << cum_error / cum_count << std::endl << std::endl;
-//    }
 
     return norm < squaredTolerance;
 }

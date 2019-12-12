@@ -351,7 +351,7 @@ OpenRAVE::dReal TaskSpaceRegionChain::TransformDifference(const OpenRAVE::Transf
 }
 
 OpenRAVE::dReal TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, OpenRAVE::dReal *TSRJointVals, OpenRAVE::Transform &T0_closeset) const {
-    if (_bPointTSR || TSRChain.size() == 1) {   // TODO: change this to test TSRChain
+    if (_bPointTSR || TSRChain.size() == 1) {
         T0_closeset = TSRChain[0].GetClosestTransform(T0_s);
         return TSRChain[0].DistanceToTSR(T0_s, _dx);
     }
@@ -392,8 +392,9 @@ OpenRAVE::dReal TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transf
         TSRJointVals[i] = q_s[i];
 
     //RAVELOG_INFO("TSRJointVals: %f %f\n",TSRJointVals[0],TSRJointVals[1]);
-    T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform() * TSRChain.back().Tw_e;
-    return TransformDifference(T0_s* TSRChain.back().Tw_e.inverse(), T0_closeset* TSRChain.back().Tw_e.inverse()); // TODO: just a test
+    OpenRAVE::Transform Ttemp = robot->GetActiveManipulator()->GetEndEffectorTransform();
+    T0_closeset =  Ttemp * TSRChain.back().Tw_e;
+    return TransformDifference(Ttarg, Ttemp);
 }
 
 bool TaskSpaceRegionChain::serialize(std::ostream &O, int type) const {
