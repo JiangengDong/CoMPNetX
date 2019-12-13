@@ -75,7 +75,8 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     }
     robot_ = std::move(robot);
     parameters_->copy(params);
-    initialized_ = setAmbientStateSpace() &&
+    initialized_ = setTSRChainRobot() &&
+                   setAmbientStateSpace() &&
                    setConstrainedStateSpace() &&
                    simpleSetup() &&
                    setStartAndGoalStates() &&
@@ -93,19 +94,19 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         ss << "Start:";
         ompl::base::ScopedState<> state(constrained_state_space_);
         parameters_->getStartState(state);
-        for(unsigned int i=0;i < am_dim; ++i){
-            ss <<" " << state[i] ;
+        for (unsigned int i = 0; i < am_dim; ++i) {
+            ss << " " << state[i];
         }
         ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
         ss << "Goal: ";
         parameters_->getGoalState(state);
-        for(unsigned int i=0;i < am_dim; ++i){
-            ss <<" " << state[i] ;
+        for (unsigned int i = 0; i < am_dim; ++i) {
+            ss << " " << state[i];
         }
         ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
-        RAVELOG_INFO(ss.str());
+                RAVELOG_INFO(ss.str());
     }
     return initialized_;
 }
@@ -135,12 +136,12 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             space->copyToReals(values, ompl_traj.getState(i));
             ptraj->Insert(i, values, true);
             ss << "state " << i << ": ";
-            for(auto value:values) {
+            for (auto value:values) {
                 ss << value << " ";
             }
             ss << " \tdistance to manifold: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
         }
-        RAVELOG_INFO(ss.str());
+                RAVELOG_INFO(ss.str());
         plannerStatus = OpenRAVE::PS_HasSolution;
         // TODO: detailed behavior w.r.t planner status
     }
@@ -159,36 +160,65 @@ bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream 
     return true;
 }
 
+bool AtlasMPNet::Problem::setTSRChainRobot() {
+    env_ = robot_->GetEnv();
+    tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
+    *tsr_chain_ = parameters_->tsrchain_parameters_;
+    tsr_chain_->Initialize(env_);
+    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
+    return tsr_robot_ != nullptr;
+}
+
+/** \brief Setup the ambient state space
+ *
+ * The config is composed of two parts.
+ * The first one is the joint values of real robot,
+ * and the second one is the joint values of virtual TSRChain robot.
+ *
+ * @return true if setup successfully
+ */
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const int dof = robot_->GetActiveDOF();
+    const int dof_tsr = tsr_robot_->GetDOF();
     // Set bounds
+    ompl::base::RealVectorBounds bounds(dof + dof_tsr);
     std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
-    ompl::base::RealVectorBounds bounds(dof);
+    // get bounds for real robot
     robot_->GetActiveDOFLimits(lower_limits, upper_limits);
     for (size_t i = 0; i < dof; ++i) {
         bounds.setLow(i, lower_limits[i]);
         bounds.setHigh(i, upper_limits[i]);
     }
-    ambient_state_space_ = std::make_shared<SemiToroidalStateSpace>(dof);
+    // get bounds for virtual robot
+    tsr_robot_->GetDOFLimits(lower_limits, upper_limits);
+    for (size_t i = 0; i < dof_tsr; ++i) {
+        bounds.setLow(i+dof, lower_limits[i]);
+        bounds.setHigh(i+dof, upper_limits[i]);
+    }
+    ambient_state_space_ = std::make_shared<SemiToroidalStateSpace>(dof+dof_tsr);
     ambient_state_space_->setBounds(bounds);
+
     // Set resolution
     std::vector<OpenRAVE::dReal> dof_resolutions;
-    robot_->GetActiveDOFResolutions(dof_resolutions);
-
     double conservative_resolution = std::numeric_limits<double>::max();
+    robot_->GetActiveDOFResolutions(dof_resolutions);
     for (const auto &dof_resolution: dof_resolutions) {
         conservative_resolution = std::min(conservative_resolution, dof_resolution);
     }
-
+    tsr_robot_->GetDOFResolutions(dof_resolutions);
+    for (const auto &dof_resolution: dof_resolutions) {
+        conservative_resolution = std::min(conservative_resolution, dof_resolution);
+    }
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
             RAVELOG_DEBUG("Set ambient configuration space.");
+
+    // TODO: set wrappings
     return true;
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
-    constraint_ = std::make_shared<TSRChainConstraint>(robot_, parameters_->tsrchain_parameters_);
-//    constraint_ = std::make_shared<AtlasMPNet::SphereConstraint>(robot_->GetActiveDOF());
+    constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsr_chain_);
     // create the constrained configuration space
     if (parameters_->atlas_parameters_.using_tb_) {
         constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);

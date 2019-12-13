@@ -37,6 +37,8 @@ namespace AtlasMPNet {
     /// Class defining a TSR Chain: a more complex representation of pose constraints
     class TaskSpaceRegionChain : public OpenRAVE::BaseXMLReader {
     public:
+        typedef std::shared_ptr<TaskSpaceRegionChain> Ptr;
+
         std::vector<TaskSpaceRegion> TSRChain; ///< this is an ordered list of TSRs, where each one relies on the previous one to determine T0_w, note that the T0_w values of the TSRs in the chain will change (except the first one)
 
         TaskSpaceRegionChain() {

@@ -15,7 +15,7 @@ namespace AtlasMPNet {
     public:
         typedef std::shared_ptr<TSRChainConstraint> Ptr;
 
-        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain &tsr_chain);
+        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot);
 
         ~TSRChainConstraint() override { delete[] _tsrjointval; }
 
@@ -24,26 +24,16 @@ namespace AtlasMPNet {
         void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
 
     private:
-        TaskSpaceRegionChain _tsr_chain;
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
+        unsigned int _dof_robot;
+        unsigned int _dof_tsr;
         mutable double* _tsrjointval = nullptr;
 
+        // temporary variables
+
+
         OpenRAVE::Transform robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
-    };
-
-    class SphereConstraint : public ompl::base::Constraint {
-    public:
-        explicit SphereConstraint(const unsigned int dim) : ompl::base::Constraint(dim, 1) {
-        }
-
-        void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override {
-            out[0] = x.norm() - 1;
-        }
-
-        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override {
-            out = x.transpose().normalized();
-        }
     };
 }
 #endif //ATLASMPNET_CONSTRAINT_H

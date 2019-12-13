@@ -18,6 +18,7 @@
 #include "Constraint.h"
 #include "StateValidityChecker.h"
 #include "SemiToroidalStateSpace.h"
+#include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {
     /*! \brief The main class in this plugin.
@@ -43,6 +44,8 @@ namespace AtlasMPNet {
         bool GetParametersCommand(std::ostream &sout, std::istream &sin) const;
 
     private:
+        bool setTSRChainRobot();
+
         bool setAmbientStateSpace();
 
         bool setConstrainedStateSpace();
@@ -57,7 +60,10 @@ namespace AtlasMPNet {
 
         AtlasMPNet::Parameters::Ptr parameters_;
 
+        OpenRAVE::EnvironmentBasePtr env_;
         OpenRAVE::RobotBasePtr robot_;
+        OpenRAVE::RobotBasePtr tsr_robot_;
+        TaskSpaceRegionChain::Ptr tsr_chain_;
 
         SemiToroidalStateSpace::Ptr ambient_state_space_;
         ompl::base::ConstraintPtr constraint_;

@@ -7,29 +7,39 @@
 
 using namespace AtlasMPNet;
 
-TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain &tsr_chain) :
-        Constraint(robot->GetActiveDOF() + _tsr_chain.GetNumDOF(), 6) {
-    _tsr_chain = tsr_chain;
-    _robot = robot;
-    _tsr_chain.Initialize(_robot->GetEnv());
-    _tsr_chain.RobotizeTSRChain(_robot->GetEnv(), _tsr_robot);
-    _tsrjointval = new double[_tsr_chain.GetNumDOF()];
+TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot) :
+        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 7), _robot(robot), _tsr_robot(tsr_robot) {
+    _dof_robot = _robot->GetActiveDOF();
+    _dof_tsr = _tsr_robot->GetDOF();
+    _tsrjointval = new double[_tsr_robot->GetDOF()];
 }
 
 void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const {
     OpenRAVE::Transform pos = robotFK(x);
-    OpenRAVE::Transform pos_proj;
-    double dist = _tsr_chain.GetClosestTransform(pos, _tsrjointval, pos_proj);
-    out[0] = dist;
+    out[0] = pos.trans.x;
+    out[1] = pos.trans.y;
+    out[2] = pos.trans.z;
+    out[3] = pos.rot.x;
+    out[4] = pos.rot.y;
+    out[5] = pos.rot.z;
+    out[6] = pos.rot.w;
 }
 
 OpenRAVE::Transform TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
-    std::vector<double> qpos(getAmbientDimension());
-    for (unsigned int i = 0; i < getAmbientDimension(); ++i) {
-        qpos[i] = x[i];
+    std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
+    // joint values of real robot
+    for (unsigned int i = 0; i < _dof_robot; ++i) {
+        q_robot[i] = x[i];
     }
-    _robot->SetActiveDOFValues(qpos, 0);
-    return _robot->GetActiveManipulator()->GetEndEffectorTransform();
+    _robot->SetActiveDOFValues(q_robot, 0);
+    auto Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
+    // joint values of virtual tsr robot
+    for (unsigned int i = 0; i < _dof_tsr; ++i) {
+        q_tsr[i] = x[i+_dof_robot];
+    }
+    _tsr_robot->SetDOFValues(q_tsr);
+    auto Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
+    return Trobot*Ttsr.inverse(); // TODO: I think we can use the diff of (x, y, z, r, p, y) here so that we can calculate jacobian easily
 }
 
 void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
