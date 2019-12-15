@@ -112,9 +112,9 @@ namespace AtlasMPNet {
 
         ~Parameters() override;
 
-        bool getStartState(ompl::base::ScopedState<> &start) const;
+        bool getStartState(double *start) const;
 
-        bool getGoalState(ompl::base::ScopedState<> &goal) const;
+        bool getGoalState(double *goal) const;
 
         bool serialize(std::ostream &O, int options) const override;
 

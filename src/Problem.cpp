@@ -91,22 +91,21 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
            << "Planner: " << planner_->getName() << std::endl;
 
         unsigned int am_dim = constrained_state_space_->getAmbientDimension();
+        auto config = new double[am_dim];
         ss << "Start:";
-        ompl::base::ScopedState<> state(constrained_state_space_);
-        parameters_->getStartState(state);
+        parameters_->getStartState(config);
         for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << state[i];
+            ss << " " << config[i];
         }
-        ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
         ss << "Goal: ";
-        parameters_->getGoalState(state);
+        parameters_->getGoalState(config);
         for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << state[i];
+            ss << " " << config[i];
         }
-        ss << " distance: " << constraint_->distance(state.get());
         ss << std::endl;
                 RAVELOG_INFO(ss.str());
+        delete[] config;
     }
     return initialized_;
 }
@@ -179,7 +178,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
  */
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const int dof = robot_->GetActiveDOF();
-    const int dof_tsr = tsr_robot_->GetDOF();
+    const int dof_tsr = tsr_robot_->GetActiveDOF();
     // Set bounds
     ompl::base::RealVectorBounds bounds(dof + dof_tsr);
     std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
@@ -190,12 +189,12 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
         bounds.setHigh(i, upper_limits[i]);
     }
     // get bounds for virtual robot
-    tsr_robot_->GetDOFLimits(lower_limits, upper_limits);
+    tsr_robot_->GetActiveDOFLimits(lower_limits, upper_limits);
     for (size_t i = 0; i < dof_tsr; ++i) {
-        bounds.setLow(i+dof, lower_limits[i]);
-        bounds.setHigh(i+dof, upper_limits[i]);
+        bounds.setLow(i + dof, lower_limits[i]);
+        bounds.setHigh(i + dof, upper_limits[i]);
     }
-    ambient_state_space_ = std::make_shared<SemiToroidalStateSpace>(dof+dof_tsr);
+    ambient_state_space_ = std::make_shared<SemiToroidalStateSpace>(dof + dof_tsr);
     ambient_state_space_->setBounds(bounds);
 
     // Set resolution
@@ -205,7 +204,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     for (const auto &dof_resolution: dof_resolutions) {
         conservative_resolution = std::min(conservative_resolution, dof_resolution);
     }
-    tsr_robot_->GetDOFResolutions(dof_resolutions);
+    tsr_robot_->GetActiveDOFResolutions(dof_resolutions);
     for (const auto &dof_resolution: dof_resolutions) {
         conservative_resolution = std::min(conservative_resolution, dof_resolution);
     }
@@ -218,7 +217,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
-    constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsr_chain_);
+    constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsr_robot_);
     // create the constrained configuration space
     if (parameters_->atlas_parameters_.using_tb_) {
         constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
@@ -258,18 +257,36 @@ bool AtlasMPNet::Problem::simpleSetup() {
 }
 
 bool AtlasMPNet::Problem::setStartAndGoalStates() {
+    int dof_robot = robot_->GetActiveDOF();
+    int dof_tsr = tsr_robot_->GetActiveDOF();
+    auto start_config = new double[dof_robot + dof_tsr];
+    auto goal_config = new double[dof_robot + dof_tsr];
+    // get the joint values of real robot
+    parameters_->getStartState(start_config);
+    parameters_->getGoalState(goal_config);
+    // get the joint values of virtual robot
+    OpenRAVE::Transform Ttemp;
+    robot_->SetActiveDOFValues(std::vector<double>(start_config, start_config + dof_robot - 1)); // TODO: is this the right grammar?
+    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), start_config + dof_robot, Ttemp);
+    robot_->SetActiveDOFValues(std::vector<double>(goal_config, goal_config + dof_robot - 1)); // TODO: is this the right grammar?
+    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), goal_config + dof_robot, Ttemp);
+    // convert to ScopedState and set start and goal with simple_setup_
     ompl::base::ScopedState<> start(constrained_state_space_);
     ompl::base::ScopedState<> goal(constrained_state_space_);
-    parameters_->getStartState(start);
-    parameters_->getGoalState(goal);
+    for (int i = 0; i < dof_robot + dof_tsr; i++) {
+        start[i] = start_config[i];
+        goal[i] = goal_config[i];
+    }
     constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
             RAVELOG_DEBUG("Set start and goal configurations.");
+    delete[] start_config;
+    delete[] goal_config;
     return true;
 }
 
-bool AtlasMPNet::Problem::setStateValidityChecker() {
+bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check mimic body and links
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
     state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, dof_indices));
     simple_setup_->setStateValidityChecker(state_validity_checker_);

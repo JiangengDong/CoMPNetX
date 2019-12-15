@@ -175,7 +175,7 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
 
 Parameters::~Parameters() = default;
 
-bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
+bool Parameters::getStartState(double *start) const {
     const int dof = GetDOF();
     for (int i = 0; i < dof; i++) {
         start[i] = vinitialconfig[i];
@@ -183,7 +183,7 @@ bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
     return true;
 }
 
-bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
+bool Parameters::getGoalState(double *goal) const {
     const int dof = GetDOF();
     for (int i = 0; i < dof; i++) {
         goal[i] = vgoalconfig[i];

@@ -314,13 +314,14 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     }
 
     OpenRAVE::RobotBase::ManipulatorPtr pmanip = robot->GetActiveManipulator();
+    robot->SetActiveDOFs(pmanip->GetArmIndices());
     _pIkSolver->Init(pmanip);
     numdof = bodynumber - 1;
 
     //initialize parameters to send to ik solver
     ikparams.resize(12);
     ikparams[0] = 1;
-    ikparams[1] = robot->GetActiveManipulatorIndex();
+    ikparams[1] = 0;    // there is only one manipulator in the virtual robot, so its index must be 0
     ikparams[9] = 0; //don't do any balancing
     ikparams[10] = 0; //select the mode
     ikparams[11] = 0; //do rotation
