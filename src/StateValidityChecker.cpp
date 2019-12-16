@@ -43,16 +43,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace AtlasMPNet;
 
-StateValidityChecker::StateValidityChecker(
-        const ompl::base::SpaceInformationPtr &si,
-        const OpenRAVE::RobotBasePtr& robot,
-        std::vector<int> indices) :
+StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr &si,
+                                           OpenRAVE::RobotBasePtr robot,
+                                           OpenRAVE::RobotBasePtr tsr_robot) :
         ompl::base::StateValidityChecker(si),
-        _num_dof(si->getStateDimension()),
-        _stateSpace(si->getStateSpace().get()),
-        _env(robot->GetEnv()),
-        _robot(robot),
-        _indices(std::move(indices)),
+        _robot(std::move(robot)),
+        _tsr_robot(std::move(tsr_robot)),
+        _env(_robot->GetEnv()),
+        _dof_robot(_robot->GetActiveDOF()),
+        _dof_tsr(_tsr_robot->GetActiveDOF()),
         _numCollisionChecks(0),
         _totalCollisionTime(0.0) {
 }
@@ -60,16 +59,24 @@ StateValidityChecker::StateValidityChecker(
 bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t checklimits) const {
     auto const *real_state = state->as<ompl::base::RealVectorStateSpace::StateType>();
 
-    std::vector<double> values(real_state->values, real_state->values + _num_dof);
+    std::vector<double> robot_values(real_state->values, real_state->values + _dof_robot);
+    std::vector<double> tsr_values(real_state->values+_dof_robot, real_state->values+_dof_robot+_dof_tsr);
 
-    BOOST_FOREACH(double v, values) {
+    for (double v: robot_values) {
         if (std::isnan(v)) {
-            RAVELOG_ERROR("Invalid value in state.\n");
+                    RAVELOG_ERROR("Invalid value in state.\n");
+            return false;
+        }
+    }
+    for (double v: tsr_values) {
+        if (std::isnan(v)) {
+                    RAVELOG_ERROR("Invalid value in state.\n");
             return false;
         }
     }
 
-    _robot->SetDOFValues(values, checklimits, _indices);
+    _robot->SetActiveDOFValues(robot_values, checklimits);
+    _tsr_robot->SetActiveDOFValues(tsr_values, checklimits);
     return true;
 }
 

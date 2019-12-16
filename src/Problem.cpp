@@ -266,9 +266,9 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     parameters_->getGoalState(goal_config);
     // get the joint values of virtual robot
     OpenRAVE::Transform Ttemp;
-    robot_->SetActiveDOFValues(std::vector<double>(start_config, start_config + dof_robot - 1)); // TODO: is this the right grammar?
+    robot_->SetActiveDOFValues(std::vector<double>(start_config, start_config + dof_robot)); // TODO: is this the right grammar?
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), start_config + dof_robot, Ttemp);
-    robot_->SetActiveDOFValues(std::vector<double>(goal_config, goal_config + dof_robot - 1)); // TODO: is this the right grammar?
+    robot_->SetActiveDOFValues(std::vector<double>(goal_config, goal_config + dof_robot)); // TODO: is this the right grammar?
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), goal_config + dof_robot, Ttemp);
     // convert to ScopedState and set start and goal with simple_setup_
     ompl::base::ScopedState<> start(constrained_state_space_);
@@ -288,7 +288,7 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
 
 bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check mimic body and links
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
-    state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, dof_indices));
+    state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, tsr_robot_));
     simple_setup_->setStateValidityChecker(state_validity_checker_);
             RAVELOG_DEBUG("Set validity checker.");
     return true;

@@ -51,18 +51,19 @@ namespace AtlasMPNet {
     class StateValidityChecker : public ompl::base::StateValidityChecker {
     public:
         typedef std::shared_ptr<StateValidityChecker> Ptr;
-        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr& robot, std::vector<int> indices);
+        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, OpenRAVE::RobotBasePtr robot,
+                             OpenRAVE::RobotBasePtr tsr_robot);
 
         bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
 
         bool isValid(const ompl::base::State *state) const override;
 
     private:
-        const std::size_t _num_dof;
-        ompl::base::StateSpace *_stateSpace;
-        OpenRAVE::EnvironmentBasePtr _env;
         OpenRAVE::RobotBasePtr _robot;
-        std::vector<int> const _indices;
+        OpenRAVE::RobotBasePtr _tsr_robot;
+        OpenRAVE::EnvironmentBasePtr _env;
+        const std::size_t _dof_robot;
+        const std::size_t _dof_tsr;
         mutable int _numCollisionChecks;
         mutable double _totalCollisionTime;
     };
