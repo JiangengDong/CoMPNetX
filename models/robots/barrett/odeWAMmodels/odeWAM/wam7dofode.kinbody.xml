@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- WAM model made purely from Open Dynamics Engine cylinder and box primitives -->
+
+<!-- just the kinematic body of the 7 DOF version of the Whole Arm Manipulator,
+     real robots are defined in other files and have attached hands -->
+<KinBody name="WAM7">
+  <Body name="wam0" type="static">
+    <Translation>-0.22 -0.14 -0.346</Translation>
+    <Geom type="box">
+    <Translation>0.110 0.140 0.08</Translation>
+      <extents>0.110 0.140 0.08</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+    <Geom type="cylinder">
+    <Translation>0.220 0.140 0.08</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.16</height>
+      <radius>0.14</radius>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+    <mass type="custom">
+      <total>10</total>
+    </mass>
+  </Body>
+
+  <Body name="wam1" type="dynamic">
+    <offsetfrom>wam0</offsetfrom>
+    <Translation>0.22 0.14 0.346</Translation>
+<!-- Base Cylinder -->
+    <Geom type="cylinder">
+    <Translation>0 0 -0.124</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.124</height>
+      <radius>0.14</radius>
+      <diffusecolor>0.247059 0.247059 0.247059</diffusecolor>
+    </Geom>           
+<!-- Side cylinder -->   
+    <Geom type="cylinder">
+    <Translation>0 -0.1169 0</Translation>
+      <height>0.1138</height>
+      <radius>0.0895</radius>
+      <diffusecolor>0.247059 0.247059 0.247059</diffusecolor>
+    </Geom>              
+<!-- Side box -->   
+    <Geom type="box">
+    <Translation>0 -0.1169 -0.093</Translation>
+      <extents>0.0895 0.0569 0.093</extents>
+      <diffusecolor>0.247059 0.247059 0.247059</diffusecolor>
+    </Geom>        
+<!-- Side cylinder -->   
+    <Geom type="cylinder">
+    <Translation>0 0.1169 0</Translation>
+      <height>0.1138</height>
+      <radius>0.0895</radius>
+      <diffusecolor>0.247059 0.247059 0.247059</diffusecolor>
+    </Geom>              
+<!-- Side box -->   
+    <Geom type="box">
+    <Translation>0 0.1169 -0.093</Translation>
+      <extents>0.0895 0.0569 0.093</extents>
+      <diffusecolor>0.247059 0.247059 0.247059</diffusecolor>
+    </Geom>        
+    <mass type="custom">
+      <total>8.3936</total>
+      <com>0.0006286 -0.1326795 0.0003506</com>
+      <!-- inertia>0.2070507372 -0.0002626542 -0.0000931687 -0.0002626542 0.0920367003 0.0006365542 -0.0000931687 0.0006365542 0.2429198516</inertia -->
+    </mass>
+  </Body>
+
+  <Joint name="Shoulder_Yaw" type="hinge">
+    <Body>wam0</Body>
+    <Body>wam1</Body>
+    <offsetfrom>wam1</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-150</lostop>
+    <histop>150</histop>
+    <weight>2</weight>
+    <maxvel>1.5708</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <Body name="wam2" type="dynamic">
+    <offsetfrom>wam1</offsetfrom>
+    <Translation>0  0  0</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="cylinder">
+    <Translation>0 -0.049 0</Translation>
+    <RotationAxis>1 0 0 0</RotationAxis>
+      <height>0.12</height>
+      <radius>0.06</radius>
+      <diffusecolor>0.937255 0.67451 0.113725</diffusecolor>
+    </Geom>                    
+    <Geom type="cylinder">
+    <Translation>0 0 0</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.12</height>
+      <radius>0.0635</radius>
+      <diffusecolor>0.937255 0.67451 0.113725</diffusecolor>
+    </Geom>                    
+    <mass type="custom">
+      <total>4.8487</total>
+    </mass>
+  </Body>
+  <Joint name="Shoulder_Pitch" type="hinge">
+    <Body>wam1</Body>
+    <Body>wam2</Body>
+    <offsetfrom>wam2</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-113</lostop>
+    <histop>113</histop>
+    <weight>2</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <Body name="wam3" type="dynamic">
+    <offsetfrom>wam2</offsetfrom>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+
+<!-- Big cylinder -->
+    <Geom type="cylinder">
+    <Translation>0 0 0.2325</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.465</height>
+      <radius>0.0445</radius>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>          
+<!-- Big cylinder cap -->
+    <Geom type="cylinder">
+    <Translation>0 0 0.4755</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.021</height>
+      <radius>0.0548</radius>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>          
+
+
+<!-- Axis cylinder -->
+    <Geom type="cylinder">
+    <Translation>0 0 0.505</Translation>
+      <height>0.064</height>
+      <radius>0.0095</radius>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>          
+
+<!-- Cable cylinder -->
+    <Geom type="cylinder">
+    <Translation>0 0 0.505</Translation>
+      <height>0.023</height>
+      <radius>0.0315</radius>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>         
+ 
+<!-- Side box -->   
+    <Geom type="box">
+    <Translation>0.0181 0.0380 0.5231</Translation>
+    <RotationAxis>0 1 0 -45</RotationAxis>
+      <extents>0.0775 0.006 0.04</extents>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>        
+<!-- Side box -->   
+    <Geom type="box">
+    <Translation>0.0181 -0.0380 0.5231</Translation>
+    <RotationAxis>0 1 0 -45</RotationAxis>
+      <extents>0.0775 0.006 0.04</extents>
+      <diffusecolor>1 0 0</diffusecolor>
+    </Geom>        
+    <mass type="custom">
+      <total>1.7251</total>
+    </mass>
+  </Body>
+  <Joint name="Shoulder_Roll" type="hinge">
+    <Body>wam2</Body>
+    <Body>wam3</Body>
+    <offsetfrom>wam3</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-157</lostop>
+    <histop>157</histop>
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <Body name="wam4" type="dynamic">
+    <offsetfrom>wam3</offsetfrom>
+    <Translation>0.045 0 0.55</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+
+    <Geom type="cylinder">
+    <Translation>0 0 0</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.0630</height>
+      <radius>0.053</radius>
+      <diffusecolor>0 1 0.501961</diffusecolor>
+    </Geom>          
+    <Geom type="box">
+    <Translation>-0.0447 -0.05 0</Translation>
+    <RotationAxis>0 0 1 45</RotationAxis>
+      <extents>0.03 0.03 0.0315</extents>
+      <diffusecolor>0 1 0.501961</diffusecolor>
+    </Geom>             
+    <Geom type="cylinder">
+    <Translation>-0.0447 -0.1654 0</Translation>
+    <RotationAxis>1 0 0 0</RotationAxis>
+      <height>0.2268</height>
+      <radius>0.0447</radius>
+      <diffusecolor>1 0.501961 1</diffusecolor>
+    </Geom>          
+    <Geom type="cylinder">
+    <Translation>-0.0447 -0.1250 0.025</Translation>
+    <RotationAxis>1 0 0 0</RotationAxis>
+      <height>0.0471</height>
+      <radius>0.031</radius>
+      <diffusecolor>1 0.501961 1</diffusecolor>
+    </Geom>          
+    <Geom type="cylinder">
+    <Translation>-0.0447 -0.1250 -0.025</Translation>
+    <RotationAxis>1 0 0 0</RotationAxis>
+      <height>0.0471</height>
+      <radius>0.031</radius>
+      <diffusecolor>1 0.501961 1</diffusecolor>
+    </Geom>    
+    <Geom type="box">
+    <Translation>-0.0447 -0.1981 -0.046</Translation>
+      <extents>0.007 0.0505 0.002</extents>
+      <diffusecolor>1 0.501961 1</diffusecolor>
+    </Geom>             
+
+    <mass type="custom">
+      <total>0.4809</total>
+    </mass>
+  </Body>
+  <Joint name="Elbow" type="hinge">
+    <Body>wam3</Body>
+    <Body>wam4</Body>
+    <offsetfrom>wam4</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-50</lostop>
+    <histop>180</histop>
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="wam5" type="dynamic">
+    <offsetfrom>wam4</offsetfrom>
+    <Translation>-0.045 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+
+    <Geom type="cylinder">
+    <Translation>0 0 0.2758</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.0060</height>
+      <radius>0.0425</radius>
+      <diffusecolor>0.901961 0.443137 0.0313725</diffusecolor>
+    </Geom>  
+    <Geom type="box">
+    <Translation>0 0 0.2885</Translation>
+      <extents>0.041 0.01335 0.0097</extents>
+      <diffusecolor>0.901961 0.443137 0.0313725</diffusecolor>
+    </Geom>                    
+    <Geom type="cylinder">
+    <Translation>0 0 0.2982</Translation>
+      <height>0.0267</height>
+      <radius>0.041</radius>
+      <diffusecolor>0.901961 0.443137 0.0313725</diffusecolor>
+    </Geom>  
+    <Geom type="cylinder">
+    <Translation>0 0 0.2982</Translation>
+      <height>0.04</height>
+      <radius>0.00889</radius>
+      <diffusecolor>0.901961 0.443137 0.0313725</diffusecolor>
+    </Geom>  
+    <mass type="custom">
+      <total>1.6015</total>
+    </mass>
+  </Body>
+  <Joint name="Wrist_Yaw" type="hinge">
+    <Body>wam4</Body>
+    <Body>wam5</Body>
+    <offsetfrom>wam5</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-275</lostop>
+    <histop>75</histop>
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <Body name="wam6" type="dynamic">
+    <offsetfrom>wam5</offsetfrom>
+    <Translation>0 0 0.3</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+
+    <Geom type="cylinder">
+    <Translation>0 -0.0572 0</Translation>
+      <height>0.0065</height>
+      <radius>0.01878</radius>
+      <diffusecolor>0.501961 0.501961 1</diffusecolor>
+    </Geom>  
+    <Geom type="cylinder">
+    <Translation>0 -0.0235 0</Translation>
+      <height>0.062</height>
+      <radius>0.0448</radius>
+      <diffusecolor>0.501961 0.501961 1</diffusecolor>
+    </Geom>  
+    <Geom type="cylinder">
+    <Translation>0 -0.0185 -0.0385</Translation>
+      <height>0.0590</height>
+      <radius>0.02</radius>
+      <diffusecolor>0.501961 0.501961 1</diffusecolor>
+    </Geom>  
+    <Geom type="cylinder">
+    <Translation>0 0 0.025</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.03</height>
+      <radius>0.024</radius>
+      <diffusecolor>0.501961 0.501961 1</diffusecolor>
+    </Geom>  
+    <mass type="custom">
+      <total>0.3067</total>
+    </mass>
+  </Body>
+
+  <Joint name="Wrist_Pitch" type="hinge">
+    <Body>wam5</Body>
+    <Body>wam6</Body>
+    <offsetfrom>wam6</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-90</lostop>
+    <histop>90</histop>
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+  <Body name="wam7" type="dynamic">
+    <offsetfrom>wam6</offsetfrom>
+    <Translation>0.0  0.0  0.0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+
+    <Geom type="cylinder">
+    <Translation>0 0 0.0565</Translation>
+    <rotationaxis>1 0 0 90</rotationaxis>
+      <height>0.017</height>
+      <radius>0.0445</radius>
+      <diffusecolor>0.501961 1 0.501961</diffusecolor>
+    </Geom>         
+    <Geom type="cylinder">
+    <Translation>0 0 0.0925</Translation>
+    <rotationaxis>1 0 0 90</rotationaxis>
+      <height>0.0550</height>
+      <radius>0.0445</radius>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>         
+    <Geom type="box">
+    <Translation>0 0 0.1325</Translation>
+      <extents>0.035 0.0125 0.0125</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 0 0.15</Translation>
+      <extents>0.0265 0.025 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+<!-- These are approximations that might have to be fixed -->
+    <Geom type="box">
+    <Translation>0.0307 0 0.15</Translation>
+      <extents>0.0043 0.0125 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 0.0348 0.15</Translation>
+      <extents>0.0265 0.0097 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 -0.0348 0.15</Translation>
+      <extents>0.0265 0.0097 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+    <mass type="custom">
+      <total>1.18</total>
+    </mass>
+  </Body>
+
+  <Joint name="Wrist_Roll" type="hinge">
+    <Body>wam6</Body>
+    <Body>wam7</Body>
+    <offsetfrom>wam7</offsetfrom>
+    <axis>0 0 -1</axis>
+    <lostop>-172</lostop>
+    <histop>172</histop>
+    <weight>1</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <adjacent>wam1 wam3</adjacent>
+  <adjacent>wam4 wam6</adjacent>
+  <adjacent>wam4 wam7</adjacent>
+</KinBody>

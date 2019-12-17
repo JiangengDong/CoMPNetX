@@ -91,21 +91,22 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
            << "Planner: " << planner_->getName() << std::endl;
 
         unsigned int am_dim = constrained_state_space_->getAmbientDimension();
-        auto config = new double[am_dim];
+        ompl::base::ScopedState<> state(constrained_state_space_);
         ss << "Start:";
-        parameters_->getStartState(config);
+        parameters_->getStartState(state);
         for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << config[i];
+            ss << " " << state[i];
         }
+        ss << " \tdistance: " << constraint_->distance(state.get());
         ss << std::endl;
         ss << "Goal: ";
-        parameters_->getGoalState(config);
+        parameters_->getGoalState(state);
         for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << config[i];
+            ss << " " << state[i];
         }
+        ss << " \tdistance: " << constraint_->distance(state.get());
         ss << std::endl;
                 RAVELOG_INFO(ss.str());
-        delete[] config;
     }
     return initialized_;
 }
@@ -165,7 +166,22 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     *tsr_chain_ = parameters_->tsrchain_parameters_;
     tsr_chain_->Initialize(env_);
     tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
-    return tsr_robot_ != nullptr;
+
+    // print the result
+    if (tsr_robot_ != nullptr) {
+        std::stringstream ss;
+        ss << std::endl;
+        ss << "Constructed virtual TSR robot successfully." << std::endl;
+        ss << "\tDOF: " << tsr_robot_->GetDOF() << std::endl;
+        ss << "\tActive DOF: " << tsr_robot_->GetActiveDOF() << std::endl;
+        ss << "\tNum of manipulators: " << tsr_robot_->GetManipulators().size() << std::endl;
+        ss << "\tNum of active manipulators: " << (tsr_robot_->GetActiveManipulator() == nullptr);
+                RAVELOG_INFO(ss.str());
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct virtual TSR robot!");
+        return false;
+    }
 }
 
 /** \brief Setup the ambient state space
@@ -179,6 +195,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const int dof = robot_->GetActiveDOF();
     const int dof_tsr = tsr_robot_->GetActiveDOF();
+
     // Set bounds
     ompl::base::RealVectorBounds bounds(dof + dof_tsr);
     std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
@@ -210,21 +227,47 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     }
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
-            RAVELOG_DEBUG("Set ambient configuration space.");
 
     // TODO: set wrappings
-    return true;
+
+    // print result
+    if (ambient_state_space_ != nullptr) {
+        std::stringstream ss;
+        ss << std::endl;
+        ss << "Constructed ambient state space successfully." << std::endl;
+        ss << "\tUpper bound:";
+        for (auto hb:bounds.high) {
+            ss << " " << hb;
+        }
+        ss << std::endl;
+        ss << "\tLower bound:";
+        for (auto lb:bounds.low) {
+            ss << " " << lb;
+        }
+        ss << std::endl;
+        ss << "\tResolution: " << conservative_resolution << std::endl;
+        ss << "\tWrapping:";
+        for (auto wrapping:ambient_state_space_->getIsWrapping()) {
+            ss << " " << wrapping;
+        }
+                RAVELOG_INFO(ss.str());
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct ambient state space!");
+        return false;
+    }
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsr_robot_);
     // create the constrained configuration space
-    if (parameters_->atlas_parameters_.using_tb_) {
+    if (parameters_->atlas_parameters_.using_tb_) { // tangent state space
         constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
         constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
-    } else {
+    } else {    // Atlas state space
         constrained_state_space_ = std::make_shared<ompl::base::AtlasStateSpace>(ambient_state_space_, constraint_);
         constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
+        constrained_state_space_->setSeparated(parameters_->atlas_parameters_.separate_);
     }
     // setup parameters
     constraint_->setTolerance(parameters_->constraint_parameters_.tolerance_);
@@ -243,17 +286,39 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
             return 1.0 + atlas->getChartCount() - c->getNeighborCount();
         });
     }
-    if (!parameters_->atlas_parameters_.using_tb_)
-        constrained_state_space_->setSeparated(parameters_->atlas_parameters_.separate_);
     constrained_state_space_->setup();
-            RAVELOG_DEBUG("Set constrained configuration space.");
-    return true;
+    if (constrained_state_space_ != nullptr) {
+        std::stringstream ss;
+        ss << std::endl;
+        ss << "Constructed constrained state space successfully." << std::endl;
+        ss << "\tParameters of constraint: " << std::endl;
+        ss << "\t\tTolerance: " << constraint_->getTolerance() << std::endl;
+        ss << "\t\tMax projection iteration:" << constraint_->getMaxIterations() << std::endl;
+        ss << "\tParameters of constrained state space: " << std::endl;
+        ss << "\t\tDelta (Step-size for discrete geodesic on manifold): " << constrained_state_space_->getDelta() << std::endl;
+        ss << "\t\tLambda (Maximum `wandering` allowed during traversal): " << constrained_state_space_->getLambda() << std::endl;
+        ss << "\t\tExploration (tunes balance of refinement and exploration in atlas sampling): " << constrained_state_space_->getExploration() << std::endl;
+        ss << "\t\tEpsilon (max distance from manifold to chart): " << constrained_state_space_->getEpsilon() << std::endl;
+        ss << "\t\tRho (max radius for an atlas chart): " << constrained_state_space_->getRho() << std::endl;
+        ss << "\t\tAlpha (max angle between chart and manifold): " << constrained_state_space_->getAlpha() << std::endl;
+        ss << "\t\tMax chart generated during a traversal: " << constrained_state_space_->getMaxChartsPerExtension();
+                RAVELOG_INFO(ss.str());
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct constrained state space!");
+        return false;
+    }
 }
 
 bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_ = std::make_shared<ompl::geometric::SimpleSetup>(constrained_space_info_);
-            RAVELOG_DEBUG("Create simple setup.");
-    return true;
+    if (simple_setup_ != nullptr) {
+                RAVELOG_INFO("Constructed simple setup successfully.");
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct simple setup!");
+        return false;
+    }
 }
 
 bool AtlasMPNet::Problem::setStartAndGoalStates() {

@@ -1,0 +1,9 @@
+<KinBody name="herb_base">
+  <Body name="herb_base" type="dynamic"> 
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <Data>herb_base_collision.iv</Data>
+      <Render>herb_base.iv</Render>
+    </Geom>
+  </Body>
+</KinBody>

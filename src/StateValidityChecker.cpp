@@ -50,17 +50,19 @@ StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr
         _robot(std::move(robot)),
         _tsr_robot(std::move(tsr_robot)),
         _env(_robot->GetEnv()),
-        _dof_robot(_robot->GetActiveDOF()),
-        _dof_tsr(_tsr_robot->GetActiveDOF()),
+        _robot_dof(_robot->GetActiveDOF()),
+        _tsr_dof(_tsr_robot->GetActiveDOF()),
         _numCollisionChecks(0),
-        _totalCollisionTime(0.0) {
+        _totalCollisionTime(0.0),
+        _robot_values(_robot_dof, 0),
+        _tsr_values(_tsr_dof, 0){
 }
 
 bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t checklimits) const {
     auto const *real_state = state->as<ompl::base::RealVectorStateSpace::StateType>();
 
-    std::vector<double> robot_values(real_state->values, real_state->values + _dof_robot);
-    std::vector<double> tsr_values(real_state->values+_dof_robot, real_state->values+_dof_robot+_dof_tsr);
+    std::vector<double> robot_values(real_state->values, real_state->values + _robot_dof);
+    std::vector<double> tsr_values(real_state->values + _robot_dof, real_state->values + _robot_dof + _tsr_dof);
 
     for (double v: robot_values) {
         if (std::isnan(v)) {

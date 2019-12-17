@@ -1,0 +1,9 @@
+<KinBody name="wam7_nohandiv">
+  <modelsdir>../WAM</modelsdir>
+  <Body type="dynamic">
+        <Geom type="trimesh">
+          <Data>   wam7_nohand.iv 1.0 </Data>
+          <Render> wam7_nohand.iv 1.0 </Render>
+        </Geom>      
+  </Body>
+</KinBody>

@@ -116,6 +116,10 @@ namespace AtlasMPNet {
 
         bool getGoalState(double *goal) const;
 
+        bool getStartState(ompl::base::ScopedState<> &start) const;
+
+        bool getGoalState(ompl::base::ScopedState<> &goal) const;
+
         bool serialize(std::ostream &O, int options) const override;
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;

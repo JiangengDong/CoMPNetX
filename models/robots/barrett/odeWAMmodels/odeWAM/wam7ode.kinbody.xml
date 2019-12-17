@@ -1,0 +1,47 @@
+<KinBody name="wam7ode">
+  <Body type="dynamic">
+    <Geom type="cylinder">
+    <Translation>0 0 0.0565</Translation>
+    <rotationaxis>1 0 0 90</rotationaxis>
+      <height>0.017</height>
+      <radius>0.0445</radius>
+      <diffusecolor>0.501961 1 0.501961</diffusecolor>
+    </Geom>         
+    <Geom type="cylinder">
+    <Translation>0 0 0.0925</Translation>
+    <rotationaxis>1 0 0 90</rotationaxis>
+      <height>0.0550</height>
+      <radius>0.0445</radius>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>         
+    <Geom type="box">
+    <Translation>0 0 0.1325</Translation>
+      <extents>0.035 0.0125 0.0125</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 0 0.15</Translation>
+      <extents>0.0265 0.025 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+<!-- These are approximations that might have to be fixed -->
+    <Geom type="box">
+    <Translation>0.0307 0 0.15</Translation>
+      <extents>0.0043 0.0125 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 0.0348 0.15</Translation>
+      <extents>0.0265 0.0097 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+    <Geom type="box">
+    <Translation>0 -0.0348 0.15</Translation>
+      <extents>0.0265 0.0097 0.005</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+      <transparency>0.5</transparency>
+    </Geom>        
+  </Body>
+</KinBody>

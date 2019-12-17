@@ -1,0 +1,9 @@
+<KinBody name="wam1iv">
+  <modelsdir>../WAM</modelsdir>
+  <Body type="dynamic">
+        <Geom type="trimesh">
+          <Data>   wam1.iv 1.0 </Data>
+          <Render> wam1.iv 1.0 </Render>
+        </Geom>      
+  </Body>
+</KinBody>

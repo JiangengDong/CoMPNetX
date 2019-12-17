@@ -1,0 +1,893 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- TWO WAM ARMS ORIENTED UPRIGHT AND NEXT TO ONE ANOTHER -->
+
+<KinBody name="WAM7">
+
+
+
+  <!--  ============= RIGHT ARM ==================== -->
+
+  <Body name="herb_base" type="dynamic">
+    <Geom type="trimesh">
+      <Translation>-0.267 -0.051 0.685</Translation>
+      <RotationMat>0 0 1 0 -1 0 1 0 0</RotationMat>
+      <Data>barrett/wam0.iv 1.0</Data>
+      <Render>barrett/wam0.iv  1.0</Render>
+    </Geom>
+
+    <mass type="custom">
+      <total>10</total>
+    </mass>
+  </Body>
+
+  <Body name="/right/wam1" type="dynamic">
+    <offsetfrom>herb_base</offsetfrom>
+    <Translation>0.079 -0.191 0.905</Translation>
+    <RotationMat>0 0 1 0 -1 0 1 0 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam1.iv 1.0</Data>
+      <Render>barrett/wam1.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>8.3936</total>
+      <com>0.0006286 -0.1326795 0.0003506</com>
+    </mass>
+  </Body>
+
+  <Joint name="R_Shoulder_Yaw" type="hinge">
+    <body>herb_base</body>
+    <body>/right/wam1</body>
+    <offsetfrom>/right/wam1</offsetfrom>
+    <axis>0 0 1</axis>
+    <!--<limitsdeg>-150 150</limitsdeg>-->
+    <limitsdeg>30 330</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>1.5708</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/wam2" type="dynamic">
+      <offsetfrom>/right/wam1</offsetfrom>
+    <Translation>0  0  0</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam2.iv  1.0</Data>
+      <Render>barrett/wam2.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>4.8487</total>
+    </mass>
+  </Body>
+  <Joint name="R_Shoulder_Pitch" type="hinge">
+      <body>/right/wam1</body>
+      <body>/right/wam2</body>
+      <offsetfrom>/right/wam2</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-113 113</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/wam3" type="dynamic">
+      <offsetfrom>/right/wam2</offsetfrom>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam3_joint_encoder.iv  1.0</Data>
+      <Render>barrett/wam3_joint_encoder.iv  1.0</Render>
+    </Geom>
+    <!--cylinder for padding-->
+    <Geom type="cylinder" render="false">
+        <translation>0 0 .25</translation>
+        <rotationaxis>1 0 0 -90</rotationaxis>
+        <radius>0.06</radius>
+        <height>0.5</height>
+        <diffuseColor>0 .5 .5</diffuseColor>
+    </Geom>
+    <!--sphere for padding at elbow -->
+    <Geom type="sphere" render="false">
+        <translation>0.0 0. 0.5</translation>
+        <radius>0.06</radius>
+        <diffuseColor>0 .2 .5</diffuseColor>
+    </Geom>
+    <Geom type="sphere" render="false">
+        <translation>0.045 0. 0.55</translation>
+        <radius>0.08</radius>
+        <diffuseColor>0 .5 .5</diffuseColor>
+    </Geom>
+    <!-- end wam3 padding -->
+    <mass type="custom">
+      <total>1.7251</total>
+    </mass>
+  </Body>
+  <Joint name="R_Shoulder_Roll" type="hinge">
+      <body>/right/wam2</body>
+      <body>/right/wam3</body>
+      <offsetfrom>/right/wam3</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-157 157</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/wam4" type="dynamic">
+      <offsetfrom>/right/wam3</offsetfrom>
+    <Translation>0.045 0 0.55</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam4.iv  1.0</Data>
+      <Render>barrett/wam4.iv  1.0</Render>
+    </Geom>
+    <!--cylinder for padding-->
+    <Geom type="cylinder" render="false">
+        <translation>-0.045 -0.15 0</translation>
+        <!--<rotationaxis>0 1 0 0</rotationaxis>-->
+        <radius>0.06</radius>
+        <height>0.3</height>
+        <diffuseColor>0 .2 .5</diffuseColor>
+    </Geom>    
+    <!-- end wam4 padding -->
+    <mass type="custom">
+      <total>0.4809</total>
+    </mass>
+  </Body>
+  <Joint name="R_Elbow" type="hinge">
+      <body>/right/wam3</body>
+      <body>/right/wam4</body>
+      <offsetfrom>/right/wam4</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-50 180</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/wam5" type="dynamic">
+      <offsetfrom>/right/wam4</offsetfrom>
+    <Translation>-0.045 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam5.iv  1.0</Data>
+      <Render>barrett/wam5.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>1.6015</total>
+    </mass>
+  </Body>
+  <Joint name="R_Wrist_Yaw" type="hinge">
+      <body>/right/wam4</body>
+      <body>/right/wam5</body>
+      <offsetfrom>/right/wam5</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-275 75</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <Body name="/right/wam6" type="dynamic">
+      <offsetfrom>/right/wam5</offsetfrom>
+    <Translation>0 0 0.3</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam6.iv  1.0</Data>
+      <Render>barrett/wam6.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>0.3067</total>
+    </mass>
+  </Body>
+
+  <Joint name="R_Wrist_Pitch" type="hinge">
+      <body>/right/wam5</body>
+      <body>/right/wam6</body>
+      <offsetfrom>/right/wam6</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-90 90</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+  <Body name="/right/wam7" type="dynamic">
+      <offsetfrom>/right/wam6</offsetfrom>
+    <Translation>0.0  0.0  0.0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <data>barrett/wam7_280.iv 1.0</data>
+      <Render>barrett/wam7_280.iv 1.0</Render>
+    </Geom>
+    <!--cylinder for padding
+    <Geom type="cylinder" render="false">
+        <translation>0 0 .05</translation>
+        <rotationaxis>1 0 0 -90</rotationaxis>
+        <radius>0.06</radius>
+        <height>0.10</height>
+        <diffuseColor>0 .5 .5</diffuseColor>
+    </Geom> 
+    -->   
+    <!-- end wam7 padding -->
+    <mass type="custom">
+      <total>1.18</total>
+    </mass>
+  </Body>
+
+  <Joint name="R_Wrist_Roll" type="hinge">
+      <body>/right/wam6</body>
+      <body>/right/wam7</body>
+      <offsetfrom>/right/wam7</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-172 172</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <adjacent>/right/wam1 /right/wam3</adjacent>
+  <adjacent>/right/wam4 /right/wam6</adjacent>
+  <adjacent>/right/wam4 /right/wam7</adjacent>
+
+  <!--  ============= RIGHT HAND ==================== -->
+  <Body name="/right/wam7" type="dynamic">
+
+    <Geom type="trimesh">
+      <Translation>0.0  0.0  0.135</Translation>
+      <RotationMat>-1 0 0 0 -1 0 0 0 1</RotationMat>
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+    <mass type="custom">
+      <total>1.18</total>
+    </mass>
+  </Body>
+
+  <!-- finger 0-->
+  <Body name="/right/finger0_0" type="dynamic">
+      <offsetfrom>/right/wam7</offsetfrom>
+    <Translation>0 -0.025 0.135</Translation>
+    <Geom type="trimesh">
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+  </Body>
+  <Body name="/right/finger0_1" type="dynamic" >
+    <offsetfrom>/right/finger0_0</offsetfrom>
+    <Translation>0.05 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="RJF1">
+    <Body>/right/finger0_0</Body>
+    <Body>/right/finger0_1</Body>
+    <offsetfrom>/right/finger0_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/finger0_2" type="dynamic" >
+    <offsetfrom>/right/finger0_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="RJF1mimic" type="hinge" enable="false" mimic_pos="RJF1/3+0.8727" mimic_vel="|RJF1 0.33333">
+    <Body>/right/finger0_1</Body>
+    <Body>/right/finger0_2</Body>
+    <offsetfrom>/right/finger0_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+
+  <!-- finger 1-->
+  <Body name="/right/finger1_0" type="dynamic">
+      <offsetfrom>/right/wam7</offsetfrom>
+    <Translation>0 0.025 0.135</Translation>
+    <Geom type="trimesh">
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+  </Body>
+  <Body name="/right/finger1_1" type="dynamic" >
+    <offsetfrom>/right/finger1_0</offsetfrom>
+    <Translation>0.05 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="RJF2">
+    <Body>/right/finger1_0</Body>
+    <Body>/right/finger1_1</Body>
+    <offsetfrom>/right/finger1_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/finger1_2" type="dynamic" >
+    <offsetfrom>/right/finger1_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="RJF2mimic" type="hinge" enable="false" mimic_pos="RJF2/3+0.8727"  mimic_vel="|RJF2 0.33333">
+    <Body>/right/finger1_1</Body>
+    <Body>/right/finger1_2</Body>
+    <offsetfrom>/right/finger1_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+
+  <!-- finger 2-->
+  <Body name="/right/finger2_1" type="dynamic" >
+      <offsetfrom>/right/wam7</offsetfrom>
+    <Translation>-0.05 0 0.135</Translation>
+    <RotationMat>-1 0 0 0 0 1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="RJF3">
+      <body>/right/wam7</body>
+    <Body>/right/finger2_1</Body>
+    <offsetfrom>/right/finger2_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/right/finger2_2" type="dynamic" >
+    <offsetfrom>/right/finger2_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="RJF3mimic" type="hinge" enable="false" mimic_pos="RJF3/3+0.8727" mimic_vel="|RJF3 0.33333">
+    <Body>/right/finger2_1</Body>
+    <Body>/right/finger2_2</Body>
+    <offsetfrom>/right/finger2_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <!-- spread -->
+  <Joint name = "RJF4" type="hinge">
+      <body>/right/wam7</body>
+    <Body>/right/finger0_0</Body>
+    <offsetfrom>/right/finger0_0</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>-1 181</limitsdeg> 
+    <axis>0 0 -1</axis>
+    <!-- <anchor>0.025 0 0</anchor> -->
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Joint name="RJF4mimic" type="hinge" enable="false" mimic_pos="RJF4" mimic_vel="|RJF4 1.0">
+      <body>/right/wam7</body>
+    <Body>/right/finger1_0</Body>
+    <offsetfrom>/right/finger1_0</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>-1 181</limitsdeg>
+    <axis>0 0 1</axis>
+    <!-- <anchor>-0.025 0 0</anchor> -->
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <!-- add adjacent links, necessary in order to prevent bogus collisions -->
+
+  <adjacent>/right/finger0_0 /right/finger1_0</adjacent>
+  <adjacent>/right/finger0_0 /right/finger0_1</adjacent>
+  <adjacent>/right/finger0_0 /right/finger0_2</adjacent>
+  <adjacent>/right/finger0_0 /right/finger1_1</adjacent>
+  <adjacent>/right/finger0_0 /right/finger1_2</adjacent>
+  <adjacent>/right/finger0_0 /right/finger2_1</adjacent>
+  <adjacent>/right/finger0_0 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger1_0 /right/finger0_1</adjacent>
+  <adjacent>/right/finger1_0 /right/finger0_2</adjacent>
+  <adjacent>/right/finger1_0 /right/finger1_1</adjacent>
+  <adjacent>/right/finger1_0 /right/finger1_2</adjacent>
+  <adjacent>/right/finger1_0 /right/finger2_1</adjacent>
+  <adjacent>/right/finger1_0 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger0_1 /right/finger0_2</adjacent>
+  <adjacent>/right/finger0_1 /right/finger1_1</adjacent>
+  <adjacent>/right/finger0_1 /right/finger1_2</adjacent>
+  <adjacent>/right/finger0_1 /right/finger2_1</adjacent>
+  <adjacent>/right/finger0_1 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger0_2 /right/finger1_1</adjacent>
+  <adjacent>/right/finger0_2 /right/finger1_2</adjacent>
+  <adjacent>/right/finger0_2 /right/finger2_1</adjacent>
+  <adjacent>/right/finger0_2 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger1_1 /right/finger1_2</adjacent>
+  <adjacent>/right/finger1_1 /right/finger2_1</adjacent>
+  <adjacent>/right/finger1_1 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger1_2 /right/finger2_1</adjacent>
+  <adjacent>/right/finger1_2 /right/finger2_2</adjacent>
+
+  <adjacent>/right/finger2_1 /right/finger2_2</adjacent>
+
+  <adjacent>/right/wam7 /right/finger1_0</adjacent>
+  <adjacent>/right/wam7 /right/finger0_1</adjacent>
+  <adjacent>/right/wam7 /right/finger0_2</adjacent>
+  <adjacent>/right/wam7 /right/finger1_1</adjacent>
+  <adjacent>/right/wam7 /right/finger1_2</adjacent>
+  <adjacent>/right/wam7 /right/finger2_1</adjacent>
+  <adjacent>/right/wam7 /right/finger2_2</adjacent>
+
+
+
+
+  <!--  ============= LEFT ARM ==================== -->
+
+  <Body name="herb_base" type="dynamic">
+    <Geom type="trimesh">
+      <Translation>-0.267 0.331 0.685</Translation>
+      <RotationMat>0 0 1 0 -1 0 1 0 0</RotationMat>
+      <Data>barrett/wam0.iv 1.0</Data>
+      <Render>barrett/wam0.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>10</total>
+    </mass>
+  </Body>
+
+  <Body name="/left/wam1" type="dynamic">
+    <offsetfrom>herb_base</offsetfrom>
+    <Translation>0.079 0.191 0.905</Translation>
+    <RotationMat>0 0 1 0 -1 0 1 0 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam1.iv 1.0</Data>
+      <Render>barrett/wam1.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>8.3936</total>
+      <com>0.0006286 -0.1326795 0.0003506</com>
+    </mass>
+  </Body>
+
+  <Joint name="L_Shoulder_Yaw" type="hinge">
+    <Body>herb_base</Body>
+    <Body>/left/wam1</Body>
+    <offsetfrom>/left/wam1</offsetfrom>
+    <axis>0 0 1</axis>
+    <!--<limitsdeg>-150 150</limitsdeg>-->
+    <limitsdeg>30 330</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>1.5708</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/wam2" type="dynamic">
+      <offsetfrom>/left/wam1</offsetfrom>
+    <Translation>0  0  0</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam2.iv  1.0</Data>
+      <Render>barrett/wam2.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>4.8487</total>
+    </mass>
+  </Body>
+  <Joint name="L_Shoulder_Pitch" type="hinge">
+      <Body>/left/wam1</Body>
+    <Body>/left/wam2</Body>
+    <offsetfrom>/left/wam2</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-113 113</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/wam3" type="dynamic">
+    <offsetfrom>/left/wam2</offsetfrom>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam3.iv  1.0</Data>
+      <Render>barrett/wam3.iv  1.0</Render>
+    </Geom>
+    <!--cylinder for padding-->
+    <Geom type="cylinder" render="false">
+        <translation>0 0 .25</translation>
+        <rotationaxis>1 0 0 -90</rotationaxis>
+        <radius>0.06</radius>
+        <height>0.5</height>
+        <diffuseColor>0 .5 .5</diffuseColor>
+    </Geom>
+    <!--sphere for padding at elbow -->
+    <Geom type="sphere" render="false">
+        <translation>0.0 0. 0.5</translation>
+        <radius>0.06</radius>
+        <diffuseColor>0 .2 .5</diffuseColor>
+    </Geom>
+    <Geom type="sphere" render="false">
+        <translation>0.045 0. 0.55</translation>
+        <radius>0.08</radius>
+        <diffuseColor>0 .5 .5</diffuseColor>
+    </Geom>
+    <!-- end wam3 padding -->
+    <mass type="custom">
+      <total>1.7251</total>
+    </mass>
+  </Body>
+  <Joint name="L_Shoulder_Roll" type="hinge">
+    <Body>/left/wam2</Body>
+    <Body>/left/wam3</Body>
+    <offsetfrom>/left/wam3</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-157 157</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/wam4" type="dynamic">
+    <offsetfrom>/left/wam3</offsetfrom>
+    <Translation>0.045 0 0.55</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam4.iv  1.0</Data>
+      <Render>barrett/wam4.iv  1.0</Render>
+    </Geom>
+    <!--cylinder for padding-->
+    <Geom type="cylinder" render="false">
+        <translation>-0.045 -0.15 0</translation>
+        <!--<rotationaxis>0 1 0 0</rotationaxis>-->
+        <radius>0.06</radius>
+        <height>0.3</height>
+        <diffuseColor>0 .2 .5</diffuseColor>
+    </Geom>    
+    <!-- end wam4 padding -->
+    <mass type="custom">
+      <total>0.4809</total>
+    </mass>
+  </Body>
+  <Joint name="L_Elbow" type="hinge">
+    <Body>/left/wam3</Body>
+    <Body>/left/wam4</Body>
+    <offsetfrom>/left/wam4</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-50 180</limitsdeg> 
+    <weight>2</weight>
+    <maxvel>2.0944</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/wam5" type="dynamic">
+    <offsetfrom>/left/wam4</offsetfrom>
+    <Translation>-0.045 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam5.iv  1.0</Data>
+      <Render>barrett/wam5.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>1.6015</total>
+    </mass>
+  </Body>
+  <Joint name="L_Wrist_Yaw" type="hinge">
+    <Body>/left/wam4</Body>
+    <Body>/left/wam5</Body>
+    <offsetfrom>/left/wam5</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-275 75</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <Body name="/left/wam6" type="dynamic">
+    <offsetfrom>/left/wam5</offsetfrom>
+    <Translation>0 0 0.3</Translation>
+    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+    <Geom type="trimesh">
+      <Data>barrett/wam6.iv  1.0</Data>
+      <Render>barrett/wam6.iv  1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>0.3067</total>
+    </mass>
+  </Body>
+
+  <Joint name="L_Wrist_Pitch" type="hinge">
+    <Body>/left/wam5</Body>
+    <Body>/left/wam6</Body>
+    <offsetfrom>/left/wam6</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-90 90</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>4.1888</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+  <Body name="/left/wam7" type="dynamic">
+    <offsetfrom>/left/wam6</offsetfrom>
+    <Translation>0.0  0.0  0.0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <data>barrett/wam7.iv 1.0</data>
+      <Render>barrett/wam7.iv 1.0</Render>
+    </Geom>
+    <mass type="custom">
+      <total>1.18</total>
+    </mass>
+  </Body>
+
+  <Joint name="L_Wrist_Roll" type="hinge">
+    <Body>/left/wam6</Body>
+    <Body>/left/wam7</Body>
+    <offsetfrom>/left/wam7</offsetfrom>
+    <axis>0 0 1</axis>
+    <limitsdeg>-172 172</limitsdeg> 
+    <weight>1</weight>
+    <maxvel>1.0472</maxvel>
+    <resolution>2</resolution>
+  </Joint>
+
+  <adjacent>/left/wam1 /left/wam3</adjacent>
+  <adjacent>/left/wam4 /left/wam6</adjacent>
+  <adjacent>/left/wam4 /left/wam7</adjacent>
+
+
+  <!--  ============= LEFT HAND ==================== -->
+  <Body name="/left/wam7" type="dynamic">
+    <Geom type="trimesh">
+      <Translation>0.0  0.0  0.154</Translation>
+      <RotationMat>-1 0 0 0 -1 0 0 0 1</RotationMat>
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+    <mass type="custom">
+      <total>1.18</total>
+    </mass>
+  </Body>
+
+  <!-- finger 0-->
+  <Body name="/left/finger0_0" type="dynamic">
+    <offsetfrom>/left/wam7</offsetfrom>
+    <Translation>0 -0.025 0.154</Translation>
+    <Geom type="trimesh">
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+  </Body>
+  <Body name="/left/finger0_1" type="dynamic" >
+    <offsetfrom>/left/finger0_0</offsetfrom>
+    <Translation>0.05 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="LJF1">
+    <Body>/left/finger0_0</Body>
+    <Body>/left/finger0_1</Body>
+    <offsetfrom>/left/finger0_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/finger0_2" type="dynamic" >
+    <offsetfrom>/left/finger0_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="LJF1mimic" type="hinge" enable="false" mimic_pos="LJF1/3+0.8727" mimic_vel="|LJF1 0.33333">
+    <Body>/left/finger0_1</Body>
+    <Body>/left/finger0_2</Body>
+    <offsetfrom>/left/finger0_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+
+  <!-- finger 1-->
+  <Body name="/left/finger1_0" type="dynamic">
+    <offsetfrom>/left/wam7</offsetfrom>
+    <Translation>0 0.025 0.154</Translation>
+    <Geom type="trimesh">
+      <data>barrett/link1.iv</data>
+      <Render>barrett/link1.iv</Render>
+    </Geom>
+  </Body>
+  <Body name="/left/finger1_1" type="dynamic" >
+    <offsetfrom>/left/finger1_0</offsetfrom>
+    <Translation>0.05 0 0</Translation>
+    <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="LJF2">
+    <Body>/left/finger1_0</Body>
+    <Body>/left/finger1_1</Body>
+    <offsetfrom>/left/finger1_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/finger1_2" type="dynamic" >
+    <offsetfrom>/left/finger1_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="LJF2mimic" type="hinge" enable="false" mimic_pos="LJF2/3+0.8727" mimic_vel="|LJF2 0.33333">
+    <Body>/left/finger1_1</Body>
+    <Body>/left/finger1_2</Body>
+    <offsetfrom>/left/finger1_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+
+  <!-- finger 2-->
+  <Body name="/left/finger2_1" type="dynamic" >
+    <offsetfrom>/left/wam7</offsetfrom>
+    <Translation>-0.05 0 0.154</Translation>
+    <RotationMat>-1 0 0 0 0 1 0 1 0</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link2.iv</data>
+      <Render>barrett/link2.iv</Render>
+    </Geom>
+  </Body>
+  <Joint type="hinge" name="LJF3">
+    <Body>/left/wam7</Body>
+    <Body>/left/finger2_1</Body>
+    <offsetfrom>/left/finger2_1</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>0 155</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Body name="/left/finger2_2" type="dynamic" >
+    <offsetfrom>/left/finger2_1</offsetfrom>
+    <Translation>0.07 0 0</Translation>
+    <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+    <Geom type="trimesh">
+      <Translation>0 0 0</Translation>
+      <data>barrett/link3.iv</data>
+      <Render>barrett/link3.iv</Render>
+    </Geom>
+  </Body>
+  <Joint name="LJF3mimic" type="hinge" enable="false" mimic_pos="LJF3/3+0.8727" mimic_vel="|LJF3 0.33333">
+    <Body>/left/finger2_1</Body>
+    <Body>/left/finger2_2</Body>
+    <offsetfrom>/left/finger2_2</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>46 102</limitsdeg> 
+    <axis>0 0 1</axis>
+    <maxvel>1</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <!-- spread -->
+  <Joint name = "LJF4" type="hinge">
+    <Body>/left/wam7</Body>
+    <Body>/left/finger0_0</Body>
+    <offsetfrom>/left/finger0_0</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>-1 181</limitsdeg> 
+    <axis>0 0 -1</axis>
+    <!-- <anchor>0.025 0 0</anchor> -->
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+  <Joint name="LJF4mimic" type="hinge" enable="false" mimic_pos="LJF4" mimic_vel="|LJF4 1.0">
+    <Body>/left/wam7</Body>
+    <Body>/left/finger1_0</Body>
+    <offsetfrom>/left/finger1_0</offsetfrom>
+    <weight>4</weight>
+    <limitsdeg>-1 181</limitsdeg> 
+    <axis>0 0 1</axis>
+    <!-- <anchor>-0.025 0 0</anchor> -->
+    <maxvel>2</maxvel>
+    <resolution>1</resolution>
+  </Joint>
+
+  <!-- add adjacent links, necessary in order to prevent bogus collisions -->
+  <adjacent>/left/wam1 /right/wam1</adjacent>
+
+  <adjacent>/left/finger0_0 /left/finger1_0</adjacent>
+  <adjacent>/left/finger0_0 /left/finger0_1</adjacent>
+  <adjacent>/left/finger0_0 /left/finger0_2</adjacent>
+  <adjacent>/left/finger0_0 /left/finger1_1</adjacent>
+  <adjacent>/left/finger0_0 /left/finger1_2</adjacent>
+  <adjacent>/left/finger0_0 /left/finger2_1</adjacent>
+  <adjacent>/left/finger0_0 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger1_0 /left/finger0_1</adjacent>
+  <adjacent>/left/finger1_0 /left/finger0_2</adjacent>
+  <adjacent>/left/finger1_0 /left/finger1_1</adjacent>
+  <adjacent>/left/finger1_0 /left/finger1_2</adjacent>
+  <adjacent>/left/finger1_0 /left/finger2_1</adjacent>
+  <adjacent>/left/finger1_0 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger0_1 /left/finger0_2</adjacent>
+  <adjacent>/left/finger0_1 /left/finger1_1</adjacent>
+  <adjacent>/left/finger0_1 /left/finger1_2</adjacent>
+  <adjacent>/left/finger0_1 /left/finger2_1</adjacent>
+  <adjacent>/left/finger0_1 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger0_2 /left/finger1_1</adjacent>
+  <adjacent>/left/finger0_2 /left/finger1_2</adjacent>
+  <adjacent>/left/finger0_2 /left/finger2_1</adjacent>
+  <adjacent>/left/finger0_2 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger1_1 /left/finger1_2</adjacent>
+  <adjacent>/left/finger1_1 /left/finger2_1</adjacent>
+  <adjacent>/left/finger1_1 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger1_2 /left/finger2_1</adjacent>
+  <adjacent>/left/finger1_2 /left/finger2_2</adjacent>
+
+  <adjacent>/left/finger2_1 /left/finger2_2</adjacent>
+
+  <adjacent>/left/wam7 /left/finger1_0</adjacent>
+  <adjacent>/left/wam7 /left/finger0_1</adjacent>
+  <adjacent>/left/wam7 /left/finger0_2</adjacent>
+  <adjacent>/left/wam7 /left/finger1_1</adjacent>
+  <adjacent>/left/wam7 /left/finger1_2</adjacent>
+  <adjacent>/left/wam7 /left/finger2_1</adjacent>
+  <adjacent>/left/wam7 /left/finger2_2</adjacent>
+
+
+</KinBody>

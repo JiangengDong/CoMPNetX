@@ -18,9 +18,7 @@ import numpy as np
 
 
 class LiftingBoxProblem:
-    def __init__(self, initial_config=tuple([0] * 14)):
-        if initial_config is None:
-            initial_config = [0] * 14
+    def __init__(self, initial_config):
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
@@ -108,7 +106,7 @@ class LiftingBoxProblem:
                                              T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
                                              Tw_e="1 0 0 0 0 -1 0 1 0      0 -0.285 0" 
                                              Bw="-1000 1000 -1000 1000 -1000 1000 0 0 0 0 -4 4" />
-                                    </tsr_chain>""")    # TODO: constraint is wrong here
+                                    </tsr_chain>""")
         return params
 
     def solve(self, box_initial_pose, box_goal_pose):
@@ -116,11 +114,11 @@ class LiftingBoxProblem:
         left_initial, right_initial = self.calculateHandsConfig(box_initial_pose)
         left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
         params = self.setPlannerParameters(right_initial, right_goal)
-        with self.env, self.robot:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.planner.InitPlan(self.robot, params)
-            self.planner.PlanPath(self.traj)
+        # with self.env, self.robot:
+        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+        self.robot.SetActiveManipulator(self.manipulator_right)
+        self.planner.InitPlan(self.robot, params)
+        # self.planner.PlanPath(self.traj)
         return self.traj
 
     def display(self):

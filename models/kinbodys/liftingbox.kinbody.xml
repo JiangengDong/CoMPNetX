@@ -1,0 +1,14 @@
+<KinBody name="box">
+
+  <Body name="body" type="dynamic">
+    <Geom type="box">
+       <extents>0.2 0.1 0.1</extents>
+       <diffuseColor>0.1 0.6 0.1</diffuseColor>
+    </Geom>
+    <mass type="custom">
+        <com>0 0 0</com>
+        <total>0.01</total>
+    </mass>
+  </Body>
+
+</KinBody>

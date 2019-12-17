@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Robot name="BarrettWAM">
+  <KinBody file="wam7dofode.kinbody.xml">
+    <modelsdir>../</modelsdir>
+    <Body name="wam7" type="dynamic">
+      <Geom type="trimesh">
+        <Translation>0.0  0.0  0.1515</Translation>
+        <RotationMat>-1 0 0 0 -1 0 0 0 1</RotationMat>
+        <data>models/barrett/link1_convex.iv 0.001</data>
+        <Render>models/barrett/link1_convex.iv 0.001</Render>
+      </Geom>
+      <!-- Geom type="box">
+        <extents>0.025 0.042 0.0125</extents>
+        <Translation>0 0 0.165</Translation>
+        <diffusecolor>0 0 0.4</diffusecolor>
+      </Geom -->
+      <mass type="custom">
+        <total>1.18</total>
+      </mass>
+    </Body>
+
+
+    <!-- finger 0-->
+    <Body name="wFinger0-0" type="dynamic">
+      <offsetfrom>wam7</offsetfrom>
+      <Translation>0 -0.025 0.1515</Translation>
+      <Geom type="trimesh">
+        <data>models/barrett/link1_convex.iv 0.001</data>
+        <Render>models/barrett/link1_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Body name="wFinger0-1" type="dynamic" >
+      <offsetfrom>wFinger0-0</offsetfrom>
+      <Translation>0.05 0 0</Translation>
+      <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link2_convex.iv 0.001</data>
+        <Render>models/barrett/link2_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" name="JF1">
+      <Body>wFinger0-0</Body>
+      <Body>wFinger0-1</Body>
+      <offsetfrom>wFinger0-1</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>135</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1.5708</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+    <Body name="wFinger0-2" type="dynamic" >
+      <offsetfrom>wFinger0-1</offsetfrom>
+      <Translation>0.07 0 0</Translation>
+      <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link3_convex.iv 0.001</data>
+        <Render>models/barrett/link3_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" enable="false" mimic="JF1 0.33333 0.8727">
+      <Body>wFinger0-1</Body>
+      <Body>wFinger0-2</Body>
+      <offsetfrom>wFinger0-2</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>90</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+
+    <!-- finger 1-->
+    <Body name="wFinger1-0" type="dynamic">
+      <offsetfrom>wam7</offsetfrom>
+      <Translation>0 0.025 0.1515</Translation>
+      <Geom type="trimesh">
+        <data>models/barrett/link1_convex.iv 0.001</data>
+        <Render>models/barrett/link1_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Body name="wFinger1-1" type="dynamic" >
+      <offsetfrom>wFinger1-0</offsetfrom>
+      <Translation>0.05 0 0</Translation>
+      <RotationMat>1 0 0 0 0 -1 0 1 0</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link2_convex.iv 0.001</data>
+        <Render>models/barrett/link2_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" name="JF2">
+      <Body>wFinger1-0</Body>
+      <Body>wFinger1-1</Body>
+      <offsetfrom>wFinger1-1</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>135</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1.5708</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+    <Body name="wFinger1-2" type="dynamic" >
+      <offsetfrom>wFinger1-1</offsetfrom>
+      <Translation>0.07 0 0</Translation>
+      <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link3_convex.iv 0.001</data>
+        <Render>models/barrett/link3_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" enable="false" mimic="JF2 0.33333 0.8727">
+      <Body>wFinger1-1</Body>
+      <Body>wFinger1-2</Body>
+      <offsetfrom>wFinger1-2</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>90</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+
+    <!-- finger 2-->
+    <Body name="wFinger2-1" type="dynamic" >
+      <offsetfrom>wam7</offsetfrom>
+      <Translation>-0.05 0 0.1515</Translation>
+      <RotationMat>-1 0 0 0 0 1 0 1 0</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link2_convex.iv 0.001</data>
+        <Render>models/barrett/link2_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" name="JF3">
+      <Body>wam7</Body>
+      <Body>wFinger2-1</Body>
+      <offsetfrom>wFinger2-1</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>135</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1.5708</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+    <Body name="wFinger2-2" type="dynamic" >
+      <offsetfrom>wFinger2-1</offsetfrom>
+      <Translation>0.07 0 0</Translation>
+      <RotationMat>1 0 0 0 1 0 0 0 1</RotationMat>
+      <Geom type="trimesh">
+        <Translation>0 0 0</Translation>
+        <data>models/barrett/link3_convex.iv 0.001</data>
+        <Render>models/barrett/link3_convex.iv 0.001</Render>
+      </Geom>
+    </Body>
+    <Joint type="hinge" enable="false" mimic="JF3 0.33333 0.8727">
+      <Body>wFinger2-1</Body>
+      <Body>wFinger2-2</Body>
+      <offsetfrom>wFinger2-2</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>0</lostop>
+      <histop>90</histop>
+      <axis>0 0 -1</axis>
+      <maxvel>1</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+
+    <!-- spread -->
+    <Joint name = "JF4" type="hinge">
+      <Body>wam7</Body>
+      <Body>wFinger0-0</Body>
+      <offsetfrom>wFinger0-0</offsetfrom>
+      <weight>0.5</weight>
+      <lostop>-1</lostop>
+      <histop>181</histop>
+      <axis>0 0 1</axis>
+      <maxvel>9.5993</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+    <Joint type="hinge" enable="false" mimic="JF4">
+      <Body>wam7</Body>
+      <Body>wFinger1-0</Body>
+      <offsetfrom>wFinger1-0</offsetfrom>
+      <weight>0.5</weight>
+      <axis>0 0 -1</axis>
+      <maxvel>9.5993</maxvel>
+      <resolution>1</resolution>
+    </Joint>
+
+    <!-- add adjacent links, necessary in order to prevent bogus collisions -->
+    <adjacent>wFinger0-0 wFinger1-0</adjacent>
+    <adjacent>wFinger0-1 wFinger0-2</adjacent>
+    <adjacent>wFinger1-1 wFinger1-2</adjacent>
+    <adjacent>wFinger2-1 wFinger2-2</adjacent>
+    <adjacent>wam7 wFinger0-1</adjacent>
+    <adjacent>wam7 wFinger0-2</adjacent>
+    <adjacent>wam7 wFinger1-1</adjacent>
+    <adjacent>wam7 wFinger1-2</adjacent>
+    <adjacent>wam7 wFinger2-1</adjacent>
+    <adjacent>wam7 wFinger2-2</adjacent>
+  </KinBody>
+
+  <Controller>IdealController</Controller>
+
+  <Manipulator>
+    <base>wam0</base>
+    <effector>wam7</effector>
+    <armjoints>Shoulder_Yaw Shoulder_Pitch Shoulder_Roll Elbow Wrist_Yaw Wrist_Pitch Wrist_Roll</armjoints>
+    <iksolver>WAM7</iksolver>
+    <joints>JF1 JF2 JF3</joints>
+    <opened>0 0 0</opened>
+    <closed>1.0 1.0 1.0</closed>
+  </Manipulator>
+
+</Robot>

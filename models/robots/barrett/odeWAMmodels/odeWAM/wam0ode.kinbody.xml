@@ -1,0 +1,19 @@
+<!-- This is EXACT -->
+
+<KinBody name="wam0ode">
+  <modelsdir>../WAM</modelsdir>
+  <Body type="dynamic">
+    <Geom type="box">
+    <Translation>0.110 0.140 0.08</Translation>
+      <extents>0.110 0.140 0.08</extents>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+    <Geom type="cylinder">
+    <Translation>0.220 0.140 0.08</Translation>
+    <RotationAxis>1 0 0 90</RotationAxis>
+      <height>0.16</height>
+      <radius>0.14</radius>
+      <diffusecolor>1 1 0.501961</diffusecolor>
+    </Geom>        
+  </Body>
+</KinBody>

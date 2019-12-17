@@ -191,6 +191,22 @@ bool Parameters::getGoalState(double *goal) const {
     return true;
 }
 
+bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
+    const int dof = GetDOF();
+    for (int i = 0; i < dof; i++) {
+        start[i] = vinitialconfig[i];
+    }
+    return true;
+}
+
+bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
+    const int dof = GetDOF();
+    for (int i = 0; i < dof; i++) {
+        goal[i] = vgoalconfig[i];
+    }
+    return true;
+}
+
 bool Parameters::serialize(std::ostream &O, int options) const {
     if (!OpenRAVE::PlannerBase::PlannerParameters::serialize(O, options)) {
         return false;

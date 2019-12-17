@@ -17,5 +17,3 @@ include_directories(${OpenRAVE_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen3_INCL
 link_directories(${OpenRAVE_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${OMPL_LIBRARY_DIRS})
 
 add_subdirectory(src bin)
-
-MESSAGE(STATUS "${Boost_LIBRARIES}")

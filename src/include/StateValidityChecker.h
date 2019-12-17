@@ -62,10 +62,13 @@ namespace AtlasMPNet {
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
         OpenRAVE::EnvironmentBasePtr _env;
-        const std::size_t _dof_robot;
-        const std::size_t _dof_tsr;
+        const std::size_t _robot_dof;
+        const std::size_t _tsr_dof;
         mutable int _numCollisionChecks;
         mutable double _totalCollisionTime;
+        // temporary variables
+        std::vector<double> _robot_values;
+        std::vector<double> _tsr_values;
     };
 
 } // namespace AtlasMPNet

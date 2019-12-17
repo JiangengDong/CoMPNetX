@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KinBody>
+	<Body type="dynamic">
+      <Geom type="cylinder">
+	    <RotationMat>1 0 0 0 0 1 0 -1 0</RotationMat>
+        <Translation>0 0 0.07</Translation>
+        <diffuseColor>0 0 0.5</diffuseColor>
+        <radius>0.055</radius>
+        <height>0.2</height>
+      </Geom>
+    </Body>
+</KinBody>
