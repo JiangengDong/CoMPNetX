@@ -372,7 +372,6 @@ OpenRAVE::dReal TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transf
     ikparams[7] = Ttarg.trans.y;
     ikparams[8] = Ttarg.trans.z;
 
-
     std::vector<OpenRAVE::dReal> q0, q_s;
     q_s.resize(robot->GetDOF());
     robot->GetDOFValues(q_s);

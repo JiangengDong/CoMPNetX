@@ -82,32 +82,6 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
                    setStartAndGoalStates() &&
                    setStateValidityChecker() &&
                    setPlanner();
-    // if success, we should print the problem infos out
-    if (initialized_) {
-        std::stringstream ss;
-        ss << "The problem to be solved is defined as follows:" << std::endl;
-        ss << "Ambient configuration space dim: " << constrained_state_space_->getAmbientDimension() << std::endl
-           << "Constrained manifold dim: " << constrained_state_space_->getManifoldDimension() << std::endl
-           << "Planner: " << planner_->getName() << std::endl;
-
-        unsigned int am_dim = constrained_state_space_->getAmbientDimension();
-        ompl::base::ScopedState<> state(constrained_state_space_);
-        ss << "Start:";
-        parameters_->getStartState(state);
-        for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << state[i];
-        }
-        ss << " \tdistance: " << constraint_->distance(state.get());
-        ss << std::endl;
-        ss << "Goal: ";
-        parameters_->getGoalState(state);
-        for (unsigned int i = 0; i < am_dim; ++i) {
-            ss << " " << state[i];
-        }
-        ss << " \tdistance: " << constraint_->distance(state.get());
-        ss << std::endl;
-                RAVELOG_INFO(ss.str());
-    }
     return initialized_;
 }
 
@@ -170,12 +144,11 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     // print the result
     if (tsr_robot_ != nullptr) {
         std::stringstream ss;
-        ss << std::endl;
         ss << "Constructed virtual TSR robot successfully." << std::endl;
         ss << "\tDOF: " << tsr_robot_->GetDOF() << std::endl;
         ss << "\tActive DOF: " << tsr_robot_->GetActiveDOF() << std::endl;
         ss << "\tNum of manipulators: " << tsr_robot_->GetManipulators().size() << std::endl;
-        ss << "\tNum of active manipulators: " << (tsr_robot_->GetActiveManipulator() == nullptr);
+        ss << "\tNum of active manipulators: " << (tsr_robot_->GetActiveManipulator() != nullptr);
                 RAVELOG_INFO(ss.str());
         return true;
     } else {
@@ -233,8 +206,8 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     // print result
     if (ambient_state_space_ != nullptr) {
         std::stringstream ss;
-        ss << std::endl;
         ss << "Constructed ambient state space successfully." << std::endl;
+        ss << "\tDimension: " << ambient_state_space_->getDimension() << std::endl;
         ss << "\tUpper bound:";
         for (auto hb:bounds.high) {
             ss << " " << hb;
@@ -287,10 +260,12 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
         });
     }
     constrained_state_space_->setup();
+
+    // print result
     if (constrained_state_space_ != nullptr) {
         std::stringstream ss;
-        ss << std::endl;
         ss << "Constructed constrained state space successfully." << std::endl;
+        ss << "\tDimension of manifold: " << constrained_state_space_->getManifoldDimension() << std::endl;
         ss << "\tParameters of constraint: " << std::endl;
         ss << "\t\tTolerance: " << constraint_->getTolerance() << std::endl;
         ss << "\t\tMax projection iteration:" << constraint_->getMaxIterations() << std::endl;
@@ -312,6 +287,8 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
 
 bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_ = std::make_shared<ompl::geometric::SimpleSetup>(constrained_space_info_);
+
+    // print result
     if (simple_setup_ != nullptr) {
                 RAVELOG_INFO("Constructed simple setup successfully.");
         return true;
@@ -326,15 +303,23 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     int dof_tsr = tsr_robot_->GetActiveDOF();
     auto start_config = new double[dof_robot + dof_tsr];
     auto goal_config = new double[dof_robot + dof_tsr];
-    // get the joint values of real robot
-    parameters_->getStartState(start_config);
+    OpenRAVE::Transform Ttemp, Ttarg;
+    std::stringstream swarn;
+
+    // start config
+    parameters_->getStartState(start_config);   // get the joint values of real robot
+    std::vector<double> start_temp(start_config, start_config + dof_robot);
+    robot_->SetActiveDOFValues(start_temp);
+    Ttarg = robot_->GetActiveManipulator()->GetEndEffectorTransform();
+    tsr_chain_->GetClosestTransform(Ttarg, start_config + dof_robot, Ttemp);    // get the joint values of virtual robot
+
+    // goal config
     parameters_->getGoalState(goal_config);
-    // get the joint values of virtual robot
-    OpenRAVE::Transform Ttemp;
-    robot_->SetActiveDOFValues(std::vector<double>(start_config, start_config + dof_robot)); // TODO: is this the right grammar?
-    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), start_config + dof_robot, Ttemp);
-    robot_->SetActiveDOFValues(std::vector<double>(goal_config, goal_config + dof_robot)); // TODO: is this the right grammar?
-    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), goal_config + dof_robot, Ttemp);
+    std::vector<double> goal_temp(goal_config, goal_config + dof_robot);
+    robot_->SetActiveDOFValues(goal_temp);
+    Ttarg = robot_->GetActiveManipulator()->GetEndEffectorTransform();
+    tsr_chain_->GetClosestTransform(Ttarg, goal_config + dof_robot, Ttemp);
+
     // convert to ScopedState and set start and goal with simple_setup_
     ompl::base::ScopedState<> start(constrained_state_space_);
     ompl::base::ScopedState<> goal(constrained_state_space_);
@@ -345,9 +330,37 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
-            RAVELOG_DEBUG("Set start and goal configurations.");
     delete[] start_config;
     delete[] goal_config;
+
+    // print result
+    std::stringstream ss;
+    ss << "Set start and goal successfully." << std::endl;
+    ss << "\tStart:" << std::endl;
+    ss << "\t\tRobot:";
+    for (int i = 0; i < dof_robot; i++) {
+        ss << "\t" << start[i];
+    }
+    ss << std::endl;
+    ss << "\t\tTSR:";
+    for (int i = dof_robot; i < dof_robot + dof_tsr; i++) {
+        ss << "\t" << start[i];
+    }
+    ss << std::endl;
+    ss << "\t\tDistance: " << constraint_->distance(start.get()) << std::endl;
+    ss << "\tGoal:" << std::endl;
+    ss << "\t\tRobot:";
+    for (int i = 0; i < dof_robot; i++) {
+        ss << "\t" << goal[i];
+    }
+    ss << std::endl;
+    ss << "\t\tTSR:";
+    for (int i = dof_robot; i < dof_robot + dof_tsr; i++) {
+        ss << "\t" << goal[i];
+    }
+    ss << std::endl;
+    ss << "\t\tDistance: " << constraint_->distance(goal.get());
+            RAVELOG_INFO(ss.str());
     return true;
 }
 
@@ -355,8 +368,15 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check m
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
     state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, tsr_robot_));
     simple_setup_->setStateValidityChecker(state_validity_checker_);
-            RAVELOG_DEBUG("Set validity checker.");
-    return true;
+
+    // print result
+    if (state_validity_checker_ != nullptr) {
+                RAVELOG_INFO("Constructed state validity checker successfully.");
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct state validity checker!");
+        return false;
+    }
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
@@ -366,6 +386,16 @@ bool AtlasMPNet::Problem::setPlanner() {
     else
         planner_->as<ompl::geometric::RRT>()->setRange(parameters_->planner_parameters_.range_);
     simple_setup_->setPlanner(planner_);
-            RAVELOG_DEBUG("Set planner.");
-    return true;
+
+    // print result
+    if (planner_ != nullptr) {
+        std::stringstream ss;
+        ss << "Constructed planner successfully." << std::endl;
+        ss << "\tPlanner: " << planner_->getName();
+                RAVELOG_INFO(ss.str());
+        return true;
+    } else {
+                RAVELOG_ERROR("Failed to construct planner!");
+        return false;
+    }
 }
