@@ -56,6 +56,8 @@ namespace AtlasMPNet {
         // create a virtual manipulator (a robot) corresponding to the TSR chain to use for ik solver calls
         bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out);
 
+        bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out, int);
+
         // compute the distance between two transforms
         OpenRAVE::dReal TransformDifference(const OpenRAVE::Transform &tm_ref, const OpenRAVE::Transform &tm_targ) const;
 

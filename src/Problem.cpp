@@ -139,7 +139,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
     *tsr_chain_ = parameters_->tsrchain_parameters_;
     tsr_chain_->Initialize(env_);
-    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
+    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_, 0);
 
     // print the result
     if (tsr_robot_ != nullptr) {
