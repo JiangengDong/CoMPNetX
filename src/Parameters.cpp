@@ -183,14 +183,6 @@ bool Parameters::getStartState(double *start) const {
     return true;
 }
 
-bool Parameters::getGoalState(double *goal) const {
-    const int dof = GetDOF();
-    for (int i = 0; i < dof; i++) {
-        goal[i] = vgoalconfig[i];
-    }
-    return true;
-}
-
 bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
     const int dof = GetDOF();
     for (int i = 0; i < dof; i++) {
@@ -199,7 +191,31 @@ bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
     return true;
 }
 
+bool Parameters::getStartState(std::vector<double> &start) const {
+    const int dof = GetDOF();
+    for (int i = 0; i < dof; i++) {
+        start[i] = vinitialconfig[i];
+    }
+    return true;
+}
+
+bool Parameters::getGoalState(double *goal) const {
+    const int dof = GetDOF();
+    for (int i = 0; i < dof; i++) {
+        goal[i] = vgoalconfig[i];
+    }
+    return true;
+}
+
 bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
+    const int dof = GetDOF();
+    for (int i = 0; i < dof; i++) {
+        goal[i] = vgoalconfig[i];
+    }
+    return true;
+}
+
+bool Parameters::getGoalState(std::vector<double> &goal) const {
     const int dof = GetDOF();
     for (int i = 0; i < dof; i++) {
         goal[i] = vgoalconfig[i];

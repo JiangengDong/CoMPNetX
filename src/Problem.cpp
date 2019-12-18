@@ -67,7 +67,6 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, std::istream &i
 }
 
 bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::PlannerBase::PlannerParametersConstPtr params) {
-            RAVELOG_INFO("Start to init planner.");
     initialized_ = false;
     if (robot == nullptr || params == nullptr) {
                 RAVELOG_ERROR("Robot and params must not be NULL.\n"); // NOLINT(hicpp-signed-bitwise)
@@ -139,7 +138,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
     *tsr_chain_ = parameters_->tsrchain_parameters_;
     tsr_chain_->Initialize(env_);
-    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_, 0);
+    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
 
     // print the result
     if (tsr_robot_ != nullptr) {
@@ -301,37 +300,34 @@ bool AtlasMPNet::Problem::simpleSetup() {
 bool AtlasMPNet::Problem::setStartAndGoalStates() {
     int dof_robot = robot_->GetActiveDOF();
     int dof_tsr = tsr_robot_->GetActiveDOF();
-    auto start_config = new double[dof_robot + dof_tsr];
-    auto goal_config = new double[dof_robot + dof_tsr];
-    OpenRAVE::Transform Ttemp, Ttarg;
-    std::stringstream swarn;
+
+    std::vector<double> robot_start(dof_robot), tsr_start(dof_tsr), robot_goal(dof_robot), tsr_goal(dof_tsr);
+    OpenRAVE::Transform Ttemp;
 
     // start config
-    parameters_->getStartState(start_config);   // get the joint values of real robot
-    std::vector<double> start_temp(start_config, start_config + dof_robot);
-    robot_->SetActiveDOFValues(start_temp);
-    Ttarg = robot_->GetActiveManipulator()->GetEndEffectorTransform();
-    tsr_chain_->GetClosestTransform(Ttarg, start_config + dof_robot, Ttemp);    // get the joint values of virtual robot
+    parameters_->getStartState(robot_start);   // get the joint values of real robot
+    robot_->SetActiveDOFValues(robot_start);
+    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_start, Ttemp);    // get the joint values of virtual robot
 
     // goal config
-    parameters_->getGoalState(goal_config);
-    std::vector<double> goal_temp(goal_config, goal_config + dof_robot);
-    robot_->SetActiveDOFValues(goal_temp);
-    Ttarg = robot_->GetActiveManipulator()->GetEndEffectorTransform();
-    tsr_chain_->GetClosestTransform(Ttarg, goal_config + dof_robot, Ttemp);
+    parameters_->getGoalState(robot_goal);
+    robot_->SetActiveDOFValues(robot_goal);
+    tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_goal, Ttemp);
 
     // convert to ScopedState and set start and goal with simple_setup_
     ompl::base::ScopedState<> start(constrained_state_space_);
     ompl::base::ScopedState<> goal(constrained_state_space_);
-    for (int i = 0; i < dof_robot + dof_tsr; i++) {
-        start[i] = start_config[i];
-        goal[i] = goal_config[i];
+    for (int i = 0; i < dof_robot; i++) {
+        start[i] = robot_start[i];
+        goal[i] = robot_goal[i];
+    }
+    for (int i=0; i< dof_tsr; i++) {
+        start[i+dof_robot] = tsr_start[i];
+        goal[i+dof_robot] = tsr_goal[i];
     }
     constrained_state_space_->anchorChart(start.get());
     constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
-    delete[] start_config;
-    delete[] goal_config;
 
     // print result
     std::stringstream ss;
