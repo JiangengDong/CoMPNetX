@@ -55,10 +55,10 @@ namespace AtlasMPNet {
         bool Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in);
 
         // get the closest transform in the TSR to a query transform
-        OpenRAVE::Transform GetClosestTransform(const OpenRAVE::Transform &T0_s) const;   // TODO: read this
+        OpenRAVE::Transform GetClosestTransform(const OpenRAVE::Transform &T0_s) const;
 
         // get the distance to the TSR from a query transform
-        OpenRAVE::dReal DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx) const;   // TODO: read this
+        OpenRAVE::dReal DistanceToTSR(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &dx) const;
 
         // generate a sample from this TSR
         OpenRAVE::Transform GenerateSample() const;

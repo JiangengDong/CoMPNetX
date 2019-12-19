@@ -97,7 +97,7 @@ class LiftingBoxProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<planner_parameters time="5" range="0"/>
+            """<planner_parameters time="30" range="0"/>
                                     <constraint_parameters tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
                                     <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.01" alpha="0.392699" 
                                         max_charts="500" using_bias="0" using_tb="0" separate="0"/>
@@ -118,7 +118,7 @@ class LiftingBoxProblem:
         self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
         self.robot.SetActiveManipulator(self.manipulator_right)
         self.planner.InitPlan(self.robot, params)
-        # self.planner.PlanPath(self.traj)
+        self.planner.PlanPath(self.traj)
         return self.traj
 
     def display(self):

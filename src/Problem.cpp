@@ -207,7 +207,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
 
-    // TODO: Set wrappings
+    // Set wrappings
     std::vector<bool> is_wrapping;
     std::vector<int> active_indices = robot_->GetActiveDOFIndices();
     for (int active_index : active_indices) {

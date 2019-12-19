@@ -42,7 +42,7 @@ OpenRAVE::Transform TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::Ve
     }
     _tsr_robot->SetActiveDOFValues(q_tsr);
     auto Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-    return Trobot*Ttsr.inverse();
+    return Trobot.inverse()*Ttsr;
 }
 
 void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
