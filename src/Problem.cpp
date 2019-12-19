@@ -92,31 +92,38 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
     }
     simple_setup_->setup();
     boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
-    ompl::base::PlannerStatus status = simple_setup_->solve(/*parameters_->planner_parameters_.time_*/);
+    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->planner_parameters_.time_);
     boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
             RAVELOG_INFO("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
             RAVELOG_INFO("Atlas charts: %d", constrained_state_space_->getChartCount());
 //            planner_->printSettings(std::cout);
     if (status) {
         auto ompl_traj = simple_setup_->getSolutionPath();
-        size_t const num_dof = robot_->GetActiveDOF();
+        size_t const dof_robot = robot_->GetActiveDOF();
         ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
         ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
+        std::vector<double> values, robot_values;
+        for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
+            space->copyToReals(values, ompl_traj.getState(i));
+            robot_values.assign(values.begin(), values.begin() + dof_robot);
+            ptraj->Insert(i, robot_values, true);
+        }
+
+        // print the result
         std::stringstream ss;
         ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
+        auto state = ompl_traj.getState(0);
         for (size_t i = 0; i < ompl_traj.getStateCount(); ++i) {
-            std::vector<double> values;
-            space->copyToReals(values, ompl_traj.getState(i));
-            ptraj->Insert(i, values, true);
-            ss << "state " << i << ": ";
+            state = ompl_traj.getState(i);
+            space->copyToReals(values, state);
+            ss << "\tstate " << i << ":\t";
             for (auto value:values) {
-                ss << value << " ";
+                ss << " " << value;
             }
-            ss << " \tdistance to manifold: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
+            ss << " \tdistance to manifold: " << constraint_->distance(state) << std::endl;
         }
                 RAVELOG_INFO(ss.str());
         plannerStatus = OpenRAVE::PS_HasSolution;
-        // TODO: detailed behavior w.r.t planner status
     }
     return plannerStatus;
 }
@@ -200,7 +207,17 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
     ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
 
-    // TODO: set wrappings
+    // TODO: Set wrappings
+    std::vector<bool> is_wrapping;
+    std::vector<int> active_indices = robot_->GetActiveDOFIndices();
+    for (int active_index : active_indices) {
+        is_wrapping.push_back(robot_->GetJointFromDOFIndex(active_index)->IsCircular(0));
+    }
+    active_indices = tsr_robot_->GetActiveDOFIndices();
+    for (int active_index : active_indices) {
+        is_wrapping.push_back(tsr_robot_->GetJointFromDOFIndex(active_index)->IsCircular(0));
+    }
+    ambient_state_space_->setIsWrapping(is_wrapping);
 
     // print result
     if (ambient_state_space_ != nullptr) {
@@ -321,12 +338,12 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
         start[i] = robot_start[i];
         goal[i] = robot_goal[i];
     }
-    for (int i=0; i< dof_tsr; i++) {
-        start[i+dof_robot] = tsr_start[i];
-        goal[i+dof_robot] = tsr_goal[i];
+    for (int i = 0; i < dof_tsr; i++) {
+        start[i + dof_robot] = tsr_start[i];
+        goal[i + dof_robot] = tsr_goal[i];
     }
     constrained_state_space_->anchorChart(start.get());
-    constrained_state_space_->anchorChart(goal.get());
+//    constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
 
     // print result

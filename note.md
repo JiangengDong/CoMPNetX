@@ -44,5 +44,12 @@ Check the performance of different parameters.
 ## Dec 16
 
 * Change the constraint function to redundant, need to check if every part works properly
-    * TSR robot construction: done
-    * 
+
+## Dec 18
+
+* Check projection success rate: satisfactory
+* Change Jacobian to analytical
+* Change ambient space wrapping: finished
+* Need to consider singular points
+* Try to determine the dimension of manifold from redundant constraint
+* Test different parameters

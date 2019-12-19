@@ -8,7 +8,7 @@
 using namespace AtlasMPNet;
 
 TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot) :
-        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 7), _robot(robot), _tsr_robot(tsr_robot) {
+        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 9), _robot(robot), _tsr_robot(tsr_robot) {
     _dof_robot = _robot->GetActiveDOF();
     _dof_tsr = _tsr_robot->GetActiveDOF();
     _tsrjointval = new double[_dof_tsr];
@@ -16,13 +16,16 @@ TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, cons
 
 void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const {
     OpenRAVE::Transform pos = robotFK(x);
-    out[0] = pos.trans.x;
-    out[1] = pos.trans.y;
-    out[2] = pos.trans.z;
-    out[3] = pos.rot.x;
-    out[4] = pos.rot.y;
-    out[5] = pos.rot.z;
-    out[6] = pos.rot.w;
+    OpenRAVE::TransformMatrix Tmdiff(pos);
+    out[0] = Tmdiff.m[0]-1;
+    out[1] = Tmdiff.m[1];
+    out[2] = Tmdiff.m[2];
+    out[3] = Tmdiff.m[5]-1;
+    out[4] = Tmdiff.m[6];
+    out[5] = Tmdiff.m[10]-1;
+    out[6] = Tmdiff.trans[0];
+    out[7] = Tmdiff.trans[1];
+    out[8] = Tmdiff.trans[2];
 }
 
 OpenRAVE::Transform TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
@@ -39,7 +42,7 @@ OpenRAVE::Transform TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::Ve
     }
     _tsr_robot->SetActiveDOFValues(q_tsr);
     auto Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-    return Trobot*Ttsr.inverse(); // TODO: I think we can use the diff of (x, y, z, r, p, y) here so that we can calculate jacobian easily
+    return Trobot*Ttsr.inverse();
 }
 
 void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {

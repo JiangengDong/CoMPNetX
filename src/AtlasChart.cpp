@@ -211,7 +211,6 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
 //        direction = A.partialPivLu().solve(b);
         direction = (A.transpose()*A).inverse()*A.transpose()*b;
         stepsize = 2;
-        static int count = 0;
         do {
             // Loop in this block means that an overshoot happens. Shrink the stepsize.
             stepsize /= 2;
@@ -224,20 +223,6 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         } while (norm >= norm_old - squaredTolerance   // no improvement means overshoot. repeat with smaller stepsize
                  && norm > squaredTolerance     // no need to care about the improvement if the result is good enough
                  && stepsize > tolerance);   // just give up after several repetition (the lower bound of stepsize is set casually ^_^)
-        // TODO: here is a log. delete it later.
-        if (false && iter == 50 && count < 20) {
-            std::cout << iter
-                      << "\tstepsize:   " << stepsize << std::endl
-                      << "\tpre_norm:   " << sqrt(norm_old) << std::endl
-                      << "\tnorm:       " << sqrt(norm) << std::endl
-                      << "\tpre_config: " << out_old.transpose() << std::endl
-                      << "\tconfig:     " << out.transpose() << std::endl
-                      << "\tdirection:  " << direction.transpose() << std::endl
-                      << "\tunit_d:     " << (direction / direction.norm()).transpose() << std::endl
-                      << "\tjacobian:   " << A.block(0, 0, n_ - k_, n_) << std::endl
-                      << std::endl;
-            count++;
-        }
         // give up the total projection if the stepsize reaches its lower bound.
         if(stepsize <= tolerance) {
             if(norm_old < norm) {
@@ -250,7 +235,13 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         norm_old = norm;
     }
 
-    return norm < squaredTolerance;
+    if(norm < squaredTolerance){
+        OMPL_INFORM("Projection succeeded.");
+        return true;
+    }else {
+        OMPL_WARN("Projection failed!");
+        return false;
+    }
 }
 
 void ompl::base::AtlasChart::psiInverse(const Eigen::Ref<const Eigen::VectorXd> &x,
