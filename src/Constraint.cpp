@@ -8,76 +8,56 @@
 using namespace AtlasMPNet;
 
 TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot) :
-        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 9), _robot(robot), _tsr_robot(tsr_robot) {
+        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 7), _robot(robot), _tsr_robot(tsr_robot) {
     _dof_robot = _robot->GetActiveDOF();
     _dof_tsr = _tsr_robot->GetActiveDOF();
     _tsrjointval = new double[_dof_tsr];
 }
 
 void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const {
-    OpenRAVE::Transform pos = robotFK(x);
-    OpenRAVE::TransformMatrix Tmdiff(pos);
-    out[0] = Tmdiff.m[0]-1;
-    out[1] = Tmdiff.m[1];
-    out[2] = Tmdiff.m[2];
-    out[3] = Tmdiff.m[5]-1;
-    out[4] = Tmdiff.m[6];
-    out[5] = Tmdiff.m[10]-1;
-    out[6] = Tmdiff.trans[0];
-    out[7] = Tmdiff.trans[1];
-    out[8] = Tmdiff.trans[2];
+    robotFK(x);
+    OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
+    OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
+    OpenRAVE::Transform pos = Trobot.inverse() * Ttsr;
+//    int sign = (pos.rot[0]>=0)*2-1; // keep the first element greater than 0
+    out[0] = pos.rot[0]*pos.rot[0]-1;
+    out[1] = pos.rot[1]*pos.rot[1];
+    out[2] = pos.rot[2]*pos.rot[2];
+    out[3] = pos.rot[3]*pos.rot[3];
+    out[4] = pos.trans[0];
+    out[5] = pos.trans[1];
+    out[6] = pos.trans[2];
 }
 
-OpenRAVE::Transform TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
+void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
     std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
     // joint values of real robot
     for (unsigned int i = 0; i < _dof_robot; ++i) {
         q_robot[i] = x[i];
     }
     _robot->SetActiveDOFValues(q_robot, 0);
-    auto Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
     // joint values of virtual tsr robot
     for (unsigned int i = 0; i < _dof_tsr; ++i) {
-        q_tsr[i] = x[i+_dof_robot];
+        q_tsr[i] = x[i + _dof_robot];
     }
     _tsr_robot->SetActiveDOFValues(q_tsr);
-    auto Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-    return Trobot.inverse()*Ttsr;
 }
 
-void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
-    Eigen::VectorXd y1 = x;
-    Eigen::VectorXd y2 = x;
-    Eigen::VectorXd t1(getCoDimension());
-    Eigen::VectorXd t2(getCoDimension());
-
-    // Use a 7-point central difference stencil on each column.
-    for (std::size_t j = 0; j < n_; j++) {
-        const double ax = std::fabs(x[j]);
-        // Make step size as small as possible while still giving usable accuracy.
-//        const double h = std::sqrt(std::numeric_limits<double>::epsilon()) * (ax >= 1 ? ax : 1);
-        const double h = 1e-5;
-
-        // Can't assume y1[j]-y2[j] == 2*h because of precision errors.
-        y1[j] += h;
-        y2[j] -= h;
-        function(y1, t1);
-        function(y2, t2);
-        const Eigen::VectorXd m1 = (t1 - t2) / (y1[j] - y2[j]);
-        y1[j] += h;
-        y2[j] -= h;
-        function(y1, t1);
-        function(y2, t2);
-        const Eigen::VectorXd m2 = (t1 - t2) / (y1[j] - y2[j]);
-        y1[j] += h;
-        y2[j] -= h;
-        function(y1, t1);
-        function(y2, t2);
-        const Eigen::VectorXd m3 = (t1 - t2) / (y1[j] - y2[j]);
-
-        out.col(j) = (1.5 * m1 - 0.6 * m2 + 0.1 * m3);
-
-        // Reset for next iteration.
-        y1[j] = y2[j] = x[j];
-    }
-}
+//void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
+//    std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
+//    // joint values of real robot
+//    for (unsigned int i = 0; i < _dof_robot; ++i) {
+//        q_robot[i] = x[i];
+//    }
+//    _robot->SetActiveDOFValues(q_robot, 0);
+//    auto Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
+//    // joint values of virtual tsr robot
+//    for (unsigned int i = 0; i < _dof_tsr; ++i) {
+//        q_tsr[i] = x[i+_dof_robot];
+//    }
+//    _tsr_robot->SetActiveDOFValues(q_tsr);
+//    auto Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
+//
+//    std::vector<OpenRAVE::dReal> J;
+//    _robot->CalculateActiveJacobian(_robot->GetActiveManipulator()->GetEndEffector()->GetIndex(), Trobot.trans, Jtemp);
+//}

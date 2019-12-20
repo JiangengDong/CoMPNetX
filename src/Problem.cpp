@@ -343,7 +343,7 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
         goal[i + dof_robot] = tsr_goal[i];
     }
     constrained_state_space_->anchorChart(start.get());
-//    constrained_state_space_->anchorChart(goal.get());
+    constrained_state_space_->anchorChart(goal.get());
     simple_setup_->setStartAndGoalStates(start, goal);
 
     // print result
