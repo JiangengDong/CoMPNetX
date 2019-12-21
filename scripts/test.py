@@ -11,10 +11,11 @@
 # This path assumes that you installed OpenRAVE to /usr. You may need to alter
 # the command to match your acutal install destination.
 
-import openravepy as orpy
-from TransformMatrix import SerializeTransform
-import time
 import numpy as np
+
+import openravepy as orpy
+
+from TransformMatrix import SerializeTransform
 
 
 class LiftingBoxProblem:
@@ -97,10 +98,10 @@ class LiftingBoxProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<planner_parameters time="5" range="0"/>
+            """<planner_parameters time="30" range="0"/>
                                     <constraint_parameters tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
-                                    <atlas_parameters exploration="0.75" epsilon="0.005" rho="0.01" alpha="0.392699" 
-                                        max_charts="500" using_bias="0" using_tb="0" separate="0"/>
+                                    <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.1" alpha="0.392699" 
+                                        max_charts="500" using_bias="1" using_tb="0" separate="0"/>
                                     <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
                                         <tsr manipulator_index="0" relative_body_name="NULL" 
                                              T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
@@ -114,11 +115,11 @@ class LiftingBoxProblem:
         left_initial, right_initial = self.calculateHandsConfig(box_initial_pose)
         left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
         params = self.setPlannerParameters(right_initial, right_goal)
-        # with self.env, self.robot:
-        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-        self.robot.SetActiveManipulator(self.manipulator_right)
-        self.planner.InitPlan(self.robot, params)
-        self.planner.PlanPath(self.traj)
+        with self.env, self.robot:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+            self.planner.InitPlan(self.robot, params)
+            self.planner.PlanPath(self.traj)
         return self.traj
 
     def display(self):
