@@ -87,16 +87,15 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
 OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
     OpenRAVE::PlannerStatus plannerStatus = OpenRAVE::PS_Failed;
     if (!initialized_) {
-                RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
+        RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
-    simple_setup_->setup();
+    simple_setup_->setup();     // TODO: why it stops here?
     boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
     ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->planner_parameters_.time_);
     boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
             RAVELOG_INFO("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
             RAVELOG_INFO("Atlas charts: %d", constrained_state_space_->getChartCount());
-//            planner_->printSettings(std::cout);
     if (status) {
         auto ompl_traj = simple_setup_->getSolutionPath();
         size_t const dof_robot = robot_->GetActiveDOF();
@@ -393,11 +392,16 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check m
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
-    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
+//    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
+//    if (parameters_->planner_parameters_.range_ == 0)
+//        planner_->as<ompl::geometric::RRT>()->setRange(constrained_state_space_->getRho_s());
+//    else
+//        planner_->as<ompl::geometric::RRT>()->setRange(parameters_->planner_parameters_.range_);
+    planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
     if (parameters_->planner_parameters_.range_ == 0)
-        planner_->as<ompl::geometric::RRT>()->setRange(constrained_state_space_->getRho_s());
+        planner_->as<ompl::geometric::RRTstar>()->setRange(constrained_state_space_->getRho_s());
     else
-        planner_->as<ompl::geometric::RRT>()->setRange(parameters_->planner_parameters_.range_);
+        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->planner_parameters_.range_);
     simple_setup_->setPlanner(planner_);
 
     // print result

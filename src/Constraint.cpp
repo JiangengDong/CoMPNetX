@@ -15,6 +15,7 @@ TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, cons
 
     _robot_eeindex = _robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
     _tsr_eeindex = _tsr_robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
+    // TODO: manifold dim is just a protected member, so we can simply change it
 }
 
 void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const {
@@ -46,75 +47,75 @@ void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) con
     _tsr_robot->SetActiveDOFValues(q_tsr);
 }
 
-void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
-    robotFK(x);
-    OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
-    OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-    OpenRAVE::Transform Tdiff = Trobot.inverse() * Ttsr;
-
-    auto Jrot_robot = out.block(0, 0, 4, _dof_robot);
-    auto Jrot_tsr = out.block(0, _dof_robot, 4, _dof_tsr);
-    auto Jtrans_robot = out.block(4, 0, 3, _dof_robot);
-    auto Jtrans_tsr = out.block(4, _dof_robot, 3, _dof_tsr);
-
-    std::vector<OpenRAVE::dReal> Jrobot, Jtsr;
-
-    _robot->CalculateActiveRotationJacobian(_robot_eeindex, Trobot.rot, Jrobot);
-    _tsr_robot->CalculateActiveRotationJacobian(_tsr_eeindex, Ttsr.rot, Jtsr);
-    for (int j = 0; j < _dof_robot; j++) {
-        Jrot_robot(0, j) = 2 * Tdiff.rot[0] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[0]
-                                               + Jrobot[1 * _dof_robot + j] * Ttsr.rot[1]
-                                               + Jrobot[2 * _dof_robot + j] * Ttsr.rot[2]
-                                               + Jrobot[3 * _dof_robot + j] * Ttsr.rot[3]);
-        Jrot_robot(1, j) = 2 * Tdiff.rot[1] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[1]
-                                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[0]
-                                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[3]
-                                               + Jrobot[3 * _dof_robot + j] * Ttsr.rot[2]);
-        Jrot_robot(2, j) = 2 * Tdiff.rot[2] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[2]
-                                               + Jrobot[1 * _dof_robot + j] * Ttsr.rot[3]
-                                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[0]
-                                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[1]);
-        Jrot_robot(3, j) = 2 * Tdiff.rot[3] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[3]
-                                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[2]
-                                               + Jrobot[2 * _dof_robot + j] * Ttsr.rot[1]
-                                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[0]);
-    }
-    for (int j = 0; j < _dof_tsr; j++) {
-        Jrot_tsr(0, j) = 2 * Tdiff.rot[0] * (Trobot.rot[0] * Jtsr[0 * _dof_tsr + j]
-                                             + Trobot.rot[1] * Jtsr[1 * _dof_tsr + j]
-                                             + Trobot.rot[2] * Jtsr[2 * _dof_tsr + j]
-                                             + Trobot.rot[3] * Jtsr[3 * _dof_tsr + j]);
-        Jrot_tsr(1, j) = 2 * Tdiff.rot[1] * (Trobot.rot[0] * Jtsr[1 * _dof_tsr + j]
-                                             - Trobot.rot[1] * Jtsr[0 * _dof_tsr + j]
-                                             - Trobot.rot[2] * Jtsr[3 * _dof_tsr + j]
-                                             + Trobot.rot[3] * Jtsr[2 * _dof_tsr + j]);
-        Jrot_tsr(2, j) = 2 * Tdiff.rot[2] * (Trobot.rot[0] * Jtsr[2 * _dof_tsr + j]
-                                             + Trobot.rot[1] * Jtsr[3 * _dof_tsr + j]
-                                             - Trobot.rot[2] * Jtsr[0 * _dof_tsr + j]
-                                             - Trobot.rot[3] * Jtsr[1 * _dof_tsr + j]);
-        Jrot_tsr(3, j) = 2 * Tdiff.rot[3] * (Trobot.rot[0] * Jtsr[3 * _dof_tsr + j]
-                                             - Trobot.rot[1] * Jtsr[2 * _dof_tsr + j]
-                                             + Trobot.rot[2] * Jtsr[1 * _dof_tsr + j]
-                                             - Trobot.rot[3] * Jtsr[0 * _dof_tsr + j]);
-    }
-
-    _robot->CalculateActiveJacobian(_robot_eeindex, Trobot.trans, Jrobot);
-    _tsr_robot->CalculateActiveJacobian(_tsr_eeindex, Ttsr.trans, Jtsr);
-    for (int i = 0; i < 3; i++) {
-        unsigned int j;
-        for (j = 0; j < _dof_robot; j++) {
-            Jtrans_robot(i, j) = Jrobot[i * _dof_robot + j];
-        }
-        for (j = 0; j < _dof_tsr; j++) {
-            Jtrans_tsr(i, j) = -Jtsr[i * _dof_tsr + j];
-        }
-    }
-    std::cout << "!!!Jacobian: " << std::endl;
-    std::cout << out << std::endl;
-    Eigen::MatrixXd out_old(7, 11);
-    Constraint::jacobian(x, out_old);
-    std::cout << "!!!Old Jacobian: " << std::endl;
-    std::cout << out_old << std::endl;
-    std::cout << "!!!Diff: " << std::endl;
-    std::cout << out_old - out << std::endl;
-}
+//void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
+//    robotFK(x);
+//    OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
+//    OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
+//    OpenRAVE::Transform Tdiff = Trobot.inverse() * Ttsr;
+//
+//    auto Jrot_robot = out.block(0, 0, 4, _dof_robot);
+//    auto Jrot_tsr = out.block(0, _dof_robot, 4, _dof_tsr);
+//    auto Jtrans_robot = out.block(4, 0, 3, _dof_robot);
+//    auto Jtrans_tsr = out.block(4, _dof_robot, 3, _dof_tsr);
+//
+//    std::vector<OpenRAVE::dReal> Jrobot, Jtsr;
+//
+//    _robot->CalculateActiveRotationJacobian(_robot_eeindex, Trobot.rot, Jrobot);
+//    _tsr_robot->CalculateActiveRotationJacobian(_tsr_eeindex, Ttsr.rot, Jtsr);
+//    for (int j = 0; j < _dof_robot; j++) {
+//        Jrot_robot(0, j) = 2 * Tdiff.rot[0] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[0]
+//                                               + Jrobot[1 * _dof_robot + j] * Ttsr.rot[1]
+//                                               + Jrobot[2 * _dof_robot + j] * Ttsr.rot[2]
+//                                               + Jrobot[3 * _dof_robot + j] * Ttsr.rot[3]);
+//        Jrot_robot(1, j) = 2 * Tdiff.rot[1] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[1]
+//                                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[0]
+//                                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[3]
+//                                               + Jrobot[3 * _dof_robot + j] * Ttsr.rot[2]);
+//        Jrot_robot(2, j) = 2 * Tdiff.rot[2] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[2]
+//                                               + Jrobot[1 * _dof_robot + j] * Ttsr.rot[3]
+//                                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[0]
+//                                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[1]);
+//        Jrot_robot(3, j) = 2 * Tdiff.rot[3] * (Jrobot[0 * _dof_robot + j] * Ttsr.rot[3]
+//                                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[2]
+//                                               + Jrobot[2 * _dof_robot + j] * Ttsr.rot[1]
+//                                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[0]);
+//    }
+//    for (int j = 0; j < _dof_tsr; j++) {
+//        Jrot_tsr(0, j) = 2 * Tdiff.rot[0] * (Trobot.rot[0] * Jtsr[0 * _dof_tsr + j]
+//                                             + Trobot.rot[1] * Jtsr[1 * _dof_tsr + j]
+//                                             + Trobot.rot[2] * Jtsr[2 * _dof_tsr + j]
+//                                             + Trobot.rot[3] * Jtsr[3 * _dof_tsr + j]);
+//        Jrot_tsr(1, j) = 2 * Tdiff.rot[1] * (Trobot.rot[0] * Jtsr[1 * _dof_tsr + j]
+//                                             - Trobot.rot[1] * Jtsr[0 * _dof_tsr + j]
+//                                             - Trobot.rot[2] * Jtsr[3 * _dof_tsr + j]
+//                                             + Trobot.rot[3] * Jtsr[2 * _dof_tsr + j]);
+//        Jrot_tsr(2, j) = 2 * Tdiff.rot[2] * (Trobot.rot[0] * Jtsr[2 * _dof_tsr + j]
+//                                             + Trobot.rot[1] * Jtsr[3 * _dof_tsr + j]
+//                                             - Trobot.rot[2] * Jtsr[0 * _dof_tsr + j]
+//                                             - Trobot.rot[3] * Jtsr[1 * _dof_tsr + j]);
+//        Jrot_tsr(3, j) = 2 * Tdiff.rot[3] * (Trobot.rot[0] * Jtsr[3 * _dof_tsr + j]
+//                                             - Trobot.rot[1] * Jtsr[2 * _dof_tsr + j]
+//                                             + Trobot.rot[2] * Jtsr[1 * _dof_tsr + j]
+//                                             - Trobot.rot[3] * Jtsr[0 * _dof_tsr + j]);
+//    }
+//
+//    _robot->CalculateActiveJacobian(_robot_eeindex, Trobot.trans, Jrobot);
+//    _tsr_robot->CalculateActiveJacobian(_tsr_eeindex, Ttsr.trans, Jtsr);
+//    for (int i = 0; i < 3; i++) {
+//        unsigned int j;
+//        for (j = 0; j < _dof_robot; j++) {
+//            Jtrans_robot(i, j) = Jrobot[i * _dof_robot + j];
+//        }
+//        for (j = 0; j < _dof_tsr; j++) {
+//            Jtrans_tsr(i, j) = -Jtsr[i * _dof_tsr + j];
+//        }
+//    }
+//    std::cout << "!!!Jacobian: " << std::endl;
+//    std::cout << out << std::endl;
+//    Eigen::MatrixXd out_old(7, 11);
+//    Constraint::jacobian(x, out_old);
+//    std::cout << "!!!Old Jacobian: " << std::endl;
+//    std::cout << out_old << std::endl;
+//    std::cout << "!!!Diff: " << std::endl;
+//    std::cout << out_old - out << std::endl;
+//}

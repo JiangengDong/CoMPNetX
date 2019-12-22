@@ -98,9 +98,9 @@ class LiftingBoxProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<planner_parameters time="30" range="0"/>
+            """<planner_parameters time="10" range="0"/>
                                     <constraint_parameters tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
-                                    <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.1" alpha="0.392699" 
+                                    <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.08" alpha="0.392699" 
                                         max_charts="500" using_bias="1" using_tb="0" separate="0"/>
                                     <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
                                         <tsr manipulator_index="0" relative_body_name="NULL" 
