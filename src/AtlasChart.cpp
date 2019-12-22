@@ -236,10 +236,10 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
     }
 
     if(norm < squaredTolerance){
-        OMPL_INFORM("Projection succeeded.");
+//        OMPL_INFORM("Projection succeeded.");
         return true;
     }else {
-        OMPL_WARN("Projection failed!");
+//        OMPL_WARN("Projection failed!");
         return false;
     }
 }

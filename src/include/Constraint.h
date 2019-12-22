@@ -17,21 +17,19 @@ namespace AtlasMPNet {
 
         TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot);
 
-        ~TSRChainConstraint() override { delete[] _tsrjointval; }
-
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
-//        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
 
     private:
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
         unsigned int _dof_robot;
         unsigned int _dof_tsr;
-        mutable double* _tsrjointval = nullptr;
 
         // temporary variables
-
+        int _robot_eeindex;
+        int _tsr_eeindex;
 
         void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
     };
