@@ -42,11 +42,11 @@ namespace AtlasMPNet {
         int manipind; ///< this specifies the index of the manipulator of the robot that is associated with this TSR
         std::string relativebodyname; ///< name of the body T0_w is attached to (NULL = world frame)
         std::string relativelinkname; ///< name of the link T0_w is attached to (NULL = world frame)
-        OpenRAVE::KinBody::LinkPtr prelativetolink; ///< pointer to the link T0_w is attached to (NULL = world frame), this can be the link of a robot or of something else
         OpenRAVE::Transform T0_w; ///< the center of the TSR relative to the link it is attached to (or relative to world frame)
         OpenRAVE::Transform Tw_e; ///< the end-effector offset of this TSR
         OpenRAVE::dReal Bw[6][2]; ///< matrix defining maximum and minimum allowable deviation from T0_w in x,y,z,roll,pitch,and yaw
 
+        OpenRAVE::KinBody::LinkPtr prelativetolink; ///< pointer to the link T0_w is attached to (NULL = world frame), this can be the link of a robot or of something else
         static OpenRAVE::Vector RPYIdentityOffsets[8]; ///< list of RPY identities
 
         TaskSpaceRegion();

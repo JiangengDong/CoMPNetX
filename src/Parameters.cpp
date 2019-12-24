@@ -73,7 +73,11 @@ SimpleXMLReader::ProcessElement ConstraintParameters::startElement(std::string c
                     value >> delta_;
                 else if (key == "lambda")
                     value >> lambda_;
-                else
+                else if (key == "type") {
+                    int tmp;
+                    value >> tmp;
+                    type_ = static_cast<SpaceType>(tmp);
+                } else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
@@ -93,6 +97,7 @@ bool ConstraintParameters::endElement(std::string const &name) {
 
 bool ConstraintParameters::serialize(std::ostream &O) const {
     O << "<" << _tag_name
+      << " type=\"" << type_ << "\""
       << " tolerance=\"" << tolerance_ << "\""
       << " max_iter=\"" << max_iter_ << "\""
       << " delta=\"" << delta_ << "\""
@@ -126,8 +131,6 @@ SimpleXMLReader::ProcessElement AtlasParameters::startElement(std::string const 
                     value >> max_charts_;
                 else if (key == "using_bias")
                     value >> using_bias_;
-                else if (key == "using_tb")
-                    value >> using_tb_;
                 else if (key == "separate")
                     value >> separate_;
                 else
@@ -156,7 +159,6 @@ bool AtlasParameters::serialize(std::ostream &O) const {
       << " alpha=\"" << alpha_ << "\""
       << " max_charts=\"" << max_charts_ << "\""
       << " using_bias=\"" << using_bias_ << "\""
-      << " using_tb=\"" << using_tb_ << "\""
       << " separate=\"" << separate_ << "\""
       << "/>";
     return true;
@@ -166,11 +168,11 @@ bool AtlasParameters::serialize(std::ostream &O) const {
  * implementation of PlannnerParameters
  */
 Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
-    _vXMLParameters.emplace_back("planner_parameters");
-    _vXMLParameters.emplace_back("constraint_parameters");
-    _vXMLParameters.emplace_back("atlas_parameters");
-    _vXMLParameters.emplace_back("tsr_chain");
-    _vXMLParameters.emplace_back("tsr");
+    _vXMLParameters.emplace_back(solver_parameters_.getTagName());
+    _vXMLParameters.emplace_back(constraint_parameters_.getTagName());
+    _vXMLParameters.emplace_back(atlas_parameters_.getTagName());
+    _vXMLParameters.emplace_back(tsrchain_parameters_.getTagName());
+    _vXMLParameters.emplace_back("tsr");    // TODO: improve this part later
 }
 
 Parameters::~Parameters() = default;
@@ -227,7 +229,7 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     if (!OpenRAVE::PlannerBase::PlannerParameters::serialize(O, options)) {
         return false;
     }
-    O << planner_parameters_ << std::endl
+    O << solver_parameters_ << std::endl
       << constraint_parameters_ << std::endl
       << atlas_parameters_ << std::endl
       << tsrchain_parameters_ << std::endl;
@@ -238,7 +240,7 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
     OpenRAVE::BaseXMLReader::ProcessElement status;
     if ((status = OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts)) != PE_Pass)
         return status;
-    if ((status = planner_parameters_.startElement(name, atts)) != PE_Pass)
+    if ((status = solver_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
     if ((status = constraint_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
@@ -252,7 +254,7 @@ bool Parameters::endElement(std::string const &name) {
     return !tsrchain_parameters_.endElement(name) &&
            !atlas_parameters_.endElement(name) &&
            !constraint_parameters_.endElement(name) &&
-           !planner_parameters_.endElement(name) &&
+           !solver_parameters_.endElement(name) &&
            PlannerParameters::endElement(name);
 }
 

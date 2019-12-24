@@ -36,23 +36,23 @@ def MakeTransform(rot,trans):
     elif size(rot,0) == 3 and size(rot,1) == 3:
         tm = rot
     else:
-        print('rotation improperly specified');
+        print('rotation improperly specified')
 
     if size(trans,0) == 3 and size(trans,1) == 1:
         tm = bmat('tm trans')
     elif size(trans,0) == 1 and size(trans,1) == 3:
         tm = bmat('tm trans.T')
     else:
-        print('translation improperly specified');
+        print('translation improperly specified')
     
     lastrow = mat([0,0,0,1])
     return bmat('tm; lastrow')
 
 def GetRot(tm):
-    return mat(tm[0:3][:,0:3].T.reshape(1,9));
+    return mat(tm[0:3][:,0:3].T.reshape(1,9))
 
 def GetTrans(tm):
-    return mat(tm[0:3][:,3].T);
+    return mat(tm[0:3][:,3].T)
 
 def SerializeTransform(tm):
     rot = GetRot(tm)

@@ -154,6 +154,10 @@ namespace AtlasMPNet {
             return bConstrainToChain;
         }
 
+        const std::string& getTagName() {
+            return _tag_name;
+        }
+
     private:
 
         void DestoryRobotizedTSRChain(); ///< delete the virtual manipulator from the environment
@@ -161,17 +165,17 @@ namespace AtlasMPNet {
         bool bSampleGoalFromChain;
         bool bSampleStartFromChain;
         bool bConstrainToChain;
+        std::string mimicbodyname;
+        std::vector<int> _mimicinds;
 
         OpenRAVE::Transform Tw0_e;
         int numdof;
 
         OpenRAVE::RobotBasePtr robot;
         OpenRAVE::IkSolverBasePtr _pIkSolver;
-        OpenRAVE::EnvironmentBasePtr penv;
 
-        std::string mimicbodyname;
+        OpenRAVE::EnvironmentBasePtr penv;
         OpenRAVE::RobotBasePtr _pmimicbody;
-        std::vector<int> _mimicinds;
         std::vector<OpenRAVE::dReal> _mimicjointvals_temp;
         std::vector<OpenRAVE::dReal> _mimicjointoffsets;
         std::vector<OpenRAVE::dReal> _lowerlimits;

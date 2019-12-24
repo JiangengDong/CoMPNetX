@@ -27,6 +27,10 @@ namespace AtlasMPNet {
 
         void characters(const std::string &ch) override {}
 
+        virtual const std::string &getTagName() {
+            return _tag_name;
+        }
+
     protected:
         bool _tag_open = false;
         const std::string _tag_name;
@@ -42,7 +46,7 @@ namespace AtlasMPNet {
         double time_ = 5.0; // Planning time allowed.
         double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 
-        SolverParameters() : SimpleXMLReader("planner_parameters") {}
+        SolverParameters() : SimpleXMLReader("solver_parameters") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -57,6 +61,9 @@ namespace AtlasMPNet {
      */
     class ConstraintParameters : public SimpleXMLReader {
     public:
+        enum SpaceType {
+            PROJECTION = 0, ATLAS, TANGENT_BUNDLE
+        } type_ = ATLAS;
         double tolerance_ = ompl::magic::CONSTRAINT_PROJECTION_TOLERANCE; // Constraint satisfaction tolerance.
         unsigned int max_iter_ = ompl::magic::CONSTRAINT_PROJECTION_MAX_ITERATIONS; // Maximum number sample tries per sample.
         double delta_ = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA; // Step-size for discrete geodesic on manifold.
@@ -83,9 +90,8 @@ namespace AtlasMPNet {
         double alpha_ = ompl::magic::ATLAS_STATE_SPACE_ALPHA; // Maximum angle between an atlas chart and the manifold. Must be in [0, PI/2].
         unsigned int max_charts_ = ompl::magic::ATLAS_STATE_SPACE_MAX_CHARTS_PER_EXTENSION; // Maximum number of atlas charts that can be generated during one manifold traversal.
         bool using_bias_ = false; // Sets whether the atlas should use frontier-biased chart sampling rather than uniform.
-        bool using_tb_ = false; // Sets whether the constrained configuration space will use tangent bundle.
 
-        bool separate_ = false; // Sets that the atlas should not compute chart separating halfspaces.
+        bool separate_ = false; // (Only used in atlas state space!) Sets that the atlas should not compute chart separating halfspaces.
 
         AtlasParameters() : SimpleXMLReader("atlas_parameters") {}
 
@@ -113,11 +119,15 @@ namespace AtlasMPNet {
         ~Parameters() override;
 
         bool getStartState(double *start) const;
+
         bool getStartState(ompl::base::ScopedState<> &start) const;
+
         bool getStartState(std::vector<double> &start) const;
 
         bool getGoalState(double *goal) const;
+
         bool getGoalState(ompl::base::ScopedState<> &goal) const;
+
         bool getGoalState(std::vector<double> &goal) const;
 
         bool serialize(std::ostream &O, int options) const override;
@@ -126,7 +136,7 @@ namespace AtlasMPNet {
 
         bool endElement(std::string const &name) override;
 
-        SolverParameters planner_parameters_;
+        SolverParameters solver_parameters_;
         ConstraintParameters constraint_parameters_;
         AtlasParameters atlas_parameters_;
         TaskSpaceRegionChain tsrchain_parameters_;

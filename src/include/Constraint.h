@@ -19,7 +19,9 @@ namespace AtlasMPNet {
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
-//        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+        void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+
+        bool project(Eigen::Ref<Eigen::VectorXd> x) const override;
 
     private:
         OpenRAVE::RobotBasePtr _robot;
@@ -32,6 +34,8 @@ namespace AtlasMPNet {
         int _tsr_eeindex;
 
         void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
+
+        void getIndependentRows();
     };
 }
 #endif //ATLASMPNET_CONSTRAINT_H

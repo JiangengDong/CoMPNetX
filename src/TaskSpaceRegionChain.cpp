@@ -121,7 +121,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 if (i.Bw[j][0] == 0 && i.Bw[j][1] == 0)
                     continue;
 
-                //TODO: If the bounds are equal and non-zero, do something reasonable
                 if (i.Bw[j][0] == i.Bw[j][1]) {
                             RAVELOG_FATAL(
                             "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
@@ -389,7 +388,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 if (tsr.Bw[j][0] == 0 && tsr.Bw[j][1] == 0)
                     continue;
 
-                //TODO: If the bounds are equal and non-zero, do something reasonable
                 if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
                             RAVELOG_FATAL(
                             "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");

@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/rrt/RRT.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <boost/make_shared.hpp>
 
 #include "Problem.h"
@@ -47,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StateValidityChecker.h"
 #include "SemiToroidalStateSpace.h"
 #include "or_conversions.h"
+#include "ProjectedStateSpace.h"
 #include "AtlasStateSpace.h"
 #include "TangentBundleStateSpace.h"
 
@@ -87,42 +89,68 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
 OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
     OpenRAVE::PlannerStatus plannerStatus = OpenRAVE::PS_Failed;
     if (!initialized_) {
-        RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
+                RAVELOG_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
-    simple_setup_->setup();     // TODO: why it stops here?
-    boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
-    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->planner_parameters_.time_);
-    boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
-            RAVELOG_INFO("Find a solution after %f s.", boost::chrono::duration_cast<boost::chrono::duration<double> >(toc - tic).count());
-            RAVELOG_INFO("Atlas charts: %d", constrained_state_space_->getChartCount());
-    if (status) {
-        auto ompl_traj = simple_setup_->getSolutionPath();
-        size_t const dof_robot = robot_->GetActiveDOF();
-        ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
-        ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
-        std::vector<double> values, robot_values;
-        for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
-            space->copyToReals(values, ompl_traj.getState(i));
-            robot_values.assign(values.begin(), values.begin() + dof_robot);
-            ptraj->Insert(i, robot_values, true);
-        }
-
-        // print the result
-        std::stringstream ss;
-        ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
-        auto state = ompl_traj.getState(0);
-        for (size_t i = 0; i < ompl_traj.getStateCount(); ++i) {
-            state = ompl_traj.getState(i);
-            space->copyToReals(values, state);
-            ss << "\tstate " << i << ":\t";
-            for (auto value:values) {
-                ss << " " << value;
+    simple_setup_->setup();
+    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameters_.time_);
+    if(parameters_->constraint_parameters_.type_ != ConstraintParameters::PROJECTION)
+            RAVELOG_INFO("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
+    switch (ompl::base::PlannerStatus::StatusType(status)) {
+        case ompl::base::PlannerStatus::UNKNOWN:
+                    RAVELOG_WARN("Unknown status!");
+            break;
+        case ompl::base::PlannerStatus::INVALID_START:
+                    RAVELOG_WARN("Invalid start!");
+            break;
+        case ompl::base::PlannerStatus::INVALID_GOAL:
+                    RAVELOG_WARN("Invalid goal!");
+            break;
+        case ompl::base::PlannerStatus::UNRECOGNIZED_GOAL_TYPE:
+                    RAVELOG_WARN("Unrecognized goal type!");
+            break;
+        case ompl::base::PlannerStatus::TIMEOUT:
+                    RAVELOG_WARN("Failed to find a solution!");
+            break;
+        case ompl::base::PlannerStatus::CRASH:
+                    RAVELOG_WARN("The planner crashed!");
+            break;
+        case ompl::base::PlannerStatus::ABORT:
+                    RAVELOG_WARN("The planner did not find a solution for some other reason!");
+            break;
+        case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
+                    RAVELOG_WARN("Found an approximate solution. ");
+        case ompl::base::PlannerStatus::EXACT_SOLUTION: {
+            auto ompl_traj = simple_setup_->getSolutionPath();
+            size_t const dof_robot = robot_->GetActiveDOF();
+            ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
+            ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
+            std::vector<double> values, robot_values;
+            for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
+                space->copyToReals(values, ompl_traj.getState(i));
+                robot_values.assign(values.begin(), values.begin() + dof_robot);
+                ptraj->Insert(i, robot_values, true);
             }
-            ss << " \tdistance to manifold: " << constraint_->distance(state) << std::endl;
+
+            // print the result
+            std::stringstream ss;
+            ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
+            auto state = ompl_traj.getState(0);
+            for (size_t i = 0; i < ompl_traj.getStateCount(); ++i) {
+                state = ompl_traj.getState(i);
+                space->copyToReals(values, state);
+                ss << "\tstate " << i << ":\t";
+                for (auto value:values) {
+                    ss << " " << value;
+                }
+                ss << " \tdistance to manifold: " << constraint_->distance(state) << std::endl;
+            }
+                    RAVELOG_INFO(ss.str());
+            plannerStatus = OpenRAVE::PS_HasSolution;
+            break;
         }
-                RAVELOG_INFO(ss.str());
-        plannerStatus = OpenRAVE::PS_HasSolution;
+        default:
+            break;
     }
     return plannerStatus;
 }
@@ -132,7 +160,7 @@ OpenRAVE::PlannerBase::PlannerParametersConstPtr AtlasMPNet::Problem::GetParamet
 }
 
 bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream &sin) const {
-    sout << parameters_->planner_parameters_ << std::endl
+    sout << parameters_->solver_parameters_ << std::endl
          << parameters_->constraint_parameters_ << std::endl
          << parameters_->atlas_parameters_ << std::endl
          << parameters_->tsrchain_parameters_ << std::endl;
@@ -249,30 +277,43 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsr_robot_);
     // create the constrained configuration space
-    if (parameters_->atlas_parameters_.using_tb_) { // tangent state space
-        constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
-        constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
-    } else {    // Atlas state space
-        constrained_state_space_ = std::make_shared<ompl::base::AtlasStateSpace>(ambient_state_space_, constraint_);
-        constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
-        constrained_state_space_->setSeparated(parameters_->atlas_parameters_.separate_);
+    switch (parameters_->constraint_parameters_.type_) {
+        case ConstraintParameters::PROJECTION:
+            constrained_state_space_ = std::make_shared<ompl::base::ProjectedStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
+            break;
+        case ConstraintParameters::ATLAS:
+            constrained_state_space_ = std::make_shared<ompl::base::AtlasStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
+            break;
+        case ConstraintParameters::TANGENT_BUNDLE:
+            constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
+            break;
     }
     // setup parameters
     constraint_->setTolerance(parameters_->constraint_parameters_.tolerance_);
     constraint_->setMaxIterations(parameters_->constraint_parameters_.max_iter_);
     constrained_state_space_->setDelta(parameters_->constraint_parameters_.delta_);
     constrained_state_space_->setLambda(parameters_->constraint_parameters_.lambda_);
-    constrained_state_space_->setExploration(parameters_->atlas_parameters_.exploration_);
-    constrained_state_space_->setEpsilon(parameters_->atlas_parameters_.epsilon_);
-    constrained_state_space_->setRho(parameters_->atlas_parameters_.rho_);
-    constrained_state_space_->setAlpha(parameters_->atlas_parameters_.alpha_);
-    constrained_state_space_->setMaxChartsPerExtension(parameters_->atlas_parameters_.max_charts_);
+    if (parameters_->constraint_parameters_.type_ == ConstraintParameters::ATLAS ||
+        parameters_->constraint_parameters_.type_ == ConstraintParameters::TANGENT_BUNDLE) {
+        auto constrained_state_space_temp = constrained_state_space_->as<ompl::base::AtlasStateSpace>();
+        constrained_state_space_temp->setExploration(parameters_->atlas_parameters_.exploration_);
+        constrained_state_space_temp->setEpsilon(parameters_->atlas_parameters_.epsilon_);
+        constrained_state_space_temp->setRho(parameters_->atlas_parameters_.rho_);
+        constrained_state_space_temp->setAlpha(parameters_->atlas_parameters_.alpha_);
+        constrained_state_space_temp->setMaxChartsPerExtension(parameters_->atlas_parameters_.max_charts_);
 
-    auto &&atlas = constrained_state_space_;
-    if (parameters_->atlas_parameters_.using_bias_) { // add different weight for sampling to different charts
-        constrained_state_space_->setBiasFunction([atlas](ompl::base::AtlasChart *c) -> double {
-            return 1.0 + atlas->getChartCount() - c->getNeighborCount();
-        });
+        auto &&atlas = constrained_state_space_temp;
+        if (parameters_->atlas_parameters_.using_bias_) { // add different weight for sampling to different charts
+            constrained_state_space_temp->setBiasFunction([atlas](ompl::base::AtlasChart *c) -> double {
+                return 1.0 + atlas->getChartCount() - c->getNeighborCount();
+            });
+        }
+        if (parameters_->constraint_parameters_.type_ == ConstraintParameters::ATLAS) {
+            constrained_state_space_temp->setSeparated(parameters_->atlas_parameters_.separate_);
+        }
     }
     constrained_state_space_->setup();
 
@@ -280,18 +321,35 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     if (constrained_state_space_ != nullptr) {
         std::stringstream ss;
         ss << "Constructed constrained state space successfully." << std::endl;
+        switch (parameters_->constraint_parameters_.type_) {
+            case ConstraintParameters::PROJECTION:
+                ss << "\tType: Projection" << std::endl;
+                break;
+            case ConstraintParameters::ATLAS:
+                ss << "\tType: Atlas" << std::endl;
+                break;
+            case ConstraintParameters::TANGENT_BUNDLE:
+                ss << "\tType: Tangent bundle" << std::endl;
+                break;
+        }
         ss << "\tDimension of manifold: " << constrained_state_space_->getManifoldDimension() << std::endl;
-        ss << "\tParameters of constraint: " << std::endl;
+        ss << "\tParameters of constrained state space: " << std::endl;
         ss << "\t\tTolerance: " << constraint_->getTolerance() << std::endl;
         ss << "\t\tMax projection iteration:" << constraint_->getMaxIterations() << std::endl;
-        ss << "\tParameters of constrained state space: " << std::endl;
         ss << "\t\tDelta (Step-size for discrete geodesic on manifold): " << constrained_state_space_->getDelta() << std::endl;
         ss << "\t\tLambda (Maximum `wandering` allowed during traversal): " << constrained_state_space_->getLambda() << std::endl;
-        ss << "\t\tExploration (tunes balance of refinement and exploration in atlas sampling): " << constrained_state_space_->getExploration() << std::endl;
-        ss << "\t\tEpsilon (max distance from manifold to chart): " << constrained_state_space_->getEpsilon() << std::endl;
-        ss << "\t\tRho (max radius for an atlas chart): " << constrained_state_space_->getRho() << std::endl;
-        ss << "\t\tAlpha (max angle between chart and manifold): " << constrained_state_space_->getAlpha() << std::endl;
-        ss << "\t\tMax chart generated during a traversal: " << constrained_state_space_->getMaxChartsPerExtension();
+        if (parameters_->constraint_parameters_.type_ == ConstraintParameters::PROJECTION) {
+                    RAVELOG_INFO(ss.str());
+            return true;
+        }
+        auto constrained_state_space_temp = constrained_state_space_->as<ompl::base::AtlasStateSpace>();
+        ss << "\tParameters of atlas state space: " << std::endl;
+        ss << "\t\tExploration (tunes balance of refinement and exploration in atlas sampling): " << constrained_state_space_temp->getExploration()
+           << std::endl;
+        ss << "\t\tEpsilon (max distance from manifold to chart): " << constrained_state_space_temp->getEpsilon() << std::endl;
+        ss << "\t\tRho (max radius for an atlas chart): " << constrained_state_space_temp->getRho() << std::endl;
+        ss << "\t\tAlpha (max angle between chart and manifold): " << constrained_state_space_temp->getAlpha() << std::endl;
+        ss << "\t\tMax chart generated during a traversal: " << constrained_state_space_temp->getMaxChartsPerExtension();
                 RAVELOG_INFO(ss.str());
         return true;
     } else {
@@ -341,8 +399,11 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
         start[i + dof_robot] = tsr_start[i];
         goal[i + dof_robot] = tsr_goal[i];
     }
-    constrained_state_space_->anchorChart(start.get());
-    constrained_state_space_->anchorChart(goal.get());
+    if (parameters_->constraint_parameters_.type_ != ConstraintParameters::PROJECTION){
+        auto constrained_state_space_temp = constrained_state_space_->as<ompl::base::AtlasStateSpace>();
+        constrained_state_space_temp->anchorChart(start.get());
+        constrained_state_space_temp->anchorChart(goal.get());
+    }
     simple_setup_->setStartAndGoalStates(start, goal);
 
     // print result
@@ -392,23 +453,17 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check m
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
-//    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
-//    if (parameters_->planner_parameters_.range_ == 0)
-//        planner_->as<ompl::geometric::RRT>()->setRange(constrained_state_space_->getRho_s());
-//    else
-//        planner_->as<ompl::geometric::RRT>()->setRange(parameters_->planner_parameters_.range_);
-    planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
-    if (parameters_->planner_parameters_.range_ == 0)
-        planner_->as<ompl::geometric::RRTstar>()->setRange(constrained_state_space_->getRho_s());
-    else
-        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->planner_parameters_.range_);
+    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
+    planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameters_.range_);
     simple_setup_->setPlanner(planner_);
 
     // print result
     if (planner_ != nullptr) {
         std::stringstream ss;
         ss << "Constructed planner successfully." << std::endl;
-        ss << "\tPlanner: " << planner_->getName();
+        ss << "\tPlanner: " << planner_->getName() << std::endl;
+        ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange() << std::endl;
+//        ss << "\t\tGoal Bias: " << planner_->as<ompl::geometric::RRTConnect>()->getGoalBias();
                 RAVELOG_INFO(ss.str());
         return true;
     } else {

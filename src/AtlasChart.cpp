@@ -148,8 +148,6 @@ ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStat
               constraint_->jacobian(*state_, j);
 
               Eigen::FullPivLU<Eigen::MatrixXd> decomp = j.fullPivLu();
-              if (!decomp.isSurjective())
-                  throw ompl::Exception("Cannot compute full-rank tangent space.");
 
               // Compute the null space and orthonormalize, which is a basis for the tangent space.
               return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
