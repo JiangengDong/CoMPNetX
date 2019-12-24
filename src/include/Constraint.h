@@ -34,8 +34,6 @@ namespace AtlasMPNet {
         int _tsr_eeindex;
 
         void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;
-
-        void getIndependentRows();
     };
 }
 #endif //ATLASMPNET_CONSTRAINT_H

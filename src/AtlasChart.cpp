@@ -151,10 +151,8 @@ ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStat
 
               // Compute the null space and orthonormalize, which is a basis for the tangent space.
               return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
-              // TODO: I think this can work for redundent constraint functions, but I am not sure. Check this later.
           }()), radius_(atlas->getRho_s()), r_(bigPhi_.cols()) {
 } // TODO: consider how to deal with singular points
-// TODO: A method for speed up: record which rows are linearly independent, are just consider them later.
 
 ompl::base::AtlasChart::~AtlasChart() {
     clear();
@@ -206,8 +204,7 @@ bool ompl::base::AtlasChart::psi(const Eigen::Ref<const Eigen::VectorXd> &u, Eig
         constraint_->jacobian(out, A.block(0, 0, n_ - k_, n_));
 
         // Move in the direction that decreases F(out) and is perpendicular to the chart.
-//        direction = A.partialPivLu().solve(b);
-        direction = (A.transpose()*A).inverse()*A.transpose()*b;
+        direction = A.partialPivLu().solve(b);
         stepsize = 2;
         do {
             // Loop in this block means that an overshoot happens. Shrink the stepsize.
