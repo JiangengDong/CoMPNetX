@@ -26,6 +26,11 @@ SimpleXMLReader::ProcessElement SolverParameters::startElement(std::string const
                     value >> time_;
                 else if (key == "range")
                     value >> range_;
+                else if (key == "type") {
+                    int tmp;
+                    value >> tmp;
+                    type_ = static_cast<SolverType>(tmp);
+                }
                 else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
             }

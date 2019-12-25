@@ -43,6 +43,7 @@ namespace AtlasMPNet {
      */
     class SolverParameters : public SimpleXMLReader {
     public:
+        enum SolverType {RRT=0, RRTStar, RRTConnect, MPNet} type_=RRT;
         double time_ = 5.0; // Planning time allowed.
         double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 

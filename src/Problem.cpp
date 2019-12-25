@@ -453,8 +453,22 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check m
 }
 
 bool AtlasMPNet::Problem::setPlanner() {
-    planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
-    planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameters_.range_);
+    switch (parameters_->solver_parameters_.type_) {
+        case SolverParameters::RRT:
+            planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
+            planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameters_.range_);
+            break;
+        case SolverParameters::RRTStar:
+            planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
+            planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameters_.range_);
+            break;
+        case SolverParameters::RRTConnect:
+            planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
+            planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameters_.range_);
+            break;
+        case SolverParameters::MPNet:
+            break;
+    }
     simple_setup_->setPlanner(planner_);
 
     // print result
@@ -462,8 +476,19 @@ bool AtlasMPNet::Problem::setPlanner() {
         std::stringstream ss;
         ss << "Constructed planner successfully." << std::endl;
         ss << "\tPlanner: " << planner_->getName() << std::endl;
-        ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange() << std::endl;
-//        ss << "\t\tGoal Bias: " << planner_->as<ompl::geometric::RRTConnect>()->getGoalBias();
+        switch (parameters_->solver_parameters_.type_) {
+            case SolverParameters::RRT:
+                ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange() << std::endl;
+                break;
+            case SolverParameters::RRTStar:
+                ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTstar>()->getRange() << std::endl;
+                break;
+            case SolverParameters::RRTConnect:
+                ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTConnect>()->getRange() << std::endl;
+                break;
+            case SolverParameters::MPNet:
+                break;
+        }
                 RAVELOG_INFO(ss.str());
         return true;
     } else {

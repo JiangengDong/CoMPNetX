@@ -19,12 +19,12 @@ from TransformMatrix import SerializeTransform
 from plannerParameters import PlannerParameters
 
 
-class LiftingBoxProblem:
+class DoorOpeningProblem:
     def __init__(self, initial_config):
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
-        self.env.Load('scenes/herb2_liftingbox.env.xml')
+        self.env.Load('scenes/intelkitchen_robotized_herb2.env.xml')
         self.robot = self.env.GetRobot("Herb2")
         self.manipulator_left = self.robot.GetManipulator('left_wam')
         self.manipulator_right = self.robot.GetManipulator('right_wam')
@@ -102,7 +102,7 @@ class LiftingBoxProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<solver_parameters time="5" range="0.05"/>
+            """<solver_parameters type="2" time="5" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
                <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.20" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
                <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
@@ -139,11 +139,10 @@ def main():
                             [0, 0, 1, 1.3989],
                             [0, 0, 0, 1]])
 
-    problem = LiftingBoxProblem(arm_initial_config)
+    problem = DoorOpeningProblem(arm_initial_config)
     problem.solve(box_initial_pose, box_goal_pose)
     # problem.grabBox()
     problem.liftBox()
-    input()
     # problem.releaseBox()
 
 
