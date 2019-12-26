@@ -43,6 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/StateValidityChecker.h>
 
+#include "TaskSpaceRegionChain.h"
+
 namespace AtlasMPNet {
     /*! \brief The Wrapper of the OpenRAVE collision checker for use in OMPL
      *
@@ -52,7 +54,7 @@ namespace AtlasMPNet {
     public:
         typedef std::shared_ptr<StateValidityChecker> Ptr;
         StateValidityChecker(const ompl::base::SpaceInformationPtr &si, OpenRAVE::RobotBasePtr robot,
-                             OpenRAVE::RobotBasePtr tsr_robot);
+                             OpenRAVE::RobotBasePtr tsr_robot, AtlasMPNet::TaskSpaceRegionChain::Ptr tsr_chain);
 
         bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
 
@@ -61,6 +63,7 @@ namespace AtlasMPNet {
     private:
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
+        AtlasMPNet::TaskSpaceRegionChain::Ptr _tsr_chain;
         OpenRAVE::EnvironmentBasePtr _env;
         const std::size_t _robot_dof;
         const std::size_t _tsr_dof;

@@ -12,11 +12,11 @@
 # the command to match your acutal install destination.
 
 import numpy as np
+import sys
 
 import openravepy as orpy
 
-from TransformMatrix import SerializeTransform
-from plannerParameters import PlannerParameters
+from utils import SerializeTransform
 
 
 class LiftingBoxProblem:
@@ -99,12 +99,10 @@ class LiftingBoxProblem:
         params.SetRobotActiveJoints(self.robot)
         params.SetInitialConfig(initial_config)
         params.SetGoalConfig(goal_config)
-        # TODO: the extra parameter is fixed now. Make it more flexible.
-        # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<solver_parameters type="2" time="5" range="0.05"/>
+            """<solver_parameters type="2" time="30" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
-               <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.20" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
+               <atlas_parameters exploration="0.6" epsilon="0.05" rho="0.08" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
                <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
                <tsr manipulator_index="0" relative_body_name="NULL" 
                                              T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
@@ -141,6 +139,8 @@ def main():
 
     problem = LiftingBoxProblem(arm_initial_config)
     problem.solve(box_initial_pose, box_goal_pose)
+    problem.setHandsConfig(arm_initial_config[7:], arm_initial_config[:7])
+    problem.box.SetTransform(np.array(box_initial_pose[:3, :]))
     # problem.grabBox()
     problem.liftBox()
     # problem.releaseBox()
@@ -148,4 +148,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # TODO: multiple TSRs for different manipulators
+    print "Press enter to exit..."
+    # sys.stdin.readline()

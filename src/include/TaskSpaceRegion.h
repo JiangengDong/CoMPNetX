@@ -39,6 +39,10 @@ namespace AtlasMPNet {
     /// Class defining a TSR: a simple representation of pose constraints
     class TaskSpaceRegion : public OpenRAVE::BaseXMLReader {
     public:
+        // TODO: we do not use TSR alone in our program.
+        //  A TSR is considered to be a TSRChain consisting of one TSR.
+        //  So the relative body name attribute should be put in TSRChain.
+        //  Change this part later.
         int manipind; ///< this specifies the index of the manipulator of the robot that is associated with this TSR
         std::string relativebodyname; ///< name of the body T0_w is attached to (NULL = world frame)
         std::string relativelinkname; ///< name of the link T0_w is attached to (NULL = world frame)

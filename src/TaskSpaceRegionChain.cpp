@@ -513,6 +513,16 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         joint_info->_type = OpenRAVE::KinBody::JointNone;
         joint_infos.emplace_back(joint_info);
 
+        std::stringstream ss;
+        ss << std::endl;
+        for(const auto& joint:joint_infos) {
+            ss << joint->_name << " " << joint->_linkname0 << " " << joint->_linkname1 << " " << joint->_type << std::endl;
+        }
+        for(auto link:link_infos) {
+            ss << link->_name << " " << link->_t << std::endl;
+        }
+        // TODO: there is a problem in robotize process. fix it. Change anchor can help.
+//        RAVELOG_INFO(ss.str());
         numdof = num_Body - 1;
         if (numdof > 0) {
             _bPointTSR = false;
@@ -623,6 +633,8 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
     TSRJointVals = *pq_s;
     T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform();
     return TransformDifference(T0_s, T0_closeset);
+    // TODO: there are too many methods in TSRChain that do not related to TSRChain. Decouple them later.
+    //  Simplify the code and make it elegant.
 }
 
 bool TaskSpaceRegionChain::serialize(std::ostream &O, int type) const {
@@ -855,16 +867,13 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dRea
     for (int i = 0; i < _mimicinds.size(); i++) {
         mimicbodyvals[_mimicinds[i]] = _mimicjointoffsets[_mimicinds[i]] + TSRJointVals[i];
     }
-
     return true;
 }
 
 bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals) {
     if (_pmimicbody == nullptr)
         return false;
-
     MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);
-
     _pmimicbody->SetJointValues(_mimicjointvals_temp, true);
     return true;
 }

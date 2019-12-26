@@ -84,6 +84,7 @@ namespace AtlasMPNet {
         or_matrix.trans.z = tf(2, 3);
         return or_matrix;
     }
+    // TODO: this header is not useful any more. delete it later.
 
 } // namespace AtlasMPNet
 

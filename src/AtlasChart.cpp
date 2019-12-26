@@ -149,10 +149,13 @@ ompl::base::AtlasChart::AtlasChart(const AtlasStateSpace *atlas, const AtlasStat
 
               Eigen::FullPivLU<Eigen::MatrixXd> decomp = j.fullPivLu();
 
+              if (!decomp.isSurjective())
+                  throw ompl::Exception("Cannot compute full-rank tangent space.");
+
               // Compute the null space and orthonormalize, which is a basis for the tangent space.
               return decomp.kernel().householderQr().householderQ() * Eigen::MatrixXd::Identity(n_, k_);
           }()), radius_(atlas->getRho_s()), r_(bigPhi_.cols()) {
-} // TODO: consider how to deal with singular points
+}
 
 ompl::base::AtlasChart::~AtlasChart() {
     clear();

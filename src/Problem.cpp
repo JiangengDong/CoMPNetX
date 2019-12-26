@@ -172,7 +172,11 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
     *tsr_chain_ = parameters_->tsrchain_parameters_;
     tsr_chain_->Initialize(env_);
-    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
+    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_, 0);
+    auto joints = tsr_robot_->GetJoints();
+    for (auto joint:joints){
+        std::cout << joint->GetName() << " " << joint->GetAnchor() << std::endl;
+    }
 
     // print the result
     if (tsr_robot_ != nullptr) {
@@ -382,7 +386,6 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     parameters_->getStartState(robot_start);   // get the joint values of real robot
     robot_->SetActiveDOFValues(robot_start);
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_start, Ttemp);    // get the joint values of virtual robot
-
     // goal config
     parameters_->getGoalState(robot_goal);
     robot_->SetActiveDOFValues(robot_goal);
@@ -437,9 +440,9 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     return true;
 }
 
-bool AtlasMPNet::Problem::setStateValidityChecker() {   // TODO: need to check mimic body and links
+bool AtlasMPNet::Problem::setStateValidityChecker() {
     std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
-    state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, tsr_robot_));
+    state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, tsr_robot_, tsr_chain_));
     simple_setup_->setStateValidityChecker(state_validity_checker_);
 
     // print result

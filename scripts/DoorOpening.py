@@ -12,10 +12,11 @@
 # the command to match your acutal install destination.
 
 import numpy as np
+import sys
 
 import openravepy as orpy
 
-from TransformMatrix import SerializeTransform
+from utils import SerializeTransform, RPY2Transform, quat2Transform
 from plannerParameters import PlannerParameters
 
 
@@ -25,18 +26,22 @@ class DoorOpeningProblem:
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
         self.env.Load('scenes/intelkitchen_robotized_herb2.env.xml')
-        self.robot = self.env.GetRobot("Herb2")
+        self.robot = self.env.GetRobot("BarrettWAM")
         self.manipulator_left = self.robot.GetManipulator('left_wam')
         self.manipulator_right = self.robot.GetManipulator('right_wam')
-        self.box = self.env.GetKinBody("box")
+        self.kitchen = self.env.GetKinBody("kitchen")
 
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
-        self.env.LoadProblem(self.cbirrt, "Herb2")
+        self.env.LoadProblem(self.cbirrt, "BarrettWAM")
 
         self.traj = orpy.RaveCreateTrajectory(self.env, '')
 
-        self.setHandsConfig(initial_config[7:], initial_config[:7])
+        self.setArmsConfig(initial_config)  # initial config of arms
+        self.setRightHandConfig([2, 2, 2])
+        self.robot.SetTransform(np.array([[-0.0024, -1, 0, 1.2996],  # initial transformation of robot
+                                          [1, -0.0024, 0, -0.6217],
+                                          [0, 0, 1, 0]]))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.env.GetViewer().quitmainloop()
@@ -48,43 +53,34 @@ class DoorOpeningProblem:
             self.robot.SetActiveManipulator(manipulator)
             q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
                                             (self.robot.GetActiveManipulatorIndex(), SerializeTransform(pose)))
-        return [float(theta) for theta in q_str.split()]
+        return [float(q) for q in q_str.split()]
 
-    def calculateHandsConfig(self, box_pose):
-        lefthand_offset = np.mat([[1, 0, 0, 0],
-                                  [0, 0, -1, 0.305],
-                                  [0, 1, 0, 0],
-                                  [0, 0, 0, 1]])
-        righthand_offset = np.mat([[1, 0, 0, 0],
-                                   [0, 0, 1, -0.285],
-                                   [0, -1, 0, 0],
-                                   [0, 0, 0, 1]])
-        lefthand_pose = box_pose * lefthand_offset
-        righthand_pose = box_pose * righthand_offset
-        lefthand_q = self.inverseKinematic(self.manipulator_left, lefthand_pose)
-        righthand_q = self.inverseKinematic(self.manipulator_right, righthand_pose)
-        return lefthand_q, righthand_q
-
-    def setHandsConfig(self, lefthand_q, righthand_q):
+    def setLeftArmConfig(self, leftarm_q):
         with self.env:
+            prev_active_dofs = self.robot.GetActiveDOFIndices()
             self.robot.SetActiveDOFs(self.manipulator_left.GetArmIndices())
-            self.robot.SetActiveDOFValues(lefthand_q)
+            self.robot.SetActiveDOFValues(leftarm_q)
+            self.robot.SetActiveDOFs(prev_active_dofs)
+
+    def setRightArmConfig(self, rightarm_q):
+        with self.env:
+            prev_active_dofs = self.robot.GetActiveDOFIndices()
             self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveDOFValues(rightarm_q)
+            self.robot.SetActiveDOFs(prev_active_dofs)
+
+    def setArmsConfig(self, arms_q):
+        self.setRightArmConfig(arms_q[:7])
+        self.setLeftArmConfig(arms_q[7:])
+
+    def setRightHandConfig(self, righthand_q):
+        with self.env:
+            prev_active_dofs = self.robot.GetActiveDOFIndices()
+            self.robot.SetActiveDOFs([7, 8, 9])
             self.robot.SetActiveDOFValues(righthand_q)
+            self.robot.SetActiveDOFs(prev_active_dofs)
 
-    def grabBox(self):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.robot.Grab(self.box)
-
-    def releaseBox(self):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.robot.Release(self.box)
-
-    def liftBox(self):
+    def display(self):
         self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
         self.robot.SetActiveManipulator(self.manipulator_right)
         self.robot.GetController().SetPath(self.traj)
@@ -102,50 +98,57 @@ class DoorOpeningProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<solver_parameters type="2" time="5" range="0.05"/>
+            """<solver_parameters type="0" time="5" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
                <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.20" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
-               <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
-               <tsr manipulator_index="0" relative_body_name="NULL" 
-                                             T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
-                                             Tw_e="1 0 0 0 0 -1 0 1 0      0 -0.285 0" 
-                                             Bw="-1000 1000 -1000 1000 -1000 1000 0 0 0 0 -3 3" />
+               <tsr_chain purpose="0 0 1" mimic_body_name="kitchen" mimic_body_index="6">
+                    <tsr manipulator_index="0" relative_body_name="NULL" 
+                        T0_w="-1  0  0  -0  -1  0  0  0  1  1.818  0.0266  0.884" 
+                        Tw_e="1  0  0  0  1  0  0  0  1  0.3829  0.0816  0.2801" 
+                        Bw="0  0  0  0  0  0  0  0  0  0  -6  6" />
+                    <tsr manipulator_index="0" relative_body_name="NULL"
+                        T0_w="1  0  0  0  1  0  0  0  1  0  0  0"
+                        Tw_e="-1  0  0  0  0  -1  0  -1  0  0  0.155 0"
+                        Bw="0  0  0  0  0  0  0  0  0  0  -6  6" />
                </tsr_chain>""")
         return params
 
-    def solve(self, box_initial_pose, box_goal_pose):
-        self.box.SetTransform(np.array(box_initial_pose[:3, :]))
-        left_initial, right_initial = self.calculateHandsConfig(box_initial_pose)
-        left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
+    def solve(self, arm_initial_pose, arm_goal_pose):
+        right_initial = self.inverseKinematic(self.manipulator_right, arm_initial_pose)
+        right_goal = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
         params = self.setPlannerParameters(right_initial, right_goal)
-        with self.env, self.robot:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.planner.InitPlan(self.robot, params)
-            self.planner.PlanPath(self.traj)
-        orpy.planningutils.RetimeTrajectory(self.traj)
+        # with self.env:
+        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+        self.robot.SetActiveManipulator(self.manipulator_right)
+        self.planner.InitPlan(self.robot, params)
+            # self.planner.PlanPath(self.traj)
+        # orpy.planningutils.RetimeTrajectory(self.traj)
         return self.traj
 
 
 def main():
-    arm_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, 0.0000,
-                          2.6, -1.9, -0.0000, 2.2022, -0.0001, 0.0000, 0.0000]
-    box_initial_pose = np.mat([[1, 0, 0, 0.6923],
-                               [0, 1, 0, 0],
-                               [0, 0, 1, 0.5689],
+    arm_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, -2.1,
+                          2.6, -1.9, -0.0000, 2.2022, -3.14, 0.0000, -1.0]
+    arm_initial_pose = np.mat([[1, 0, 0, 1.4351],
+                               [0, 0, 1, -0.21],
+                               [0, -1, 0, 1.1641],
                                [0, 0, 0, 1]])
-    box_goal_pose = np.mat([[1, 0, 0, 0.6923],
-                            [0, 1, 0, 0],
-                            [0, 0, 1, 1.3989],
+    arm_goal_pose = np.mat([[0.82623877, 0, -0.56332006, 2.16743228],
+                            [0.56332006, 0, 0.82623877, -0.39226814],
+                            [0, -1, 0, 1.1641],
                             [0, 0, 0, 1]])
 
     problem = DoorOpeningProblem(arm_initial_config)
-    problem.solve(box_initial_pose, box_goal_pose)
+    problem.solve(arm_initial_pose, arm_goal_pose)
+
+    print "Press enter to exit..."
+    sys.stdin.readline()
     # problem.grabBox()
-    problem.liftBox()
+    # problem.liftBox()
     # problem.releaseBox()
 
 
 if __name__ == '__main__':
     main()
     # TODO: multiple TSRs for different manipulators
+    # TODO: multiple TSRs for the same manipulators to choose from

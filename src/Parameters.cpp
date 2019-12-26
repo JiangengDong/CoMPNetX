@@ -177,7 +177,7 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back(constraint_parameters_.getTagName());
     _vXMLParameters.emplace_back(atlas_parameters_.getTagName());
     _vXMLParameters.emplace_back(tsrchain_parameters_.getTagName());
-    _vXMLParameters.emplace_back("tsr");    // TODO: improve this part later
+    _vXMLParameters.emplace_back("tsr");    // TODO: Avoid hard code the tag names. Improve this part later
 }
 
 Parameters::~Parameters() = default;
