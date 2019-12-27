@@ -61,6 +61,7 @@ namespace AtlasMPNet {
         bool isValid(const ompl::base::State *state) const override;
 
     private:
+        ompl::base::StateSpacePtr _state_space;
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
         AtlasMPNet::TaskSpaceRegionChain::Ptr _tsr_chain;
@@ -72,6 +73,8 @@ namespace AtlasMPNet {
         // temporary variables
         std::vector<double> _robot_values;
         std::vector<double> _tsr_values;
+        std::vector<OpenRAVE::KinBodyConstPtr> _ignore_body;
+        std::vector<OpenRAVE::KinBody::LinkConstPtr > _ignore_link;
     };
 
 } // namespace AtlasMPNet

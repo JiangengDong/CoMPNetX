@@ -368,6 +368,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         const std::string body_name = "Body";
         const std::string joint_name = "Joint";
         Tw0_e = OpenRAVE::Transform();
+        OpenRAVE::Transform Tdiff;
 
         // construct body0
         link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
@@ -481,17 +482,21 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 joint_info->_vresolution[0] = 1.;
                 joint_info->_vlowerlimit[0] = tsr.Bw[j][0];
                 joint_info->_vupperlimit[0] = tsr.Bw[j][1];
+                joint_info->_vanchor = Tdiff.trans;
                 int axis = j % 3;
                 if (j > 3 && bFlipAxis) {
                     joint_info->_vaxes[0][axis] = -1;
                 } else {
                     joint_info->_vaxes[0][axis] = 1;
                 }
+                joint_info->_vaxes[0] = Tdiff.rotate(joint_info->_vaxes[0]);
                 joint_infos.emplace_back(joint_info);
 
+                Tdiff.identity();
                 num_Body++;
             }
             Tw0_e = Tw0_e * tsr.Tw_e;
+            Tdiff = tsr.Tw_e;
         }
 
         // construct the last body
@@ -513,16 +518,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         joint_info->_type = OpenRAVE::KinBody::JointNone;
         joint_infos.emplace_back(joint_info);
 
-        std::stringstream ss;
-        ss << std::endl;
-        for(const auto& joint:joint_infos) {
-            ss << joint->_name << " " << joint->_linkname0 << " " << joint->_linkname1 << " " << joint->_type << std::endl;
-        }
-        for(auto link:link_infos) {
-            ss << link->_name << " " << link->_t << std::endl;
-        }
         // TODO: there is a problem in robotize process. fix it. Change anchor can help.
-//        RAVELOG_INFO(ss.str());
         numdof = num_Body - 1;
         if (numdof > 0) {
             _bPointTSR = false;

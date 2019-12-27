@@ -100,7 +100,7 @@ class LiftingBoxProblem:
         params.SetInitialConfig(initial_config)
         params.SetGoalConfig(goal_config)
         params.SetExtraParameters(
-            """<solver_parameters type="2" time="30" range="0.05"/>
+            """<solver_parameters type="2" time="20" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
                <atlas_parameters exploration="0.6" epsilon="0.05" rho="0.08" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
                <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
@@ -117,6 +117,7 @@ class LiftingBoxProblem:
         left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
         params = self.setPlannerParameters(right_initial, right_goal)
         with self.env, self.robot:
+            self.grabBox()
             self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
             self.robot.SetActiveManipulator(self.manipulator_right)
             self.planner.InitPlan(self.robot, params)

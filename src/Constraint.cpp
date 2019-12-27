@@ -2,7 +2,10 @@
 // Created by jiangeng on 10/12/19.
 //
 #include "Constraint.h"
-#include "or_conversions.h"
+
+#include <Eigen/Dense>
+#include <openrave/openrave.h>
+
 #include "TaskSpaceRegionChain.h"
 
 using namespace AtlasMPNet;

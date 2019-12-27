@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/ConstrainedSpaceInformation.h>
+#include <ompl/base/StateValidityChecker.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/rrt/RRT.h>
@@ -46,8 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Parameters.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
-#include "SemiToroidalStateSpace.h"
-#include "or_conversions.h"
 #include "ProjectedStateSpace.h"
 #include "AtlasStateSpace.h"
 #include "TangentBundleStateSpace.h"
@@ -172,11 +171,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
     *tsr_chain_ = parameters_->tsrchain_parameters_;
     tsr_chain_->Initialize(env_);
-    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_, 0);
-    auto joints = tsr_robot_->GetJoints();
-    for (auto joint:joints){
-        std::cout << joint->GetName() << " " << joint->GetAnchor() << std::endl;
-    }
+    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
 
     // print the result
     if (tsr_robot_ != nullptr) {
@@ -205,6 +200,8 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const int dof = robot_->GetActiveDOF();
     const int dof_tsr = tsr_robot_->GetActiveDOF();
+    ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof + dof_tsr);
+    auto ambient_state_space_temp = ambient_state_space_->as<ompl::base::RealVectorStateSpace>();
 
     // Set bounds
     ompl::base::RealVectorBounds bounds(dof + dof_tsr);
@@ -221,8 +218,8 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
         bounds.setLow(i + dof, lower_limits[i]);
         bounds.setHigh(i + dof, upper_limits[i]);
     }
-    ambient_state_space_ = std::make_shared<SemiToroidalStateSpace>(dof + dof_tsr);
-    ambient_state_space_->setBounds(bounds);
+    ambient_state_space_temp->setBounds(bounds);
+    bounds = ambient_state_space_temp->getBounds();
 
     // Set resolution
     std::vector<OpenRAVE::dReal> dof_resolutions;
@@ -235,20 +232,9 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     for (const auto &dof_resolution: dof_resolutions) {
         conservative_resolution = std::min(conservative_resolution, dof_resolution);
     }
-    double conservative_fraction = conservative_resolution / ambient_state_space_->getMaximumExtent();
-    ambient_state_space_->setLongestValidSegmentFraction(conservative_fraction);
-
-    // Set wrappings
-    std::vector<bool> is_wrapping;
-    std::vector<int> active_indices = robot_->GetActiveDOFIndices();
-    for (int active_index : active_indices) {
-        is_wrapping.push_back(robot_->GetJointFromDOFIndex(active_index)->IsCircular(0));
-    }
-    active_indices = tsr_robot_->GetActiveDOFIndices();
-    for (int active_index : active_indices) {
-        is_wrapping.push_back(tsr_robot_->GetJointFromDOFIndex(active_index)->IsCircular(0));
-    }
-    ambient_state_space_->setIsWrapping(is_wrapping);
+    double conservative_fraction = conservative_resolution / ambient_state_space_temp->getMaximumExtent();
+    ambient_state_space_temp->setLongestValidSegmentFraction(conservative_fraction);
+    ambient_state_space_temp->setup();
 
     // print result
     if (ambient_state_space_ != nullptr) {
@@ -265,11 +251,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
             ss << " " << lb;
         }
         ss << std::endl;
-        ss << "\tResolution: " << conservative_resolution << std::endl;
-        ss << "\tWrapping:";
-        for (auto wrapping:ambient_state_space_->getIsWrapping()) {
-            ss << " " << wrapping;
-        }
+        ss << "\tResolution: " << conservative_resolution;
                 RAVELOG_INFO(ss.str());
         return true;
     } else {
@@ -441,8 +423,8 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
 }
 
 bool AtlasMPNet::Problem::setStateValidityChecker() {
-    std::vector<int> dof_indices = robot_->GetActiveDOFIndices();
-    state_validity_checker_.reset(new AtlasMPNet::StateValidityChecker(constrained_space_info_, robot_, tsr_robot_, tsr_chain_));
+    state_validity_checker_= std::make_shared<AtlasMPNet::StateValidityChecker>(constrained_space_info_, robot_, tsr_robot_, tsr_chain_);
+//    state_validity_checker_= std::make_shared<ompl::base::AllValidStateValidityChecker>(constrained_space_info_);
     simple_setup_->setStateValidityChecker(state_validity_checker_);
 
     // print result

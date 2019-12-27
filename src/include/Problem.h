@@ -17,7 +17,6 @@
 #include "Parameters.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
-#include "SemiToroidalStateSpace.h"
 #include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {
@@ -65,7 +64,7 @@ namespace AtlasMPNet {
         OpenRAVE::RobotBasePtr tsr_robot_;
         TaskSpaceRegionChain::Ptr tsr_chain_;
 
-        SemiToroidalStateSpace::Ptr ambient_state_space_;
+        ompl::base::StateSpacePtr ambient_state_space_;
         ompl::base::ConstraintPtr constraint_;
         ompl::base::ConstrainedStateSpacePtr constrained_state_space_;
         ompl::base::ConstrainedSpaceInformationPtr constrained_space_info_;

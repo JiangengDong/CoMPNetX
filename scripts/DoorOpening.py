@@ -80,12 +80,6 @@ class DoorOpeningProblem:
             self.robot.SetActiveDOFValues(righthand_q)
             self.robot.SetActiveDOFs(prev_active_dofs)
 
-    def display(self):
-        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-        self.robot.SetActiveManipulator(self.manipulator_right)
-        self.robot.GetController().SetPath(self.traj)
-        self.robot.WaitForController(0)
-
     def setPlannerParameters(self, initial_config, goal_config):
         with self.env:
             self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
@@ -98,9 +92,9 @@ class DoorOpeningProblem:
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
-            """<solver_parameters type="0" time="5" range="0.05"/>
+            """<solver_parameters type="2" time="5" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
-               <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.20" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
+               <atlas_parameters exploration="0.5" epsilon="0.05" rho="0.08" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
                <tsr_chain purpose="0 0 1" mimic_body_name="kitchen" mimic_body_index="6">
                     <tsr manipulator_index="0" relative_body_name="NULL" 
                         T0_w="-1  0  0  -0  -1  0  0  0  1  1.818  0.0266  0.884" 
@@ -117,13 +111,19 @@ class DoorOpeningProblem:
         right_initial = self.inverseKinematic(self.manipulator_right, arm_initial_pose)
         right_goal = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
         params = self.setPlannerParameters(right_initial, right_goal)
-        # with self.env:
-        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-        self.robot.SetActiveManipulator(self.manipulator_right)
-        self.planner.InitPlan(self.robot, params)
-            # self.planner.PlanPath(self.traj)
+        with self.env, self.robot:
+            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+            self.robot.SetActiveManipulator(self.manipulator_right)
+            self.planner.InitPlan(self.robot, params)
+            self.planner.PlanPath(self.traj)
         # orpy.planningutils.RetimeTrajectory(self.traj)
         return self.traj
+
+    def display(self):
+        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+        self.robot.SetActiveManipulator(self.manipulator_right)
+        self.robot.GetController().SetPath(self.traj)
+        self.robot.WaitForController(0)
 
 
 def main():
@@ -142,10 +142,7 @@ def main():
     problem.solve(arm_initial_pose, arm_goal_pose)
 
     print "Press enter to exit..."
-    sys.stdin.readline()
-    # problem.grabBox()
-    # problem.liftBox()
-    # problem.releaseBox()
+    # sys.stdin.readline()
 
 
 if __name__ == '__main__':

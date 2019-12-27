@@ -35,11 +35,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StateValidityChecker.h"
 
 #include <boost/chrono.hpp>
-#include <boost/foreach.hpp>
 #include <utility>
 #include <openrave/openrave.h>
 #include <ompl/base/SpaceInformation.h>
 #include <ompl/base/StateValidityChecker.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <boost/make_shared.hpp>
 
 #include "TaskSpaceRegionChain.h"
 
@@ -50,6 +51,7 @@ StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr
                                            OpenRAVE::RobotBasePtr tsr_robot,
                                            AtlasMPNet::TaskSpaceRegionChain::Ptr tsr_chain) :
         ompl::base::StateValidityChecker(si),
+        _state_space(si->getStateSpace()),
         _robot(std::move(robot)),
         _tsr_robot(std::move(tsr_robot)),
         _tsr_chain(std::move(tsr_chain)),
@@ -59,14 +61,16 @@ StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr
         _numCollisionChecks(0),
         _totalCollisionTime(0.0),
         _robot_values(_robot_dof, 0),
-        _tsr_values(_tsr_dof, 0){
+        _tsr_values(_tsr_dof, 0) {
+    _ignore_body.emplace_back(_tsr_robot);
 }
 
 bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t checklimits) const {
-    auto const *real_state = state->as<ompl::base::RealVectorStateSpace::StateType>();
+    std::vector<double> values;
+    _state_space->copyToReals(values, state);
 
-    std::vector<double> robot_values(real_state->values, real_state->values + _robot_dof);
-    std::vector<double> tsr_values(real_state->values + _robot_dof, real_state->values + _robot_dof + _tsr_dof);
+    std::vector<double> robot_values(values.begin(), values.begin() + _robot_dof);
+    std::vector<double> tsr_values(values.begin() + _robot_dof, values.begin() + _robot_dof + _tsr_dof);
 
     for (double v: robot_values) {
         if (std::isnan(v)) {
@@ -80,7 +84,6 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
             return false;
         }
     }
-
     _robot->SetActiveDOFValues(robot_values, checklimits);
     _tsr_robot->SetActiveDOFValues(tsr_values, checklimits);
     _tsr_chain->ApplyMimicValuesToMimicBody(tsr_values.data());
@@ -89,17 +92,15 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
 }
 
 bool StateValidityChecker::isValid(const ompl::base::State *state) const {
-    boost::chrono::steady_clock::time_point const tic = boost::chrono::steady_clock::now();
-
-    bool collided = !computeFk(state, OpenRAVE::KinBody::CLA_Nothing);
-
-    if (!collided) {
-        collided = collided || _env->CheckCollision(_robot) || _robot->CheckSelfCollision();
-
-        boost::chrono::steady_clock::time_point const toc = boost::chrono::steady_clock::now();
-        _totalCollisionTime += boost::chrono::duration_cast<boost::chrono::duration<double>>(toc - tic).count();
-        _numCollisionChecks++;
-    }
-
-    return !collided;
+    bool valid1, valid2, valid3, valid4;
+    OpenRAVE::CollisionReportPtr collision = boost::make_shared<OpenRAVE::CollisionReport>();
+    valid1 = _state_space->satisfiesBounds(state);
+    std::cout << "!!! Valid 1: " << valid1;
+    valid2 = computeFk(state, OpenRAVE::KinBody::CLA_Nothing);
+    std::cout << " Valid 2: " << valid2;
+    valid3 = !_env->CheckCollision(_robot, _ignore_body, _ignore_link, collision);
+    std::cout << " Valid 3: " << valid3;
+    valid4 = !_robot->CheckSelfCollision();
+    std::cout << " Valid 4: " << valid4 << std::endl;
+    return valid1 && valid2 && valid3 && valid4;
 }
