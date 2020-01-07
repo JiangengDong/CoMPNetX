@@ -52,8 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RRT.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
-        OpenRAVE::PlannerBase(std::move(penv)),
-        parameters_(boost::make_shared<AtlasMPNet::Parameters>()) {
+        OpenRAVE::PlannerBase(std::move(penv)){
     RegisterCommand("GetParameters",
                     boost::bind(&AtlasMPNet::Problem::GetParametersCommand, this, _1, _2),
                     "returns the values of all the parameters");
@@ -74,6 +73,7 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
         return initialized_;
     }
     robot_ = std::move(robot);
+    parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
     parameters_->copy(params);
     initialized_ = setTSRChainRobot() &&
                    setAmbientStateSpace() &&

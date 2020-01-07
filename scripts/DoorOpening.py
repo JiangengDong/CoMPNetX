@@ -89,8 +89,6 @@ class DoorOpeningProblem:
         params.SetRobotActiveJoints(self.robot)
         params.SetInitialConfig(initial_config)
         params.SetGoalConfig(goal_config)
-        # TODO: the extra parameter is fixed now. Make it more flexible.
-        # TODO: change cpp code of TSRRobot to support relative body and manipulator index
         params.SetExtraParameters(
             """<solver_parameters type="2" time="10" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
@@ -161,5 +159,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # TODO: multiple TSRChains for different manipulators
-    # TODO: multiple TSRChains for the same manipulators to choose from

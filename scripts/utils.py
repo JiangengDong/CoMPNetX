@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 
@@ -26,3 +27,7 @@ def quat2Transform(a, b, c, d, x, y, z):
                    [2 * b * c + 2 * a * d, a ** 2 - b ** 2 + c ** 2 - d ** 2, 2 * c * d - 2 * a * b, y],
                    [2 * b * d - 2 * a * c, 2 * c * d + 2 * a * b, a * 2 - b ** 2 - c ** 2 + d ** 2, z],
                    [0, 0, 0, 1]])
+
+def pause():
+    print "Press enter to continue..."
+    sys.stdin.readline()

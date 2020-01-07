@@ -11,83 +11,99 @@
 # This path assumes that you installed OpenRAVE to /usr. You may need to alter
 # the command to match your acutal install destination.
 
+import os
 import numpy as np
-import sys
 
+import rospkg
 import openravepy as orpy
 
-from utils import SerializeTransform, RPY2Transform, quat2Transform
+from utils import SerializeTransform, RPY2Transform, quat2Transform, pause
 from plannerParameters import PlannerParameters
 
 
-class DoorOpeningProblem:
-    def __init__(self, initial_config):
+class BaxterDoorOpeningProblem:
+    def __init__(self):
+        # setup for OpenRAVE environment
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
+
+        # load kitchen scene, delete herb robot, and load baxter robot
         self.env.Load('scenes/intelkitchen_robotized_herb2.env.xml')
-        self.robot = self.env.GetRobot("BarrettWAM")
-        self.manipulator_left = self.robot.GetManipulator('left_wam')
-        self.manipulator_right = self.robot.GetManipulator('right_wam')
+        rp = rospkg.RosPack()
+        baxter_path = rp.get_path('baxter_description')
+        urdf_path = os.path.join(baxter_path, "urdf/baxter_sym.urdf")
+        srdf_path = os.path.join(baxter_path, "urdf/baxter_new.srdf")
+        or_urdf = orpy.RaveCreateModule(self.env, 'urdf')
+        with self.env:
+            self.env.Remove(self.env.GetRobot("BarrettWAM"))
+            name = or_urdf.SendCommand('LoadURI {} {}'.format(urdf_path, srdf_path))
+
+        self.baxter = self.env.GetRobot(name)
+        self.left_arm = self.baxter.GetManipulator("left_hand_eef")
+        self.right_arm = self.baxter.GetManipulator("right_hand_eef")
+        self.left_arm_indices = [2, 3, 4, 5, 6, 7, 8]
+        self.right_arm_indices = [10, 11, 12, 13, 14, 15, 16]
+
         self.kitchen = self.env.GetKinBody("kitchen")
 
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
-        self.env.LoadProblem(self.cbirrt, "BarrettWAM")
+        self.env.LoadProblem(self.cbirrt, name)
 
         self.traj = orpy.RaveCreateTrajectory(self.env, '')
 
-        self.setArmsConfig(initial_config)  # initial config of arms
-        self.setRightHandConfig([2, 2, 2])
-        self.robot.SetTransform(np.array([[-0.0024, -1, 0, 1.2996],  # initial transformation of robot
-                                          [1, -0.0024, 0, -0.6217],
-                                          [0, 0, 1, 0]]))
+        self.gotoInitialPose()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.env.GetViewer().quitmainloop()
         self.env.Destroy()
 
     def inverseKinematic(self, manipulator, pose):
-        with self.env, self.robot:
-            self.robot.SetActiveDOFs(manipulator.GetArmIndices())
-            self.robot.SetActiveManipulator(manipulator)
+        with self.env, self.baxter:
+            if manipulator is self.left_arm:
+                self.baxter.SetActiveDOFs(self.left_arm_indices)
+            elif manipulator is self.right_arm:
+                self.baxter.SetActiveDOFs(self.right_arm_indices)
+            else:
+                raise Exception("Invalid manipulator!")
+            self.baxter.SetActiveManipulator(manipulator)
             q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
-                                            (self.robot.GetActiveManipulatorIndex(), SerializeTransform(pose)))
+                                            (self.baxter.GetActiveManipulatorIndex(), SerializeTransform(pose)))
         return [float(q) for q in q_str.split()]
 
     def setLeftArmConfig(self, leftarm_q):
         with self.env:
-            prev_active_dofs = self.robot.GetActiveDOFIndices()
-            self.robot.SetActiveDOFs(self.manipulator_left.GetArmIndices())
-            self.robot.SetActiveDOFValues(leftarm_q)
-            self.robot.SetActiveDOFs(prev_active_dofs)
+            prev_active_dofs = self.baxter.GetActiveDOFIndices()
+            self.baxter.SetActiveDOFs(self.left_arm_indices)
+            self.baxter.SetActiveDOFValues(leftarm_q)
+            self.baxter.SetActiveDOFs(prev_active_dofs)
 
     def setRightArmConfig(self, rightarm_q):
         with self.env:
-            prev_active_dofs = self.robot.GetActiveDOFIndices()
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveDOFValues(rightarm_q)
-            self.robot.SetActiveDOFs(prev_active_dofs)
+            prev_active_dofs = self.baxter.GetActiveDOFIndices()
+            self.baxter.SetActiveDOFs(self.right_arm_indices)
+            self.baxter.SetActiveDOFValues(rightarm_q)
+            self.baxter.SetActiveDOFs(prev_active_dofs)
 
-    def setArmsConfig(self, arms_q):
-        self.setRightArmConfig(arms_q[:7])
-        self.setLeftArmConfig(arms_q[7:])
+    def setArmsConfig(self, leftarm_q, rightarm_q):
+        self.setLeftArmConfig(leftarm_q)
+        self.setRightArmConfig(rightarm_q)
 
-    def setRightHandConfig(self, righthand_q):
+    def setHandsConfig(self, hands_q):
         with self.env:
-            prev_active_dofs = self.robot.GetActiveDOFIndices()
-            self.robot.SetActiveDOFs([7, 8, 9])
-            self.robot.SetActiveDOFValues(righthand_q)
-            self.robot.SetActiveDOFs(prev_active_dofs)
+            prev_active_dofs = self.baxter.GetActiveDOFIndices()
+            self.baxter.SetActiveDOFs([1, 9])
+            self.baxter.SetActiveDOFValues(hands_q)
+            self.baxter.SetActiveDOFs(prev_active_dofs)
 
-    def setPlannerParameters(self, initial_config, goal_config):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
+    def openHands(self):
+        self.setHandsConfig([1, 1])
 
+    def setPlannerParameters(self, start_config, goal_config):
         params = orpy.Planner.PlannerParameters()
-        params.SetRobotActiveJoints(self.robot)
-        params.SetInitialConfig(initial_config)
+        params.SetRobotActiveJoints(self.baxter)
+        params.SetInitialConfig(start_config)
         params.SetGoalConfig(goal_config)
         # TODO: the extra parameter is fixed now. Make it more flexible.
         # TODO: change cpp code of TSRRobot to support relative body and manipulator index
@@ -102,34 +118,38 @@ class DoorOpeningProblem:
                         Bw="0  0  0  0  0  0  0  0  0  0  0 3.1415926" />
                     <tsr manipulator_index="0" relative_body_name="NULL"
                         T0_w="1  0  0  0  1  0  0  0  1  0  0  0"
-                        Tw_e="-1  0  0  0  0  -1  0  -1  0  0  0.155 0"
+                        Tw_e="0  0  1  -1  0  0  0  -1  0  0  0.19500  0"
                         Bw="0  0  0  0  0  0  0  0  0  0  -1.57  0" />
                </tsr_chain>""")
         return params
 
-    def solve(self, arm_initial_pose, arm_goal_pose):
-        right_initial = self.inverseKinematic(self.manipulator_right, arm_initial_pose)
-        right_goal = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
-        params = self.setPlannerParameters(right_initial, right_goal)
-        with self.env, self.robot:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.planner.InitPlan(self.robot, params)
+    def gotoInitialPose(self):
+        baxter_pose = np.array(RPY2Transform(0, 0, np.pi / 2, 0, 0, 0) * RPY2Transform(0, 0, 0, -0.8, -1.2217, 0.9614))
+        self.baxter.SetTransform(baxter_pose)
+
+        self.baxter.SetActiveDOFs(self.right_arm_indices)
+        self.baxter.SetActiveManipulator(self.right_arm)
+
+        joint_val = [0, 0.75, 0, -0.55, 0, 1.26, 0, 0, 0.75, 0, -0.55, 0, 1.26, 0]
+        self.setArmsConfig(joint_val[:7], joint_val[7:])
+        self.openHands()
+
+    def solve(self, arm_start_pose, arm_goal_pose):
+        right_start = self.inverseKinematic(self.right_arm, arm_start_pose)
+        right_goal = self.inverseKinematic(self.right_arm, arm_goal_pose)
+        params = self.setPlannerParameters(right_start, right_goal)
+        with self.env, self.baxter:
+            self.planner.InitPlan(self.baxter, params)
             self.planner.PlanPath(self.traj)
         orpy.planningutils.RetimeTrajectory(self.traj)
         return self.traj
 
     def display(self):
-        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-        self.robot.SetActiveManipulator(self.manipulator_right)
-        self.robot.GetController().SetPath(self.traj)
-        self.robot.WaitForController(0)
+        self.baxter.GetController().SetPath(self.traj)
+        self.baxter.WaitForController(0)
 
 
 def main():
-    arm_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, -2.1,
-                          2.6, -1.9, -0.0000, 2.2022, -3.14, 0.0000, -1.0]
-
     hinge_start_pose = np.mat([[-1, 0, 0, 1.818],
                                [0, -1, 0, 0.0266],
                                [0, 0, 1, 0.884],
@@ -138,25 +158,24 @@ def main():
                                 [0, -1, 0, -0.055],
                                 [0, 0, 1, 1.1641],
                                 [0, 0, 0, 1]])
-    arm_start_pose = np.mat([[1, 0, 0, 1.4351],
-                             [0, 0, 1, -0.21],
-                             [0, -1, 0, 1.1641],
+    arm_start_pose = np.mat([[0, 1, 0, 1.4351],
+                             [0, 0, 1, -0.25],
+                             [1, 0, 0, 1.1641],
                              [0, 0, 0, 1]])
     handle_hinge_offset = hinge_start_pose.I * handle_start_pose
     hand_handle_offset = handle_start_pose.I * arm_start_pose
 
-    Thinge_rot = RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
+    Thinge_rot = RPY2Transform(0, 0, np.pi / 2, 0, 0, 0)
     Thandle_rot = RPY2Transform(0, 0, -np.pi / 4, 0, 0, 0)
 
     hinge_goal_pose = hinge_start_pose * Thinge_rot
 
     arm_goal_pose = hinge_goal_pose * handle_hinge_offset * Thandle_rot * hand_handle_offset
 
-    problem = DoorOpeningProblem(arm_initial_config)
+    problem = BaxterDoorOpeningProblem()
     problem.solve(arm_start_pose, arm_goal_pose)
     problem.display()
-    print "Press enter to exit..."
-    # sys.stdin.readline()
+    pause()
 
 
 if __name__ == '__main__':
