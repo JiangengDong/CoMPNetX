@@ -92,15 +92,8 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
 }
 
 bool StateValidityChecker::isValid(const ompl::base::State *state) const {
-    bool valid1, valid2, valid3, valid4;
-    OpenRAVE::CollisionReportPtr collision = boost::make_shared<OpenRAVE::CollisionReport>();
-    valid1 = _state_space->satisfiesBounds(state);
-    std::cout << "!!! Valid 1: " << valid1;
-    valid2 = computeFk(state, OpenRAVE::KinBody::CLA_Nothing);
-    std::cout << " Valid 2: " << valid2;
-    valid3 = !_env->CheckCollision(_robot, _ignore_body, _ignore_link, collision);
-    std::cout << " Valid 3: " << valid3;
-    valid4 = !_robot->CheckSelfCollision();
-    std::cout << " Valid 4: " << valid4 << std::endl;
-    return valid1 && valid2 && valid3 && valid4;
+    return _state_space->satisfiesBounds(state)
+           && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
+           && !_env->CheckCollision(_robot, _ignore_body, _ignore_link)
+           && !_robot->CheckSelfCollision();
 }

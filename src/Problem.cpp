@@ -39,8 +39,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/base/StateValidityChecker.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
-#include <ompl/geometric/planners/rrt/RRT.h>
-#include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <boost/make_shared.hpp>
 
 #include "Problem.h"
@@ -50,6 +48,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ProjectedStateSpace.h"
 #include "AtlasStateSpace.h"
 #include "TangentBundleStateSpace.h"
+#include "RRTConnect.h"
+#include "RRT.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
         OpenRAVE::PlannerBase(std::move(penv)),

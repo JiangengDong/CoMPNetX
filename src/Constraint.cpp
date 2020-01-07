@@ -117,6 +117,9 @@ bool AtlasMPNet::TSRChainConstraint::project(Eigen::Ref<Eigen::VectorXd> x) cons
             function(x, f);
             norm = f.squaredNorm();
         } while (norm > old_norm && norm > squaredTolerance && stepsize > 1e-8);
+        if(stepsize <= 1e-8){
+            break;
+        }
     }
 
     return norm < squaredTolerance;

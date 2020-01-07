@@ -14,7 +14,7 @@ def RPY2Transform(psi, theta, phi, x, y, z):
     cPhi = np.cos(phi)
     sPhi = np.sin(phi)
     return np.mat([[cTheta * cPhi, sPsi * sTheta * cPhi - cPsi * sPhi, cPsi * sTheta * cPhi + sPsi * sPhi, x],
-                   [sTheta * sPhi, sPsi * sTheta * sPhi + cPsi * cPhi, cPsi * sTheta * sPhi - sPsi * cPhi, y],
+                   [cTheta * sPhi, sPsi * sTheta * sPhi + cPsi * cPhi, cPsi * sTheta * sPhi - sPsi * cPhi, y],
                    [-sTheta, sPsi * cTheta, cPsi * cTheta, z],
                    [0, 0, 0, 1]])
 

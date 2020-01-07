@@ -6,12 +6,14 @@ add_library(AtlasMPNet SHARED
         Parameters.cpp
         Constraint.cpp
         StateValidityChecker.cpp
-        AtlasChart.cpp
-        AtlasStateSpace.cpp
-        TangentBundleStateSpace.cpp
+        statespace/AtlasChart.cpp
+        statespace/AtlasStateSpace.cpp
+        statespace/TangentBundleStateSpace.cpp
         TaskSpaceRegion.cpp
         TaskSpaceRegionChain.cpp
-        ProjectedStateSpace.cpp
+        statespace/ProjectedStateSpace.cpp
+        planner/RRTConnect.cpp
+        planner/RRT.cpp
         )
 set_target_properties(AtlasMPNet PROPERTIES COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}" LINK_FLAGS "${OpenRAVE_LINK_FLAGS}")
 target_link_libraries(AtlasMPNet

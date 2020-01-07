@@ -140,14 +140,10 @@ def main():
 
     problem = LiftingBoxProblem(arm_initial_config)
     problem.solve(box_initial_pose, box_goal_pose)
-    problem.setHandsConfig(arm_initial_config[7:], arm_initial_config[:7])
-    problem.box.SetTransform(np.array(box_initial_pose[:3, :]))
-    # problem.grabBox()
     problem.liftBox()
-    # problem.releaseBox()
+    print "Press enter to exit..."
+    # sys.stdin.readline()
 
 
 if __name__ == '__main__':
     main()
-    print "Press enter to exit..."
-    # sys.stdin.readline()
