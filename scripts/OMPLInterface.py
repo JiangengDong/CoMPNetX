@@ -20,38 +20,27 @@ class OMPLInterface:
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
-        self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
-        self.env.LoadProblem(self.cbirrt, self.robot.GetName())
+        self.planner.SendCommand("SetLogLevel 2")
 
-    def inverseKinematic(self, pose):
-        with self.env, self.robot:
-            q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
-                                            (self.robot.GetActiveManipulatorIndex(), utils.SerializeTransform(pose)))
-        return [float(q) for q in q_str.split()]
-
-    def solve(self, start, goal, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2):
+    def solve(self, start_config, goal_config, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2):
         params = orpy.Planner.PlannerParameters()
 
         params.SetRobotActiveJoints(self.robot)
-
-        start_config = self.inverseKinematic(start)
-        goal_config = self.inverseKinematic(goal)
         params.SetInitialConfig(start_config)
         params.SetGoalConfig(goal_config)
+        params.SetExtraParameters(OMPLInterface.template_string % (utils.SerializeTransform(T0_w), utils.SerializeTransform(Tw_e), utils.SerializeBound(Bw),
+                                                                   utils.SerializeTransform(T0_w2), utils.SerializeTransform(Tw_e2), utils.SerializeBound(Bw2)))
 
-        extra_parameter_string = OMPLInterface.template_string % (utils.SerializeTransform(T0_w), utils.SerializeTransform(Tw_e), utils.SerializeBound(Bw),
-                                                                  utils.SerializeTransform(T0_w2), utils.SerializeTransform(Tw_e2), utils.SerializeBound(Bw2))
-        params.SetExtraParameters(extra_parameter_string)
-
-        traj=orpy.RaveCreateTrajectory(self.env, '')
+        traj = orpy.RaveCreateTrajectory(self.env, '')
         with self.env, self.robot:
             self.planner.InitPlan(self.robot, params)
-            self.planner.PlanPath(traj)
+            status = self.planner.PlanPath(traj)
         orpy.planningutils.RetimeTrajectory(traj)
         time = float(self.planner.SendCommand("GetPlanningTime"))
-        return time, traj
+        return status, time, traj
 
 
+# this is an example
 class BaxterDoorOpeningProblem:
     def __init__(self):
         # setup for OpenRAVE environment
@@ -79,6 +68,8 @@ class BaxterDoorOpeningProblem:
         self.kitchen = self.env.GetKinBody("kitchen")
 
         self.planner = OMPLInterface(self.env, self.baxter)
+        self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
+        self.env.LoadProblem(self.cbirrt, name)
 
         self.traj = None
 
@@ -87,6 +78,19 @@ class BaxterDoorOpeningProblem:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.env.GetViewer().quitmainloop()
         self.env.Destroy()
+
+    def inverseKinematic(self, manipulator, pose):
+        with self.env, self.baxter:
+            if manipulator is self.left_arm:
+                self.baxter.SetActiveDOFs(self.left_arm_indices)
+            elif manipulator is self.right_arm:
+                self.baxter.SetActiveDOFs(self.right_arm_indices)
+            else:
+                raise Exception("Invalid manipulator!")
+            self.baxter.SetActiveManipulator(manipulator)
+            q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
+                                            (self.baxter.GetActiveManipulatorIndex(), utils.SerializeTransform(pose)))
+        return [float(q) for q in q_str.split()]
 
     def setLeftArmConfig(self, leftarm_q):
         with self.env:
@@ -128,7 +132,9 @@ class BaxterDoorOpeningProblem:
         self.openHands()
 
     def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2):
-        time, self.traj = self.planner.solve(arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2)
+        start_config = self.inverseKinematic(self.right_arm, arm_start_pose)
+        goal_config = self.inverseKinematic(self.right_arm, arm_goal_pose)
+        status, time, self.traj = self.planner.solve(start_config, goal_config, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2)
         return self.traj
 
     def display(self):

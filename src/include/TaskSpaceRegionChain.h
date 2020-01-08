@@ -165,7 +165,7 @@ namespace AtlasMPNet {
         bool bSampleGoalFromChain;
         bool bSampleStartFromChain;
         bool bConstrainToChain;
-        std::string mimicbodyname;
+        std::string mimicbodyname="NULL";
         std::vector<int> _mimicinds;
 
         OpenRAVE::Transform Tw0_e;
