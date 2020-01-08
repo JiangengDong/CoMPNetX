@@ -4,7 +4,11 @@ import numpy as np
 
 def SerializeTransform(tm):
     flatten_tm = np.array(tm[0:3, 0:4]).T.flatten()
-    return ' '.join([' %.5f' % v for v in flatten_tm])
+    return ' '.join(['%.5f' % v for v in flatten_tm])
+
+def SerializeBound(bw):
+    flatten_bw = np.array(bw).flatten()
+    return ' '.join(['%.5f' % v for v in flatten_bw])
 
 
 def RPY2Transform(psi, theta, phi, x, y, z):
@@ -31,3 +35,4 @@ def quat2Transform(a, b, c, d, x, y, z):
 def pause():
     print "Press enter to continue..."
     sys.stdin.readline()
+

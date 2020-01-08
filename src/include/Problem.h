@@ -41,6 +41,7 @@ namespace AtlasMPNet {
         OpenRAVE::PlannerBase::PlannerParametersConstPtr GetParameters() const override;
 
         bool GetParametersCommand(std::ostream &sout, std::istream &sin) const;
+        bool GetPlanningTimeCommand(std::ostream &sout, std::istream &sin) const;
 
     private:
         bool setTSRChainRobot();
@@ -70,6 +71,8 @@ namespace AtlasMPNet {
         ompl::base::ConstrainedSpaceInformationPtr constrained_space_info_;
         ompl::base::PlannerPtr planner_;
         ompl::base::StateValidityCheckerPtr state_validity_checker_;
+        std::vector<double> start_;
+        std::vector<double> goal_;
         ompl::geometric::SimpleSetupPtr simple_setup_;
 
         bool initialized_ = false;
