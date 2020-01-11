@@ -8,11 +8,10 @@ import utils
 
 
 class OMPLInterface:
-    template_string = """<solver_parameters type="2" time="10" range="0.05"/>
+    template_string = """<solver_parameters type="2" time="2" range="0.05"/>
                <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
                <atlas_parameters exploration="0.5" epsilon="0.01" rho="0.08" alpha="0.45" max_charts="500" using_bias="1" separate="0"/>
                <tsr_chain purpose="0 0 1">
-                    <tsr manipulator_index="0" relative_body_name="NULL" T0_w="%s" Tw_e="%s" Bw="%s" />
                     <tsr manipulator_index="0" relative_body_name="NULL" T0_w="%s" Tw_e="%s" Bw="%s" />
                </tsr_chain>"""
 
@@ -20,16 +19,16 @@ class OMPLInterface:
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        assert self.planner != None
         self.planner.SendCommand("SetLogLevel 0")
 
-    def solve(self, start_config, goal_config, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2):
+    def solve(self, start_config, goal_config, T0_w, Tw_e, Bw):
         params = orpy.Planner.PlannerParameters()
 
         params.SetRobotActiveJoints(self.robot)
         params.SetInitialConfig(start_config)
         params.SetGoalConfig(goal_config)
-        params.SetExtraParameters(OMPLInterface.template_string % (utils.SerializeTransform(T0_w), utils.SerializeTransform(Tw_e), utils.SerializeBound(Bw),
-                                                                   utils.SerializeTransform(T0_w2), utils.SerializeTransform(Tw_e2), utils.SerializeBound(Bw2)))
+        params.SetExtraParameters(OMPLInterface.template_string % (utils.SerializeTransform(T0_w), utils.SerializeTransform(Tw_e), utils.SerializeBound(Bw)))
 
         with self.env, self.robot:
             if(self.planner.InitPlan(self.robot, params)):
@@ -39,11 +38,13 @@ class OMPLInterface:
                 traj = None
                 status=orpy.PlannerStatus.Failed
         if status == orpy.PlannerStatus.HasSolution:
-            orpy.planningutils.RetimeTrajectory(traj)
+            resp = "1 "
             time = float(self.planner.SendCommand("GetPlanningTime"))
+            orpy.planningutils.RetimeTrajectory(traj)
         else:
+            resp = "0 "
             time = -1
-        return status, time, traj
+        return resp, time, traj
 
 
 # this is an example
