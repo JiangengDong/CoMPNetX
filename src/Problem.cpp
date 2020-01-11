@@ -140,6 +140,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             break;
         case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
             OMPL_WARN("Found an approximate solution. ");
+            break;
         case ompl::base::PlannerStatus::EXACT_SOLUTION: {
             auto ompl_traj = simple_setup_->getSolutionPath();
             size_t const dof_robot = robot_->GetActiveDOF();
