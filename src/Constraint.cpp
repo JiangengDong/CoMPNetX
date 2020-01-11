@@ -136,5 +136,5 @@ void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) con
     for (unsigned int i = 0; i < _dof_tsr; ++i) {
         q_tsr[i] = x[i + _dof_robot];
     }
-    _tsr_robot->SetActiveDOFValues(q_tsr);
+    _tsr_robot->SetActiveDOFValues(q_tsr, 0);
 }
