@@ -20,7 +20,7 @@ class OMPLInterface:
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
-        self.planner.SendCommand("SetLogLevel 2")
+        self.planner.SendCommand("SetLogLevel 0")
 
     def solve(self, start_config, goal_config, T0_w, Tw_e, Bw, T0_w2, Tw_e2, Bw2):
         params = orpy.Planner.PlannerParameters()
@@ -31,12 +31,18 @@ class OMPLInterface:
         params.SetExtraParameters(OMPLInterface.template_string % (utils.SerializeTransform(T0_w), utils.SerializeTransform(Tw_e), utils.SerializeBound(Bw),
                                                                    utils.SerializeTransform(T0_w2), utils.SerializeTransform(Tw_e2), utils.SerializeBound(Bw2)))
 
-        traj = orpy.RaveCreateTrajectory(self.env, '')
         with self.env, self.robot:
-            self.planner.InitPlan(self.robot, params)
-            status = self.planner.PlanPath(traj)
-        orpy.planningutils.RetimeTrajectory(traj)
-        time = float(self.planner.SendCommand("GetPlanningTime"))
+            if(self.planner.InitPlan(self.robot, params)):
+                traj = orpy.RaveCreateTrajectory(self.env, '')
+                status = self.planner.PlanPath(traj)
+            else:
+                traj = None
+                status=orpy.PlannerStatus.Failed
+        if status == orpy.PlannerStatus.HasSolution:
+            orpy.planningutils.RetimeTrajectory(traj)
+            time = float(self.planner.SendCommand("GetPlanningTime"))
+        else:
+            time = -1
         return status, time, traj
 
 
@@ -49,7 +55,7 @@ class BaxterDoorOpeningProblem:
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
 
         # load kitchen scene, delete herb robot, and load baxter robot
-        self.env.Load('scenes/intelkitchen_robotized_herb2.env.xml')
+        self.env.Load('environments/intelkitchen_robotized_herb2.env.xml')
         rp = rospkg.RosPack()
         baxter_path = rp.get_path('baxter_description')
         urdf_path = os.path.join(baxter_path, "urdf/baxter_sym.urdf")

@@ -93,8 +93,8 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
 
 bool StateValidityChecker::isValid(const ompl::base::State *state) const {
     bool valid = _state_space->satisfiesBounds(state)
-           && computeFk(state, OpenRAVE::KinBody::CLA_Nothing);
-//           && !_env->CheckCollision(_robot, _ignore_body, _ignore_link)
-//           && !_robot->CheckSelfCollision();
+           && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
+           && !_env->CheckCollision(_robot, _ignore_body, _ignore_link)
+           && !_robot->CheckSelfCollision();
     return valid;
 }

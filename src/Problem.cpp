@@ -510,6 +510,14 @@ bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_->setStateValidityChecker(state_validity_checker_);
     simple_setup_->setPlanner(planner_);
     simple_setup_->setup();
+    if(!state_validity_checker_->isValid(start.get())){
+        OMPL_WARN("Start is not valid!");
+        return false;
+    }
+    if(!state_validity_checker_->isValid(goal.get())) {
+        OMPL_WARN("Goal is not valid!");
+        return false;
+    }
     OMPL_DEBUG("Constructed simple setup successfully.");
     return true;
 }
