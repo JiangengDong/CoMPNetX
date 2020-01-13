@@ -21,8 +21,6 @@ namespace AtlasMPNet {
 
         void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
 
-        bool project(Eigen::Ref<Eigen::VectorXd> x) const override;
-
     private:
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;

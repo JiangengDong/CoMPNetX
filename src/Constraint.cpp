@@ -89,42 +89,6 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
     }
 }
 
-bool AtlasMPNet::TSRChainConstraint::project(Eigen::Ref<Eigen::VectorXd> x) const {
-    // Newton's method
-    unsigned int iter = 0;
-    double norm = 0;
-    Eigen::VectorXd f(getCoDimension());
-    Eigen::MatrixXd j(getCoDimension(), n_);
-
-    double old_norm = 0;
-    double stepsize;
-    Eigen::VectorXd old_x(getAmbientDimension());
-    Eigen::VectorXd direction(getAmbientDimension());
-
-    const double squaredTolerance = tolerance_ * tolerance_;
-
-    function(x, f);
-    norm = f.squaredNorm();
-    while (norm > squaredTolerance && iter++ < maxIterations_) {
-        jacobian(x, j);
-        direction = j.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(f);
-        stepsize = 2.0;
-        old_x = x;
-        old_norm = norm;
-        do {
-            stepsize /= 2;
-            x = old_x - stepsize * direction;
-            function(x, f);
-            norm = f.squaredNorm();
-        } while (norm > old_norm && norm > squaredTolerance && stepsize > 1e-8);
-        if(stepsize <= 1e-8){
-            break;
-        }
-    }
-
-    return norm < squaredTolerance;
-}
-
 void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
     std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
     // joint values of real robot

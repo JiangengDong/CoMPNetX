@@ -140,7 +140,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             break;
         case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
             OMPL_WARN("Found an approximate solution. ");
-            break;
+//            break;
         case ompl::base::PlannerStatus::EXACT_SOLUTION: {
             auto ompl_traj = simple_setup_->getSolutionPath();
             size_t const dof_robot = robot_->GetActiveDOF();
@@ -155,7 +155,23 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
 
             // print the result
             std::stringstream ss;
-            ss << "states in path: " << ompl_traj.getStateCount();
+            ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
+            for(int i=0; i<3;i++) {
+                ss << "\tState " << i << ":";
+                space->copyToReals(values, ompl_traj.getState(i));
+                for (auto v:values){
+                    ss << " " << v;
+                }
+                ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
+            }
+            for(int i=ompl_traj.getStateCount()-3; i<ompl_traj.getStateCount();i++) {
+                ss << "\tState " << i << ":";
+                space->copyToReals(values, ompl_traj.getState(i));
+                for (auto v:values){
+                    ss << " " << v;
+                }
+                ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
+            }
             OMPL_DEBUG(ss.str().c_str());
             plannerStatus = OpenRAVE::PS_HasSolution;
             break;
