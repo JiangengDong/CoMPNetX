@@ -442,19 +442,19 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                     case 3:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 0, 1), boost::math::double_constants::pi);
+                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 0, 1), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     case 4:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), boost::math::double_constants::pi);
+                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     case 5:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), boost::math::double_constants::pi);
+                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     default:
