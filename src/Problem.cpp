@@ -115,7 +115,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
     }
     ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameters_.time_);
     if (parameters_->constraint_parameters_.type_ != ConstraintParameters::PROJECTION)
-        OMPL_INFORM ("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
+        OMPL_INFORM("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
     switch (ompl::base::PlannerStatus::StatusType(status)) {
         case ompl::base::PlannerStatus::UNKNOWN:
             OMPL_WARN("Unknown status!");
@@ -157,18 +157,18 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             OMPL_INFORM("States in path: %d", ompl_traj.getStateCount());
             std::stringstream ss;
             ss << std::endl;
-            for(int i=0; i<3;i++) {
+            for (int i = 0; i < 3; i++) {
                 ss << "\tState " << i << ":";
                 space->copyToReals(values, ompl_traj.getState(i));
-                for (auto v:values){
+                for (auto v:values) {
                     ss << " " << v;
                 }
                 ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
             }
-            for(int i=ompl_traj.getStateCount()-3; i<ompl_traj.getStateCount();i++) {
+            for (int i = ompl_traj.getStateCount() - 3; i < ompl_traj.getStateCount(); i++) {
                 ss << "\tState " << i << ":";
                 space->copyToReals(values, ompl_traj.getState(i));
-                for (auto v:values){
+                for (auto v:values) {
                     ss << " " << v;
                 }
                 ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
@@ -537,11 +537,11 @@ bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_->setStateValidityChecker(state_validity_checker_);
     simple_setup_->setPlanner(planner_);
     simple_setup_->setup();
-    if(!state_validity_checker_->isValid(start.get())){
+    if (!state_validity_checker_->isValid(start.get())) {
         OMPL_WARN("Start is not valid!");
         return false;
     }
-    if(!state_validity_checker_->isValid(goal.get())) {
+    if (!state_validity_checker_->isValid(goal.get())) {
         OMPL_WARN("Goal is not valid!");
         return false;
     }

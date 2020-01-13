@@ -184,8 +184,8 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                     default:
                         break;
                 }
-                if(j<3)
-                    O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
+                if (j < 3)
+                    O << "\t\t\t\t<diffusecolor>0.7 0.3 0.3</diffusecolor>" << std::endl;
                 else
                     O << "\t\t\t\t<diffusecolor>0.3 0.3 0.7</diffusecolor>" << std::endl;
                 O << "\t\t\t</Geom>" << std::endl;
@@ -260,10 +260,11 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         O << "\t\t\t</Geom>" << std::endl;
         O << "\t\t</Body>" << std::endl;
 
-        O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"slider\">" << std::endl;
+        O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"hinge\" enable=\"false\">" << std::endl;
         O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
         O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
         O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
+        O << "\t\t\t<limits>" << "0 0" << "</limits>" << std::endl;
         O << "\t\t</Joint>" << std::endl;
 
         O << "\t</KinBody>" << std::endl;
@@ -375,7 +376,8 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         int num_Body = 0;
         const std::string body_name = "Body";
         const std::string joint_name = "Joint";
-        Tw0_e = OpenRAVE::Transform();
+        OpenRAVE::Transform eye;
+        Tw0_e = eye;
         OpenRAVE::Transform Tdiff;
 
         // construct body0
@@ -387,6 +389,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         geom_info->_vGeomData = OpenRAVE::Vector(0.01, 0.0, 0.0);
         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
         link_info->_vgeometryinfos.push_back(geom_info);
+        link_info->_bIsEnabled = false;
         link_infos.emplace_back(link_info);
         num_Body++;
 
@@ -432,47 +435,43 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                     case 0:
                         geom_info->_type = OpenRAVE::GT_Box;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.04, 0.02, 0.02);
-                        geom_info->_t = OpenRAVE::Transform();
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
                         break;
                     case 1:
                         geom_info->_type = OpenRAVE::GT_Box;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.02, 0.04, 0.02);
-                        geom_info->_t = OpenRAVE::Transform();
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
                         break;
                     case 2:
                         geom_info->_type = OpenRAVE::GT_Box;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.02, 0.02, 0.04);
-                        geom_info->_t = OpenRAVE::Transform();
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
                         break;
                     case 3:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 0, 1), boost::math::double_constants::pi/2);
+                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     case 4:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), boost::math::double_constants::pi/2);
+                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     case 5:
                         geom_info->_type = OpenRAVE::GT_Cylinder;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), boost::math::double_constants::pi/2);
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
                         break;
                     default:
                         geom_info->_type = OpenRAVE::GT_Sphere;
                         geom_info->_vGeomData = OpenRAVE::Vector(0.01, 0.0, 0.0);
-                        geom_info->_t = OpenRAVE::Transform();
                         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
                         break;
                 }
                 link_info->_vgeometryinfos.push_back(geom_info);
+                link_info->_bIsEnabled = false;
                 link_infos.emplace_back(link_info);
 
                 // construct the joint that connect body "num_body" and "num_body-1"
@@ -516,6 +515,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.0, 0.0);
         geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
         link_info->_vgeometryinfos.push_back(geom_info);
+        link_info->_bIsEnabled = false;
         link_infos.emplace_back(link_info);
 
         // construct the joint that connect body "num_body" and "num_body-1"
