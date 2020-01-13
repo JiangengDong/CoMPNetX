@@ -484,7 +484,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 joint_info->_vupperlimit[0] = tsr.Bw[j][1];
                 joint_info->_vanchor = Tdiff.trans;
                 int axis = j % 3;
-                if (j > 3 && bFlipAxis) {
+                if (j >= 3 && bFlipAxis) {
                     joint_info->_vaxes[0][axis] = -1;
                 } else {
                     joint_info->_vaxes[0][axis] = 1;

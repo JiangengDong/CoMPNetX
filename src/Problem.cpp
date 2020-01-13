@@ -154,8 +154,9 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             }
 
             // print the result
+            OMPL_INFORM("States in path: %d", ompl_traj.getStateCount());
             std::stringstream ss;
-            ss << "states in path: " << ompl_traj.getStateCount() << std::endl;
+            ss << std::endl;
             for(int i=0; i<3;i++) {
                 ss << "\tState " << i << ":";
                 space->copyToReals(values, ompl_traj.getState(i));
@@ -217,8 +218,9 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
 
     // print the result
     if (tsr_robot_ != nullptr) {
+        OMPL_INFORM("Constructed virtual TSR robot successfully.");
         std::stringstream ss;
-        ss << "Constructed virtual TSR robot successfully." << std::endl;
+        ss << std::endl;
         ss << "\tDOF: " << tsr_robot_->GetDOF() << std::endl;
         ss << "\tActive DOF: " << tsr_robot_->GetActiveDOF() << std::endl;
         ss << "\tNum of manipulators: " << tsr_robot_->GetManipulators().size() << std::endl;
@@ -283,8 +285,9 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     ambient_state_space_temp->setLongestValidSegmentFraction(conservative_fraction);
 
     // print result
+    OMPL_INFORM("Constructed ambient state space successfully.");
     std::stringstream ss;
-    ss << "Constructed ambient state space successfully." << std::endl;
+    ss << std::endl;
     ss << "\tDimension: " << ambient_state_space_->getDimension() << std::endl;
     ss << "\tUpper bound:";
     for (auto hb:bounds.high) {
@@ -348,8 +351,9 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     }
 
     // print result
+    OMPL_INFORM("Constructed constrained state space successfully.");
     std::stringstream ss;
-    ss << "Constructed constrained state space successfully." << std::endl;
+    ss << std::endl;
     switch (parameters_->constraint_parameters_.type_) {
         case ConstraintParameters::PROJECTION:
             ss << "\tType: Projection" << std::endl;
@@ -392,10 +396,14 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     parameters_->getStartState(robot_start);   // get the joint values of real robot
     robot_->SetActiveDOFValues(robot_start);
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_start, Ttemp);    // get the joint values of virtual robot
+    std::cout << "Visualize start. Press enter to continue." << std::endl;
+    std::cin.get();
     // goal config
     parameters_->getGoalState(robot_goal);
     robot_->SetActiveDOFValues(robot_goal);
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_goal, Ttemp);
+    std::cout << "Visualize goal. Press enter to continue." << std::endl;
+    std::cin.get();
 
     // concatenate config of robot and tsr
     start_.insert(start_.end(), robot_start.begin(), robot_start.end());
@@ -404,8 +412,9 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     goal_.insert(goal_.end(), tsr_goal.begin(), tsr_goal.end());
 
     // print result
+    OMPL_INFORM("Set start and goal successfully.");
     std::stringstream ss;
-    ss << "Set start and goal successfully." << std::endl;
+    ss << std::endl;
     ss << "\tStart:" << std::endl;
     ss << "\t\tRobot:";
     for (int i = 0; i < dof_robot; i++) {
@@ -441,7 +450,7 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {
 //    state_validity_checker_ = std::make_shared<ompl::base::AllValidStateValidityChecker>(constrained_space_info_);
     // print result
     if (state_validity_checker_ != nullptr) {
-        OMPL_DEBUG("Constructed state validity checker successfully.");
+        OMPL_INFORM("Constructed state validity checker successfully.");
         return true;
     } else {
         OMPL_ERROR("Failed to construct state validity checker!");
@@ -485,8 +494,9 @@ bool AtlasMPNet::Problem::setPlanner() {
     }
 
     // print result
+    OMPL_INFORM("Constructed planner successfully.");
     std::stringstream ss;
-    ss << "Constructed planner successfully." << std::endl;
+    ss << std::endl;
     ss << "\tPlanner: " << planner_->getName() << std::endl;
     switch (parameters_->solver_parameters_.type_) {
         case SolverParameters::RRT:
@@ -535,6 +545,6 @@ bool AtlasMPNet::Problem::simpleSetup() {
         OMPL_WARN("Goal is not valid!");
         return false;
     }
-    OMPL_DEBUG("Constructed simple setup successfully.");
+    OMPL_INFORM("Constructed simple setup successfully.");
     return true;
 }
