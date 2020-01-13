@@ -73,8 +73,6 @@ namespace AtlasMPNet {
         // temporary variables
         std::vector<double> _robot_values;
         std::vector<double> _tsr_values;
-        std::vector<OpenRAVE::KinBodyConstPtr> _ignore_body;
-        std::vector<OpenRAVE::KinBody::LinkConstPtr > _ignore_link;
     };
 
 } // namespace AtlasMPNet

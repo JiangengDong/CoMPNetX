@@ -115,7 +115,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
     }
     ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameters_.time_);
     if (parameters_->constraint_parameters_.type_ != ConstraintParameters::PROJECTION)
-        OMPL_DEBUG ("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
+        OMPL_INFORM ("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
     switch (ompl::base::PlannerStatus::StatusType(status)) {
         case ompl::base::PlannerStatus::UNKNOWN:
             OMPL_WARN("Unknown status!");

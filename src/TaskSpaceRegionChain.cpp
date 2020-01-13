@@ -104,7 +104,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         O << "<Robot name=\"" << robotname << "\">" << std::endl;
         O << "\t<KinBody>" << std::endl;
 
-        O << "\t\t<Body name = \"Body0\" type=\"dynamic\">" << std::endl;
+        O << "\t\t<Body name = \"Body0\" type=\"dynamic\" enable=\"false\">" << std::endl;
         O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
         O << "\t\t\t\t<Radius>0.01</Radius>" << std::endl;
         O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
@@ -147,7 +147,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 _lowerlimits.push_back(i.Bw[j][0]);
                 _upperlimits.push_back(i.Bw[j][1]);
 
-                O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\">" << std::endl;
+                O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
                 O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
                 O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
                 O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
@@ -250,7 +250,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
 //        OpenRAVE::Transform Told = Tw0_e;
 //        Tw0_e = TSRChain[TSRChain.size() - 1].Tw_e;
 
-        O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\">" << std::endl;
+        O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
         O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
         O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
         O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
