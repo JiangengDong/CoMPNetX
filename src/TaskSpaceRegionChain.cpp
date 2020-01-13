@@ -63,7 +63,7 @@ bool TaskSpaceRegionChain::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_i
 }
 
 bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out, int type) {
-    if (type != 0) {
+    if (type == 0) {
         bool bFlipAxis;
         if (penv_in.get() == nullptr) {
                     RAVELOG_INFO("Environment pointer is null!\n");
@@ -184,8 +184,10 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                     default:
                         break;
                 }
-
-                O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
+                if(j<3)
+                    O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
+                else
+                    O << "\t\t\t\t<diffusecolor>0.3 0.3 0.7</diffusecolor>" << std::endl;
                 O << "\t\t\t</Geom>" << std::endl;
 
                 O << "\t\t</Body>" << std::endl;
@@ -245,18 +247,24 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
 
         //now add a geometry to the last body with the offset of the last TSR, this will be the target for the manipulator
         //NOTE: this is appending a body, not making a new one
-        OpenRAVE::Transform Told = Tw0_e;
-        Tw0_e = TSRChain[TSRChain.size() - 1].Tw_e;
+//        OpenRAVE::Transform Told = Tw0_e;
+//        Tw0_e = TSRChain[TSRChain.size() - 1].Tw_e;
 
-        O << "\t\t<Body name = \"Body" << bodynumber - 1 << "\" type=\"dynamic\">" << std::endl;
+        O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\">" << std::endl;
+        O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
+        O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
+        O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
         O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
-        O << "\t\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
-        O << "\t\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
         O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
         O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
         O << "\t\t\t</Geom>" << std::endl;
         O << "\t\t</Body>" << std::endl;
 
+        O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"slider\">" << std::endl;
+        O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
+        O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
+        O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
+        O << "\t\t</Joint>" << std::endl;
 
         O << "\t</KinBody>" << std::endl;
 
@@ -266,7 +274,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
             //finally, write out the manipulator parameters
             O << "\t<Manipulator name=\"dummy\">" << std::endl;
             O << "\t\t<base>Body0</base>" << std::endl;
-            O << "\t\t<effector>Body" << bodynumber - 1 << "</effector>" << std::endl;
+            O << "\t\t<effector>Body" << bodynumber << "</effector>" << std::endl;
             O << "\t</Manipulator>" << std::endl;
         } else {
             _bPointTSR = true;
