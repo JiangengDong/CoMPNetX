@@ -159,27 +159,27 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
 
                 switch (j) {
                     case 0:
-                        O << "\t\t\t\t<extents>0.04 0.02 0.02</extents>" << std::endl;
+                        O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
                         break;
                     case 1:
-                        O << "\t\t\t\t<extents>0.02 0.04 0.02</extents>" << std::endl;
+                        O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
                         break;
                     case 2:
-                        O << "\t\t\t\t<extents>0.02 0.02 0.04</extents>" << std::endl;
+                        O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
                         break;
                     case 3:
                         O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
-                        O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.07</Height>" << std::endl;
+                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
                         break;
                     case 4:
-                        O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.07</Height>" << std::endl;
+                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
                         break;
                     case 5:
                         O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
-                        O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.07</Height>" << std::endl;
+                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
                         break;
                     default:
                         break;

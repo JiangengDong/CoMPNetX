@@ -95,5 +95,16 @@ bool StateValidityChecker::isValid(const ompl::base::State *state) const {
            && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
            && !_env->CheckCollision(_robot)
            && !_robot->CheckSelfCollision();
+    if(!valid && false) {
+        OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
+        if(_env->CheckCollision(_robot, report)){
+            OMPL_INFORM("External collision between %s:%s and %s:%s.", report->plink1->GetParent()->GetName().c_str(), report->plink1->GetName().c_str(),
+                    report->plink2->GetParent()->GetName().c_str(), report->plink2->GetName().c_str());
+        }
+        if(_robot->CheckSelfCollision(report)){
+            OMPL_INFORM("Self collision between %s:%s and %s:%s.", report->plink1->GetParent()->GetName().c_str(), report->plink1->GetName().c_str(),
+                        report->plink2->GetParent()->GetName().c_str(), report->plink2->GetName().c_str());
+        }
+    }
     return valid;
 }

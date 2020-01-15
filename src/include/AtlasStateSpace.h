@@ -43,7 +43,7 @@
 #include <ompl/datastructures/NearestNeighborsGNAT.h>
 #include <ompl/datastructures/PDF.h>
 
-#include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
+#include "ConstrainedStateSpace.h"
 
 #include <boost/math/constants/constants.hpp>
 #include <Eigen/Core>

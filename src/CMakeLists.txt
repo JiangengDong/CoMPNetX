@@ -9,9 +9,10 @@ add_library(AtlasMPNet SHARED
         statespace/AtlasChart.cpp
         statespace/AtlasStateSpace.cpp
         statespace/TangentBundleStateSpace.cpp
+        statespace/ProjectedStateSpace.cpp
+        statespace/ConstrainedStateSpace.cpp
         TaskSpaceRegion.cpp
         TaskSpaceRegionChain.cpp
-        statespace/ProjectedStateSpace.cpp
         planner/RRTConnect.cpp
         planner/RRT.cpp
         )

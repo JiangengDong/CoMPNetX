@@ -9,8 +9,8 @@
 #include <Eigen/Dense>
 #include <utility>
 #include <ompl/base/ScopedState.h>
-#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
+#include "AtlasStateSpace.h"
 #include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {

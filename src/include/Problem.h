@@ -8,14 +8,14 @@
 #include <openrave/openrave.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/Constraint.h>
-#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 #include <ompl/base/ConstrainedSpaceInformation.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/base/StateValidityChecker.h>
-
 #include "Parameters.h"
+
 #include "Constraint.h"
+#include "AtlasStateSpace.h"
 #include "StateValidityChecker.h"
 #include "TaskSpaceRegionChain.h"
 
