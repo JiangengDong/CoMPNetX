@@ -40,16 +40,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <boost/make_shared.hpp>
+#include <ompl/base/spaces/constraint/ProjectedStateSpace.h>
+#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
+#include <ompl/base/spaces/constraint/TangentBundleStateSpace.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
 
 #include "Problem.h"
 #include "Parameters.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
-#include "ProjectedStateSpace.h"
-#include "AtlasStateSpace.h"
-#include "TangentBundleStateSpace.h"
-#include "RRTConnect.h"
-#include "RRT.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
         OpenRAVE::PlannerBase(std::move(penv)) {
