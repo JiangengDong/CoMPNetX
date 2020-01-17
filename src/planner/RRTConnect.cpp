@@ -39,6 +39,7 @@
 #include <ompl/base/goals/GoalSampleableRegion.h>
 #include <ompl/tools/config/SelfConfig.h>
 #include <ompl/util/String.h>
+#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
 ompl::geometric::RRTConnect::RRTConnect(const base::SpaceInformationPtr &si, bool addIntermediateStates)
   : base::Planner(si, addIntermediateStates ? "RRTConnectIntermediate" : "RRTConnect")
@@ -120,67 +121,26 @@ ompl::geometric::RRTConnect::GrowState ompl::geometric::RRTConnect::growTree(Tre
     /* find closest state in the tree */
     Motion *nmotion = tree->nearest(rmotion);
 
-    /* assume we can reach the state we go towards */
-    bool reach = true;
+    std::vector<ompl::base::State *> stateList;
+    bool reach = si_->getStateSpace()->as<ompl::base::AtlasStateSpace>()->discreteGeodesic(nmotion->state, rmotion->state, false, &stateList);
 
-    /* find state to add */
-    base::State *dstate = rmotion->state;
-    double d = si_->distance(nmotion->state, rmotion->state);
-    if (d > maxDistance_)
-    {
-        si_->getStateSpace()->interpolate(nmotion->state, rmotion->state, maxDistance_ / d, tgi.xstate);
-
-        /* Check if we have moved at all. Due to some stranger state spaces (e.g., the constrained state spaces),
-         * interpolate can fail and no progress is made. Without this check, the algorithm gets stuck in a loop as it
-         * thinks it is making progress, when none is actually occurring. */
-        if (si_->equalStates(nmotion->state, tgi.xstate))
-            return TRAPPED;
-
-        dstate = tgi.xstate;
-        reach = false;
-    }
-
-    bool validMotion = tgi.start ? si_->checkMotion(nmotion->state, dstate) :
-                                   si_->isValid(dstate) && si_->checkMotion(dstate, nmotion->state);
-
-    if (!validMotion)
+    if(stateList.empty()    // did not traverse at all
+        || si_->equalStates(nmotion->state, stateList.back())) {    // did not make a progress
         return TRAPPED;
-
-    if (addIntermediateStates_)
-    {
-        const base::State *astate = tgi.start ? nmotion->state : dstate;
-        const base::State *bstate = tgi.start ? dstate : nmotion->state;
-
-        std::vector<base::State *> states;
-        const unsigned int count = si_->getStateSpace()->validSegmentCount(astate, bstate);
-
-        if (si_->getMotionStates(astate, bstate, states, count, true, true))
-            si_->freeState(states[0]);
-
-        for (std::size_t i = 1; i < states.size(); ++i)
-        {
-            Motion *motion = new Motion;
-            motion->state = states[i];
-            motion->parent = nmotion;
-            motion->root = nmotion->root;
-            tree->add(motion);
-
-            nmotion = motion;
-        }
-
-        tgi.xmotion = nmotion;
     }
-    else
-    {
-        Motion *motion = new Motion(si_);
+
+    Motion *motion = nullptr;
+    for(auto dstate: stateList) {
+        motion = new Motion(si_);
         si_->copyState(motion->state, dstate);
         motion->parent = nmotion;
         motion->root = nmotion->root;
         tree->add(motion);
-
-        tgi.xmotion = motion;
+        nmotion = motion;
     }
-    return reach ? REACHED : ADVANCED;
+    tgi.xmotion = motion;
+
+    return reach ? REACHED : TRAPPED;
 }
 
 ompl::base::PlannerStatus ompl::geometric::RRTConnect::solve(const base::PlannerTerminationCondition &ptc)

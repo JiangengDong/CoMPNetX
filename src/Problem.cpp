@@ -140,7 +140,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
             break;
         case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
             OMPL_WARN("Found an approximate solution. ");
-//            break;
+            break;
         case ompl::base::PlannerStatus::EXACT_SOLUTION: {
             auto ompl_traj = simple_setup_->getSolutionPath();
             size_t const dof_robot = robot_->GetActiveDOF();
@@ -396,14 +396,10 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     parameters_->getStartState(robot_start);   // get the joint values of real robot
     robot_->SetActiveDOFValues(robot_start);
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_start, Ttemp);    // get the joint values of virtual robot
-    std::cout << "Visualize start. Press enter to continue." << std::endl;
-    std::cin.get();
     // goal config
     parameters_->getGoalState(robot_goal);
     robot_->SetActiveDOFValues(robot_goal);
     tsr_chain_->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_goal, Ttemp);
-    std::cout << "Visualize goal. Press enter to continue." << std::endl;
-    std::cin.get();
 
     // concatenate config of robot and tsr
     start_.insert(start_.end(), robot_start.begin(), robot_start.end());
