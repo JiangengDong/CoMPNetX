@@ -25,7 +25,7 @@ class DoorOpeningProblem:
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
-        self.env.Load('scenes/intelkitchen_robotized_herb2.env.xml')
+        self.env.Load('environments/intelkitchen_robotized_herb2.env.xml')
         self.robot = self.env.GetRobot("BarrettWAM")
         self.manipulator_left = self.robot.GetManipulator('left_wam')
         self.manipulator_right = self.robot.GetManipulator('right_wam')
