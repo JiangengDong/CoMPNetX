@@ -33,7 +33,6 @@
 #include <openrave/openrave.h>
 
 #include <utility>
-#include "TaskSpaceRegion.h"
 #include "Parameters.h"
 
 namespace AtlasMPNet {
@@ -110,6 +109,10 @@ namespace AtlasMPNet {
         // is this TSR chain used for constraining the whole path?
         bool IsForConstraint() const {
             return param.purpose==TSRChainParameters::CONSTRAINT;
+        }
+
+        OpenRAVE::RobotBasePtr GetRobot() const {
+            return robot;
         }
 
     private:

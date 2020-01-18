@@ -6,7 +6,6 @@ add_library(AtlasMPNet SHARED
         Parameters.cpp
         Constraint.cpp
         StateValidityChecker.cpp
-        TaskSpaceRegion.cpp
         TaskSpaceRegionChain.cpp
         planner/RRTConnect.cpp
         )
