@@ -31,815 +31,360 @@
 #include <openrave/openrave.h>
 #include <boost/make_shared.hpp>
 #include <boost/math/constants/constants.hpp>
-
-#include "TaskSpaceRegion.h"
+#include <Eigen/Dense>
 
 using namespace AtlasMPNet;
 
-bool TaskSpaceRegionChain::Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in) {
-    _sumbounds = 0;
-    for (int i = 0; i < TSRChain.size(); i++) {
-        if (!TSRChain[i].Initialize(penv_in)) {
-                    RAVELOG_INFO("Error: Failed to initialize TSR %d\n", i);
-            return false;
-        }
+TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameters &param,
+                                           OpenRAVE::RobotBasePtr &probot_out) {
+    this->param = param;
+    _mimic_inds = this->param.mimic_inds;
+    numdof = -1;
+    _bPointTSR = true;
 
-        _sumbounds += TSRChain[i].GetSumOfBounds();
-    }
-    if (_sumbounds == 0)//for point TSRs
-        _sumbounds = 0.001;
-
-    if (strcasecmp(mimicbodyname.c_str(), "NULL") == 0) {
-        _pmimicbody.reset();
+    // find the mimic body according to its name
+    if (strcasecmp(param.mimic_body_name.c_str(), "NULL") == 0) {
+        _mimicbody.reset();
     } else {
-        _pmimicbody = penv_in->GetRobot(mimicbodyname);
-        if (_pmimicbody.get() == nullptr) {
+        _mimicbody = penv_in->GetRobot(param.mimic_body_name);
+        if (_mimicbody.get() == nullptr) {
                     RAVELOG_INFO("Error: could not find the specified kinbody to make a mimic\n");
-            return false;
+        }
+    }
+
+    // find the relative-to link according to its body name and link name
+    if (strcasecmp(param.relativebodyname.c_str(), "NULL") == 0) {
+        prelativetolink.reset();
+    } else {
+        OpenRAVE::KinBodyPtr pobject;
+        pobject = penv_in->GetKinBody(param.relativebodyname);
+        if (pobject.get() == nullptr) {
+                    RAVELOG_INFO("Error: could not find the specified object to attach frame\n");
         }
 
+        //find the link
+        std::vector<OpenRAVE::KinBody::LinkPtr> vlinks = pobject->GetLinks();
+        bool bGotLink = false;
+        for (auto &vlink : vlinks) {
+            if (strcmp(param.relativelinkname.c_str(), vlink->GetName().c_str()) == 0) {
+                        RAVELOG_INFO("frame link: %s:%s\n", vlink->GetParent()->GetName().c_str(), vlink->GetName().c_str());
+                prelativetolink = vlink;
+                bGotLink = true;
+                break;
+            }
+        }
+        if (!bGotLink) {
+                    RAVELOG_INFO("Error: could not find the specified link of the object to attach frame\n");
+        }
     }
-    return true;
+    RobotizeTSRChain(penv_in, probot_out);
 }
 
-bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out, int type) {
-    if (type == 0) {
-        bool bFlipAxis;
-        if (penv_in.get() == nullptr) {
-                    RAVELOG_INFO("Environment pointer is null!\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
+bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out) {
+    bool bFlipAxis;
+    if (penv_in.get() == nullptr) {
+                RAVELOG_INFO("Environment pointer is null!\n");
+        probot_out = OpenRAVE::RobotBasePtr();
+        return false;
+    }
 
-        _lowerlimits.resize(0);
-        _upperlimits.resize(0);
+    _lowerlimits.resize(0);
+    _upperlimits.resize(0);
 
-        //store this pointer for later robot destruction
-        penv = penv_in;
+    //store this pointer for later robot destruction
+    penv = penv_in;
 
-        char robotname[32], xmlfile[256], robottype[32];
-        sprintf(robottype, "GenericRobot");
-        sprintf(xmlfile, "TSRChain%lu.robot.xml", (unsigned long int) this);
-        sprintf(robotname, "TSRChain%lu", (unsigned long int) this);//give a unique name to this robot
+    char robotname[32], xmlfile[256], robottype[32];
+    sprintf(robottype, "GenericRobot");
+    sprintf(xmlfile, "TSRChain%lu.robot.xml", (unsigned long int) this);
+    sprintf(robotname, "TSRChain%lu", (unsigned long int) this);//give a unique name to this robot
 
-        robot = RaveCreateRobot(penv_in, robottype);
-        if (robot.get() == nullptr) {
-                    RAVELOG_INFO("Failed to create robot %s", robottype);
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
+    robot = RaveCreateRobot(penv_in, robottype);
+    if (robot.get() == nullptr) {
+                RAVELOG_INFO("Failed to create robot %s", robottype);
+        probot_out = OpenRAVE::RobotBasePtr();
+        return false;
+    }
 
-        if (_pmimicbody != nullptr) {
-            _mimicjointvals_temp.resize(_pmimicbody->GetDOF());
-            //mimic body may not be starting at 0 position for all joints, so get the joint offsets
-            _mimicjointoffsets.resize(_pmimicbody->GetDOF());
-            _pmimicbody->GetDOFValues(_mimicjointoffsets);
-        }
+    if (_mimicbody != nullptr) {
+        _mimicjointvals_temp.resize(_mimicbody->GetDOF());
+        //mimic body may not be starting at 0 position for all joints, so get the joint offsets
+        _mimicjointoffsets.resize(_mimicbody->GetDOF());
+        _mimicbody->GetDOFValues(_mimicjointoffsets);
+    }
 
-        //now write out the XML string for this robot
+    //now write out the XML string for this robot
 
-        std::stringstream O;
+    std::stringstream O;
 
-        O << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" << std::endl;
-        O << "<Robot name=\"" << robotname << "\">" << std::endl;
-        O << "\t<KinBody>" << std::endl;
+    O << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" << std::endl;
+    O << "<Robot name=\"" << robotname << "\">" << std::endl;
+    O << "\t<KinBody>" << std::endl;
 
-        O << "\t\t<Body name = \"Body0\" type=\"dynamic\" enable=\"false\">" << std::endl;
-        O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
-        O << "\t\t\t\t<Radius>0.01</Radius>" << std::endl;
-        O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
-        O << "\t\t\t</Geom>" << std::endl;
-        O << "\t\t</Body>" << std::endl;
+    O << "\t\t<Body name = \"Body0\" type=\"dynamic\" enable=\"false\">" << std::endl;
+    O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
+    O << "\t\t\t\t<Radius>0.01</Radius>" << std::endl;
+    O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
+    O << "\t\t\t</Geom>" << std::endl;
+    O << "\t\t</Body>" << std::endl;
 
-        int bodynumber = 1;
-        Tw0_e = OpenRAVE::Transform();
+    int bodynumber = 1;
+    OpenRAVE::Transform Tw0_e = OpenRAVE::Transform();
 
-        for (auto &i : TSRChain) {
-            for (int j = 0; j < 6; j++) {
-                bFlipAxis = false;
-                //don't add a body if there is no freedom in this dimension
-                if (i.Bw[j][0] == 0 && i.Bw[j][1] == 0)
-                    continue;
+    for (auto &tsr : param.TSRs) {
+        for (int j = 0; j < 6; j++) {
+            bFlipAxis = false;
+            //don't add a body if there is no freedom in this dimension
+            if (tsr.Bw[j][0] == 0 && tsr.Bw[j][1] == 0)
+                continue;
 
-                if (i.Bw[j][0] == i.Bw[j][1]) {
-                            RAVELOG_FATAL(
-                            "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
-                    probot_out = OpenRAVE::RobotBasePtr();
-                    return false;
-                }
-
-                //check for axis flip, this is marked by the Bw values being backwards
-                if (i.Bw[j][0] > i.Bw[j][1]) {
-                    i.Bw[j][0] = -i.Bw[j][0];
-                    i.Bw[j][1] = -i.Bw[j][1];
-                    bFlipAxis = true;
-                }
-
-                //now take care of joint offsets if we are mimicing
-                if (_pmimicbody.get() != nullptr) {
-                    //we may only be mimicing some of the joints of the TSR
-                    if (bodynumber - 1 < _mimicinds.size()) {
-                        i.Bw[j][0] = i.Bw[j][0] - _mimicjointoffsets[_mimicinds[bodynumber - 1]];
-                        i.Bw[j][1] = i.Bw[j][1] - _mimicjointoffsets[_mimicinds[bodynumber - 1]];
-                    }
-                }
-
-                _lowerlimits.push_back(i.Bw[j][0]);
-                _upperlimits.push_back(i.Bw[j][1]);
-
-                O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
-                O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
-                O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
-                O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
-
-                if (j < 3)
-                    O << "\t\t\t<Geom type=\"box\">" << std::endl;
-                else
-                    O << "\t\t\t<Geom type=\"cylinder\">" << std::endl;
-
-                switch (j) {
-                    case 0:
-                        O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
-                        break;
-                    case 1:
-                        O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
-                        break;
-                    case 2:
-                        O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
-                        break;
-                    case 3:
-                        O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
-                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                        break;
-                    case 4:
-                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                        break;
-                    case 5:
-                        O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
-                        O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                        O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                        break;
-                    default:
-                        break;
-                }
-                if (j < 3)
-                    O << "\t\t\t\t<diffusecolor>0.7 0.3 0.3</diffusecolor>" << std::endl;
-                else
-                    O << "\t\t\t\t<diffusecolor>0.3 0.3 0.7</diffusecolor>" << std::endl;
-                O << "\t\t\t</Geom>" << std::endl;
-
-                O << "\t\t</Body>" << std::endl;
-
-                if (j < 3)
-                    O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"slider\">" << std::endl;
-                else
-                    O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"hinge\">" << std::endl;
-
-                O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
-                O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
-                O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
-                O << "\t\t\t<weight>1</weight>" << std::endl;
-                O << "\t\t\t<maxvel>1</maxvel>" << std::endl;
-                O << "\t\t\t<resolution>1</resolution>" << std::endl;
-
-                O << "\t\t\t<limits>" << i.Bw[j][0] << " " << i.Bw[j][1] << "</limits>" << std::endl;
-
-                switch (j) {
-                    case 0:
-                        O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                        break;
-                    case 1:
-                        O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                        break;
-                    case 2:
-                        O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                        break;
-                    case 3:
-                        if (bFlipAxis)
-                            O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
-                        else
-                            O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                        break;
-                    case 4:
-                        if (bFlipAxis)
-                            O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
-                        else
-                            O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                        break;
-                    case 5:
-                        if (bFlipAxis)
-                            O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
-                        else
-                            O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                        break;
-                    default:
-                        break;
-                }
-
-                O << "\t\t</Joint>" << std::endl;
-
-                bodynumber++;
-            }
-            Tw0_e = Tw0_e * i.Tw_e;
-        }
-
-        //now add a geometry to the last body with the offset of the last TSR, this will be the target for the manipulator
-        //NOTE: this is appending a body, not making a new one
-//        OpenRAVE::Transform Told = Tw0_e;
-//        Tw0_e = TSRChain[TSRChain.size() - 1].Tw_e;
-
-        O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
-        O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
-        O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
-        O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
-        O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
-        O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
-        O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
-        O << "\t\t\t</Geom>" << std::endl;
-        O << "\t\t</Body>" << std::endl;
-
-        O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"hinge\" enable=\"false\">" << std::endl;
-        O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
-        O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
-        O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
-        O << "\t\t\t<limits>" << "0 0" << "</limits>" << std::endl;
-        O << "\t\t</Joint>" << std::endl;
-
-        O << "\t</KinBody>" << std::endl;
-
-
-        if (bodynumber > 1) {
-            _bPointTSR = false;
-            //finally, write out the manipulator parameters
-            O << "\t<Manipulator name=\"dummy\">" << std::endl;
-            O << "\t\t<base>Body0</base>" << std::endl;
-            O << "\t\t<effector>Body" << bodynumber << "</effector>" << std::endl;
-            O << "\t</Manipulator>" << std::endl;
-        } else {
-            _bPointTSR = true;
-            numdof = bodynumber - 1;
-                    RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return true;
-        }
-
-        if (_bPointTSR && TSRChain.size() != 1) {
-                    RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-
-
-        O << "</Robot>" << std::endl;
-
-        robot = penv->ReadRobotXMLData(OpenRAVE::RobotBasePtr(), O.str(), std::list<std::pair<std::string, std::string> >());
-
-        if (robot.get() == nullptr) {
-                    RAVELOG_INFO("Could not init robot from data!\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-
-        if (robot.get() == nullptr) {
-                    RAVELOG_INFO("Robot is NULL!\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-
-        robot->SetName(robotname);
-        penv_in->Add(robot, true);
-
-        if (TSRChain[0].prelativetolink.get() == nullptr)
-            robot->SetTransform(TSRChain[0].T0_w);
-        else
-            robot->SetTransform(TSRChain[0].prelativetolink->GetTransform() * TSRChain[0].T0_w);
-
-
-        _pIkSolver = RaveCreateIkSolver(penv_in, "GeneralIK");
-
-        if (_pIkSolver.get() == nullptr) {
-                    RAVELOG_INFO("Cannot create IK solver, make sure you have the GeneralIK plugin loadable by openrave\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-
-        OpenRAVE::RobotBase::ManipulatorPtr pmanip = robot->GetActiveManipulator();
-        robot->SetActiveDOFs(pmanip->GetArmIndices());
-        _pIkSolver->Init(pmanip);
-        numdof = bodynumber - 1;
-
-        //initialize parameters to send to ik solver
-        ikparams.resize(12);
-        ikparams[0] = 1;
-        ikparams[1] = 0;    // there is only one manipulator in the virtual robot, so its index must be 0
-        ikparams[9] = 0; //don't do any balancing
-        ikparams[10] = 0; //select the mode
-        ikparams[11] = 0; //do rotation
-
-        //note that openrave will creat traj files for each TSR in your .openrave directory, you may want to remove them
-
-        robot->Enable(false);
-
-        probot_out = robot;
-        return true;
-    } else {
-        bool bFlipAxis;
-        if (penv_in.get() == nullptr) {
-                    RAVELOG_INFO("Environment pointer is null!\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-        penv = penv_in;
-
-        _lowerlimits.resize(0);
-        _upperlimits.resize(0);
-
-        if (_pmimicbody != nullptr) {
-            _mimicjointvals_temp.resize(_pmimicbody->GetDOF());
-            //mimic body may not be starting at 0 position for all joints, so get the joint offsets
-            _mimicjointoffsets.resize(_pmimicbody->GetDOF());
-            _pmimicbody->GetDOFValues(_mimicjointoffsets);
-        }
-
-        //now write out the XML string for this robot
-        std::vector<OpenRAVE::KinBody::LinkInfoConstPtr> link_infos;
-        std::vector<OpenRAVE::KinBody::JointInfoConstPtr> joint_infos;
-        std::vector<OpenRAVE::RobotBase::ManipulatorInfoConstPtr> manip_infos;
-        std::vector<OpenRAVE::RobotBase::AttachedSensorInfoConstPtr> sensor_infos;
-        OpenRAVE::KinBody::LinkInfoPtr link_info;
-        OpenRAVE::KinBody::JointInfoPtr joint_info;
-        OpenRAVE::KinBody::GeometryInfoPtr geom_info;
-        OpenRAVE::RobotBase::ManipulatorInfoPtr manip_info;
-
-        int num_Body = 0;
-        const std::string body_name = "Body";
-        const std::string joint_name = "Joint";
-        OpenRAVE::Transform eye;
-        Tw0_e = eye;
-        OpenRAVE::Transform Tdiff;
-
-        // construct body0
-        link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-        link_info->_name = (boost::format("%s%d") % body_name % num_Body).str();
-        link_info->_t = Tw0_e;
-        geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
-        geom_info->_type = OpenRAVE::GT_Sphere;
-        geom_info->_vGeomData = OpenRAVE::Vector(0.01, 0.0, 0.0);
-        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
-        link_info->_vgeometryinfos.push_back(geom_info);
-        link_info->_bIsEnabled = false;
-        link_infos.emplace_back(link_info);
-        num_Body++;
-
-        for (auto &tsr : TSRChain) {
-            for (int j = 0; j < 6; j++) {
-                bFlipAxis = false;
-                //don't add a body if there is no freedom in this dimension
-                if (tsr.Bw[j][0] == 0 && tsr.Bw[j][1] == 0)
-                    continue;
-
-                if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
-                            RAVELOG_FATAL(
-                            "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
-                    probot_out = OpenRAVE::RobotBasePtr();
-                    return false;
-                }
-
-                //check for axis flip, this is marked by the Bw values being backwards
-                if (tsr.Bw[j][0] > tsr.Bw[j][1]) {
-                    tsr.Bw[j][0] = -tsr.Bw[j][0];
-                    tsr.Bw[j][1] = -tsr.Bw[j][1];
-                    bFlipAxis = true;
-                }
-
-                //now take care of joint offsets if we are mimicing
-                if (_pmimicbody.get() != nullptr) {
-                    //we may only be mimicing some of the joints of the TSR
-                    if (num_Body - 1 < _mimicinds.size()) {
-                        tsr.Bw[j][0] = tsr.Bw[j][0] - _mimicjointoffsets[_mimicinds[num_Body - 1]];
-                        tsr.Bw[j][1] = tsr.Bw[j][1] - _mimicjointoffsets[_mimicinds[num_Body - 1]];
-                    }
-                }
-
-                _lowerlimits.push_back(tsr.Bw[j][0]);
-                _upperlimits.push_back(tsr.Bw[j][1]);
-
-                // construct body "num_body"
-                link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-                link_info->_name = (boost::format("%s%d") % body_name % num_Body).str();
-                link_info->_t = Tw0_e;
-                geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
-                switch (j) {    // choose geometry w.r.t joint type
-                    case 0:
-                        geom_info->_type = OpenRAVE::GT_Box;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.04, 0.02, 0.02);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
-                        break;
-                    case 1:
-                        geom_info->_type = OpenRAVE::GT_Box;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.02, 0.04, 0.02);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
-                        break;
-                    case 2:
-                        geom_info->_type = OpenRAVE::GT_Box;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.02, 0.02, 0.04);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.7, 0.3, 0.3);
-                        break;
-                    case 3:
-                        geom_info->_type = OpenRAVE::GT_Cylinder;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(0, 1, 0), boost::math::double_constants::pi/2);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
-                        break;
-                    case 4:
-                        geom_info->_type = OpenRAVE::GT_Cylinder;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_t = OpenRAVE::geometry::matrixFromAxisAngle(OpenRAVE::Vector(1, 0, 0), boost::math::double_constants::pi/2);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
-                        break;
-                    case 5:
-                        geom_info->_type = OpenRAVE::GT_Cylinder;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.07, 0.00);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.3, 0.7);
-                        break;
-                    default:
-                        geom_info->_type = OpenRAVE::GT_Sphere;
-                        geom_info->_vGeomData = OpenRAVE::Vector(0.01, 0.0, 0.0);
-                        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
-                        break;
-                }
-                link_info->_vgeometryinfos.push_back(geom_info);
-                link_info->_bIsEnabled = false;
-                link_infos.emplace_back(link_info);
-
-                // construct the joint that connect body "num_body" and "num_body-1"
-                joint_info = boost::make_shared<OpenRAVE::KinBody::JointInfo>();
-                joint_info->_name = (boost::format("%s%d-%d") % joint_name % num_Body % (num_Body - 1)).str();
-                joint_info->_linkname0 = (boost::format("%s%d") % body_name % (num_Body - 1)).str();
-                joint_info->_linkname1 = (boost::format("%s%d") % body_name % num_Body).str();
-                if (j < 3) {
-                    joint_info->_type = OpenRAVE::KinBody::JointSlider;
-                } else {
-                    joint_info->_type = OpenRAVE::KinBody::JointHinge;
-                }
-                joint_info->_vweights[0] = 1.;
-                joint_info->_vmaxvel[0] = 1.;
-                joint_info->_vresolution[0] = 1.;
-                joint_info->_vlowerlimit[0] = tsr.Bw[j][0];
-                joint_info->_vupperlimit[0] = tsr.Bw[j][1];
-                joint_info->_vanchor = Tdiff.trans;
-                int axis = j % 3;
-                if (j >= 3 && bFlipAxis) {
-                    joint_info->_vaxes[0][axis] = -1;
-                } else {
-                    joint_info->_vaxes[0][axis] = 1;
-                }
-                joint_info->_vaxes[0] = Tdiff.rotate(joint_info->_vaxes[0]);
-                joint_infos.emplace_back(joint_info);
-
-                Tdiff.identity();
-                num_Body++;
-            }
-            Tw0_e = Tw0_e * tsr.Tw_e;
-            Tdiff = tsr.Tw_e;
-        }
-
-        // construct the last body
-        link_info = boost::make_shared<OpenRAVE::KinBody::LinkInfo>();
-        link_info->_name = (boost::format("%s%d") % body_name % num_Body).str();
-        link_info->_t = Tw0_e;
-        geom_info = boost::make_shared<OpenRAVE::KinBody::GeometryInfo>();
-        geom_info->_type = OpenRAVE::GT_Sphere;
-        geom_info->_vGeomData = OpenRAVE::Vector(0.03, 0.0, 0.0);
-        geom_info->_vDiffuseColor = OpenRAVE::Vector(0.3, 0.7, 0.3);
-        link_info->_vgeometryinfos.push_back(geom_info);
-        link_info->_bIsEnabled = false;
-        link_infos.emplace_back(link_info);
-
-        // construct the joint that connect body "num_body" and "num_body-1"
-        joint_info = boost::make_shared<OpenRAVE::KinBody::JointInfo>();
-        joint_info->_name = (boost::format("%s%d-%d") % joint_name % num_Body % (num_Body - 1)).str();
-        joint_info->_linkname0 = (boost::format("%s%d") % body_name % (num_Body - 1)).str();
-        joint_info->_linkname1 = (boost::format("%s%d") % body_name % num_Body).str();
-        joint_info->_type = OpenRAVE::KinBody::JointNone;
-        joint_infos.emplace_back(joint_info);
-
-        // TODO: there is a problem in robotize process. fix it. Change anchor can help.
-        numdof = num_Body - 1;
-        if (numdof > 0) {
-            _bPointTSR = false;
-            manip_info = boost::make_shared<OpenRAVE::RobotBase::ManipulatorInfo>();
-            manip_info->_name = "dummy";
-            manip_info->_sBaseLinkName = (boost::format("%s%d") % body_name % 0).str();
-            manip_info->_sEffectorLinkName = (boost::format("%s%d") % body_name % num_Body).str();
-            manip_infos.emplace_back(manip_info);
-        } else {
-            _bPointTSR = true;
-                    RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            if (TSRChain.size() == 1) {
-                return true;
-            } else {
-                        RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
+            if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
+                        RAVELOG_FATAL(
+                        "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
                 probot_out = OpenRAVE::RobotBasePtr();
                 return false;
             }
+
+            //check for axis flip, this is marked by the Bw values being backwards
+            if (tsr.Bw[j][0] > tsr.Bw[j][1]) {
+                tsr.Bw[j][0] = -tsr.Bw[j][0];
+                tsr.Bw[j][1] = -tsr.Bw[j][1];
+                bFlipAxis = true;
+            }
+
+            //now take care of joint offsets if we are mimicing
+            if (_mimicbody.get() != nullptr) {
+                //we may only be mimicing some of the joints of the TSR
+                if (bodynumber - 1 < _mimic_inds.size()) {
+                    tsr.Bw[j][0] = tsr.Bw[j][0] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
+                    tsr.Bw[j][1] = tsr.Bw[j][1] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
+                }
+            }
+
+            _lowerlimits.push_back(tsr.Bw[j][0]);
+            _upperlimits.push_back(tsr.Bw[j][1]);
+
+            O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
+            O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
+            O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
+            O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
+
+            if (j < 3)
+                O << "\t\t\t<Geom type=\"box\">" << std::endl;
+            else
+                O << "\t\t\t<Geom type=\"cylinder\">" << std::endl;
+
+            switch (j) {
+                case 0:
+                    O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
+                    break;
+                case 1:
+                    O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
+                    break;
+                case 2:
+                    O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
+                    break;
+                case 3:
+                    O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                case 4:
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                case 5:
+                    O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                default:
+                    break;
+            }
+            if (j < 3)
+                O << "\t\t\t\t<diffusecolor>0.7 0.3 0.3</diffusecolor>" << std::endl;
+            else
+                O << "\t\t\t\t<diffusecolor>0.3 0.3 0.7</diffusecolor>" << std::endl;
+            O << "\t\t\t</Geom>" << std::endl;
+
+            O << "\t\t</Body>" << std::endl;
+
+            if (j < 3)
+                O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"slider\">" << std::endl;
+            else
+                O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"hinge\">" << std::endl;
+
+            O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
+            O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
+            O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
+            O << "\t\t\t<weight>1</weight>" << std::endl;
+            O << "\t\t\t<maxvel>1</maxvel>" << std::endl;
+            O << "\t\t\t<resolution>1</resolution>" << std::endl;
+
+            O << "\t\t\t<limits>" << tsr.Bw[j][0] << " " << tsr.Bw[j][1] << "</limits>" << std::endl;
+
+            switch (j) {
+                case 0:
+                    O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
+                    break;
+                case 1:
+                    O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
+                    break;
+                case 2:
+                    O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
+                    break;
+                case 3:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
+                    break;
+                case 4:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
+                    break;
+                case 5:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
+                    break;
+                default:
+                    break;
+            }
+
+            O << "\t\t</Joint>" << std::endl;
+
+            bodynumber++;
         }
+        Tw0_e = Tw0_e * tsr.Tw_e;
+    }
 
-        std::string robot_name = (boost::format("TSRChain%d") % this).str(); //give a unique name to this robot
-        //store this pointer for later robot destruction
-        robot = RaveCreateRobot(penv_in, "GenericRobot");
-        if (robot.get() == nullptr) {
-                    RAVELOG_INFO("Failed to create robot %s", "GenericRobot");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-        robot->Init(link_infos, joint_infos, manip_infos, sensor_infos);
-        if (robot.get() == nullptr) {
-                    RAVELOG_INFO("Could not init robot from data!\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
-        robot->SetName(robot_name);
-        penv_in->Add(robot, true);
+    O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
+    O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
+    O << "\t\t\t<Translation>" << Tw0_e.trans.x << " " << Tw0_e.trans.y << " " << Tw0_e.trans.z << "</Translation>" << std::endl;
+    O << "\t\t\t<Quat>" << Tw0_e.rot.x << " " << Tw0_e.rot.y << " " << Tw0_e.rot.z << " " << Tw0_e.rot.w << "</Quat>" << std::endl;
+    O << "\t\t\t<Geom type=\"sphere\">" << std::endl;
+    O << "\t\t\t\t<Radius>0.03</Radius>" << std::endl;
+    O << "\t\t\t\t<diffusecolor>0.3 0.7 0.3</diffusecolor>" << std::endl;
+    O << "\t\t\t</Geom>" << std::endl;
+    O << "\t\t</Body>" << std::endl;
 
-        if (TSRChain[0].prelativetolink.get() == nullptr) // TODO: this is not right
-            robot->SetTransform(TSRChain[0].T0_w);
-        else
-            robot->SetTransform(TSRChain[0].prelativetolink->GetTransform() * TSRChain[0].T0_w);
+    O << "\t\t<Joint name=\"J" << bodynumber << "\" type=\"hinge\" enable=\"false\">" << std::endl;
+    O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
+    O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
+    O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
+    O << "\t\t\t<limits>" << "0 0" << "</limits>" << std::endl;
+    O << "\t\t</Joint>" << std::endl;
 
-        _pIkSolver = RaveCreateIkSolver(penv_in, "GeneralIK");
-        if (_pIkSolver.get() == nullptr) {
-                    RAVELOG_INFO("Cannot create IK solver, make sure you have the GeneralIK plugin loadable by openrave\n");
-            probot_out = OpenRAVE::RobotBasePtr();
-            return false;
-        }
+    O << "\t</KinBody>" << std::endl;
 
-        OpenRAVE::RobotBase::ManipulatorPtr pmanip = robot->GetActiveManipulator();
-        robot->SetActiveDOFs(pmanip->GetArmIndices());
-        _pIkSolver->Init(pmanip);
 
-        //initialize parameters to send to ik solver
-        ikparams.resize(12);
-        ikparams[0] = 1;
-        ikparams[1] = 0;    // there is only one manipulator in the virtual robot, so its index must be 0
-        ikparams[9] = 0; //don't do any balancing
-        ikparams[10] = 0; //select the mode
-        ikparams[11] = 0; //do rotation
-
-        //note that openrave will creat traj files for each TSR in your .openrave directory, you may want to remove them
-        robot->Enable(false);
-
-        probot_out = robot;
+    if (bodynumber > 1) {
+        _bPointTSR = false;
+        //finally, write out the manipulator parameters
+        O << "\t<Manipulator name=\"dummy\">" << std::endl;
+        O << "\t\t<base>Body0</base>" << std::endl;
+        O << "\t\t<effector>Body" << bodynumber << "</effector>" << std::endl;
+        O << "\t</Manipulator>" << std::endl;
+    } else {
+        _bPointTSR = true;
+        numdof = bodynumber - 1;
+                RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
+        probot_out = OpenRAVE::RobotBasePtr();
         return true;
     }
-}
 
-OpenRAVE::dReal TaskSpaceRegionChain::TransformDifference(const OpenRAVE::Transform &tm_ref, const OpenRAVE::Transform &tm_targ) const {
-    _tmtemp = tm_ref.inverse() * tm_targ;
+    if (_bPointTSR && param.TSRs.size() != 1) {
+                RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
+        probot_out = OpenRAVE::RobotBasePtr();
+        return false;
+    }
 
-    _dx[0] = _tmtemp.trans.x;
-    _dx[1] = _tmtemp.trans.y;
-    _dx[2] = _tmtemp.trans.z;
+    O << "</Robot>" << std::endl;
 
-    TSRChain[0].QuatToRPY(&_tmtemp.rot[0], _dx[3], _dx[4], _dx[5]);
+    robot = penv->ReadRobotXMLData(OpenRAVE::RobotBasePtr(), O.str(), std::list<std::pair<std::string, std::string> >());
+    if (robot.get() == nullptr) {
+                RAVELOG_INFO("Could not init robot from data!\n");
+        probot_out = OpenRAVE::RobotBasePtr();
+        return false;
+    }
 
-    _sumsqr = 0;
-    for (int i = 0; i < 6; i++)
-        _sumsqr += _dx[i] * _dx[i];
-    //RAVELOG_INFO("dx: %f %f %f %f %f %F\n",dx[0],dx[1],dx[2],dx[3],dx[4],dx[5]);
+    robot->SetName(robotname);
+    penv_in->Add(robot, true);
 
-    return sqrt(_sumsqr);
+    if (prelativetolink.get() == nullptr)
+        robot->SetTransform(param.TSRs[0].T0_w);
+    else
+        robot->SetTransform(prelativetolink->GetTransform() * param.TSRs[0].T0_w);    // TODO: this is not the relative that I think
+
+    OpenRAVE::RobotBase::ManipulatorPtr pmanip = robot->GetActiveManipulator();
+    robot->SetActiveDOFs(pmanip->GetArmIndices());
+    numdof = bodynumber - 1;
+    robot->Enable(false);
+    probot_out = robot;
+    return true;
 }
 
 OpenRAVE::dReal
 TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closeset) const {
-    if (_bPointTSR) {
-        T0_closeset = TSRChain[0].GetClosestTransform(T0_s);
-        return TSRChain[0].DistanceToTSR(T0_s, _dx);
-    }
+    Eigen::MatrixXd J(6, numdof);
+    Eigen::VectorXd p(6), q(numdof);
+    std::vector<OpenRAVE::dReal> Jtrans, Jrot;
+    OpenRAVE::Transform Tdiff;
+    double squaredNorm = 1000;
+    int eeIndex = robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
 
-    assert(robot.get() != nullptr);
-    assert(TSRJointVals.size() == robot->GetDOF());
-
-    ikparams[2] = T0_s.rot.x;
-    ikparams[3] = T0_s.rot.y;
-    ikparams[4] = T0_s.rot.z;
-    ikparams[5] = T0_s.rot.w;
-    ikparams[6] = T0_s.trans.x;
-    ikparams[7] = T0_s.trans.y;
-    ikparams[8] = T0_s.trans.z;
-
-    boost::shared_ptr<std::vector<OpenRAVE::dReal> > pq_s(new std::vector<OpenRAVE::dReal>);
-    _pIkSolver->Solve(OpenRAVE::IkParameterization(), TSRJointVals, ikparams, false, pq_s);
-    TSRJointVals = *pq_s;
-    T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform();
-    return TransformDifference(T0_s, T0_closeset);
-    // TODO: there are too many methods in TSRChain that do not related to TSRChain. Decouple them later.
-    //  Simplify the code and make it elegant.
-}
-
-bool TaskSpaceRegionChain::serialize(std::ostream &O, int type) const {
-    if (type == 0) {     // simple format
-        O << " ";
-
-        O << (int) bSampleStartFromChain << " ";
-        O << (int) bSampleGoalFromChain << " ";
-
-        O << (int) bConstrainToChain << " ";
-
-
-        O << TSRChain.size();
-        for (const auto &i : TSRChain) {
-            O << " ";
-            if (!i.serialize(O)) {
-                        RAVELOG_INFO("ERROR SERIALIZING TSR CHAIN\n");
-                return false;
+    for (int it = 0; it < 50; it++) {
+        // enforce bound
+        for (int i = 0; i < numdof; i++) {
+            if (TSRJointVals[i] > _upperlimits[i])
+                TSRJointVals[i] = _upperlimits[i];
+            else if (TSRJointVals[i] < _lowerlimits[i])
+                TSRJointVals[i] = _lowerlimits[i];
+        }
+        // forward kinematic to check if reached
+        robot->SetActiveDOFValues(TSRJointVals);
+        T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform();
+        Tdiff = T0_s.inverse() * T0_closeset;
+        squaredNorm = Tdiff.trans.lengthsqr3() + Tdiff.rot.y * Tdiff.rot.y + Tdiff.rot.z * Tdiff.rot.z + Tdiff.rot.w * Tdiff.rot.w;
+        if (squaredNorm < 1e-10)
+            break;
+        // move one step
+        robot->CalculateActiveJacobian(eeIndex, T0_closeset.trans, Jtrans);
+        robot->CalculateActiveRotationJacobian(eeIndex, T0_closeset.rot, Jrot);
+        // copy to Eigen
+        p[0] = T0_closeset.trans.x - T0_s.trans.x;
+        p[1] = T0_closeset.trans.y - T0_s.trans.y;
+        p[2] = T0_closeset.trans.z - T0_s.trans.z;
+        p[3] = Tdiff.rot.y;
+        p[4] = Tdiff.rot.z;
+        p[5] = Tdiff.rot.w;
+        for (int col = 0; col < numdof; col++) {
+            for (int row = 0; row < 3; row++) {
+                J(row, col) = Jtrans[row * numdof + col];
             }
-            O << " ";
+            J(3, col) = T0_s.rot[0] * Jrot[1 * numdof + col]
+                        - T0_s.rot[1] * Jrot[0 * numdof + col]
+                        - T0_s.rot[2] * Jrot[3 * numdof + col]
+                        + T0_s.rot[3] * Jrot[2 * numdof + col];
+            J(4, col) = T0_s.rot[0] * Jrot[2 * numdof + col]
+                        + T0_s.rot[1] * Jrot[3 * numdof + col]
+                        - T0_s.rot[2] * Jrot[0 * numdof + col]
+                        - T0_s.rot[3] * Jrot[1 * numdof + col];
+            J(5, col) = T0_s.rot[0] * Jrot[3 * numdof + col]
+                        - T0_s.rot[1] * Jrot[2 * numdof + col]
+                        + T0_s.rot[2] * Jrot[1 * numdof + col]
+                        - T0_s.rot[3] * Jrot[0 * numdof + col];
         }
-
-        if (_pmimicbody.get() == nullptr)
-            O << " " << "NULL" << " ";
-        else
-            O << " " << _pmimicbody->GetName() << " ";
-
-
-        O << " " << _mimicinds.size() << " ";
-        for (int _mimicind : _mimicinds) {
-            O << " " << _mimicind << " ";
-        }
-
-        return true;
-    } else {      // xml format
-        O << "<" << _tag_name << " ";
-        O << "purpose=\""
-          << (int) bSampleStartFromChain << " "
-          << (int) bSampleGoalFromChain << " "
-          << (int) bConstrainToChain << "\" ";
-        O << "mimic_body_name=\""
-          << mimicbodyname << "\" ";
-        O << "mimic_body_index=\"";
-        for (int i = 0; i < _mimicinds.size(); i++) {
-            if (i == 0)
-                O << _mimicinds[i];
-            else
-                O << " " << _mimicinds[i];
-        }
-        O << "\">" << std::endl;
-        for (const auto &tsr:TSRChain) {
-            O << tsr << std::endl;
-        }
-        O << "</" << _tag_name << ">" << std::endl;
-        return true;
-    }
-}
-
-bool TaskSpaceRegionChain::deserialize(std::stringstream &_ss) {
-
-    _ss >> bSampleStartFromChain;
-    _ss >> bSampleGoalFromChain;
-    _ss >> bConstrainToChain;
-
-    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
-                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
-
-    int temp;
-    _ss >> temp;
-    TSRChain.resize(temp);
-
-
-    for (int i = 0; i < temp; i++) {
-        if (!TSRChain[i].deserialize(_ss)) {
-                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN\n");
-            return false;
+        q = J.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(p);
+        for (int i = 0; i < numdof; i++) {
+            TSRJointVals[i] -= q[i];
         }
     }
-
-    _ss >> mimicbodyname;
-
-    if (mimicbodyname != "NULL") {
-        _ss >> temp;
-        _mimicinds.resize(temp);
-        for (int i = 0; i < temp; i++) {
-            _ss >> _mimicinds[i];
-        }
-    }
-
-    return true;
-}
-
-bool TaskSpaceRegionChain::deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot_in, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss) {
-    _ss >> bSampleStartFromChain;
-    _ss >> bSampleGoalFromChain;
-    _ss >> bConstrainToChain;
-
-    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
-                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
-
-
-    int temp;
-    std::string tempstring;
-
-    _ss >> temp;
-
-    TSRChain.resize(temp);
-
-    for (int i = 0; i < temp; i++) {
-        if (!TSRChain[i].deserialize_from_matlab(robot_in, penv_in, _ss)) {
-                    RAVELOG_INFO("ERROR DESERIALIZING TSR CHAIN FROM MATLAB\n");
-            return false;
-        }
-    }
-
-    _ss >> tempstring;
-    if (strcasecmp(tempstring.c_str(), "NULL") == 0) {
-        _pmimicbody.reset();
-    } else {
-        _pmimicbody = penv_in->GetRobot(tempstring);
-        if (_pmimicbody.get() == nullptr) {
-                    RAVELOG_INFO("Error: could not find the specified mimic body\n");
-            return false;
-        }
-
-        _ss >> temp;
-        _mimicinds.resize(temp);
-        for (int i = 0; i < temp; i++) {
-            _ss >> _mimicinds[i];
-        }
-    }
-    return true;
-}
-
-OpenRAVE::BaseXMLReader::ProcessElement TaskSpaceRegionChain::startElement(const std::string &name, const OpenRAVE::AttributesList &atts) {
-    if (name == _tag_name) {
-        if (_tag_open) {
-            return PE_Ignore;
-        } else {
-            std::istringstream value;
-            for (const auto &att:atts) {
-                auto key = att.first;
-                value.clear();
-                auto value_str = att.second;
-                value.str(value_str.erase(value_str.find_last_not_of(' ') + 1));
-                if (key == "purpose") {
-                    value >> bSampleStartFromChain >> bSampleGoalFromChain >> bConstrainToChain;
-                    if (!bSampleGoalFromChain && !bSampleStartFromChain && !bConstrainToChain)
-                                RAVELOG_INFO ("WARNING: This chain is not sampled or constrained to, are you sure you defined it correctly?\n");
-                } else if (key == "mimic_body_name") {
-                    value >> mimicbodyname;
-                } else if (key == "mimic_body_index") {
-                    int temp;
-                    while (!value.eof()) {
-                        temp = -1;
-                        value >> temp;
-                        if (temp == -1) {
-                                    RAVELOG_ERROR ("Unexpected character.");
-                            break;
-                        }
-                        _mimicinds.emplace_back(temp);
-                    }
-                } else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
-            }
-            _tag_open = true;
-            return PE_Support;
-        }
-    } else if (name == "tsr") {
-        if (_tag_open) {
-            _temp_tsr.startElement(name, atts);
-            return PE_Support;
-        } else {
-                    RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
-            return PE_Ignore;
-        }
-    } else {
-        return PE_Pass;
-    }
-}
-
-bool TaskSpaceRegionChain::endElement(const std::string &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
-        return true;
-    } else if (name == "tsr") {
-        if (_tag_open) {
-            _temp_tsr.endElement(name);
-            TSRChain.emplace_back(_temp_tsr);
-        }
-        return false;
-    } else {
-        return false;
-    }
-}
-
-OpenRAVE::Transform TaskSpaceRegionChain::GenerateSample() {
-    for (int i = 1; i < TSRChain.size(); i++)
-        TSRChain[i].T0_w = TSRChain[i - 1].GenerateSample();
-
-    return TSRChain[TSRChain.size() - 1].GenerateSample();
+    return sqrt(squaredNorm);
 }
 
 bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const {
@@ -854,31 +399,30 @@ bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, Ope
 
 bool TaskSpaceRegionChain::ExtractMimicDOFValues(const OpenRAVE::dReal *TSRValues, OpenRAVE::dReal *MimicDOFVals) const {
     //NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
-    for (int i = 0; i < _mimicinds.size(); i++)
+    for (int i = 0; i < _mimic_inds.size(); i++)
         MimicDOFVals[i] = TSRValues[i];
-
 
     return true;
 }
 
 //NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
 bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dReal *TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
-    if (_pmimicbody == nullptr)
+    if (_mimicbody == nullptr)
         return false;
 
-    mimicbodyvals.resize(_pmimicbody->GetDOF());
-    _pmimicbody->GetDOFValues(mimicbodyvals);
-    for (int i = 0; i < _mimicinds.size(); i++) {
-        mimicbodyvals[_mimicinds[i]] = _mimicjointoffsets[_mimicinds[i]] + TSRJointVals[i];
+    mimicbodyvals.resize(_mimicbody->GetDOF());
+    _mimicbody->GetDOFValues(mimicbodyvals);
+    for (int i = 0; i < _mimic_inds.size(); i++) {
+        mimicbodyvals[_mimic_inds[i]] = _mimicjointoffsets[_mimic_inds[i]] + TSRJointVals[i];
     }
     return true;
 }
 
 bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals) {
-    if (_pmimicbody == nullptr)
+    if (_mimicbody == nullptr)
         return false;
     MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);
-    _pmimicbody->SetJointValues(_mimicjointvals_temp, true);
+    _mimicbody->SetJointValues(_mimicjointvals_temp, true);
     return true;
 }
 

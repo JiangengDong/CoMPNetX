@@ -11,8 +11,6 @@
 #include <ompl/base/ScopedState.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
-#include "TaskSpaceRegionChain.h"
-
 namespace AtlasMPNet {
     class SimpleXMLReader : public OpenRAVE::BaseXMLReader {
     public:
@@ -33,7 +31,7 @@ namespace AtlasMPNet {
 
     protected:
         bool _tag_open = false;
-        const std::string _tag_name;
+        std::string _tag_name;
     };
 
     /*! \brief General planner parameters
@@ -43,7 +41,9 @@ namespace AtlasMPNet {
      */
     class SolverParameters : public SimpleXMLReader {
     public:
-        enum SolverType {RRT=0, RRTStar, RRTConnect, MPNet} type_=RRT;
+        enum SolverType {
+            RRT = 0, RRTStar, RRTConnect, MPNet
+        } type_ = RRT;
         double time_ = 5.0; // Planning time allowed.
         double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 
@@ -103,6 +103,53 @@ namespace AtlasMPNet {
         bool serialize(std::ostream &O) const override;
     };
 
+    class TSRParameters : public SimpleXMLReader {
+    public:
+        OpenRAVE::Transform T0_w; ///< the center of the TSR relative to the link it is attached to (or relative to world frame)
+        OpenRAVE::Transform Tw_e; ///< the end-effector offset of this TSR
+        OpenRAVE::dReal Bw[6][2]{}; ///< matrix defining maximum and minimum allowable deviation from T0_w in x,y,z,roll,pitch,and yaw
+
+        TSRParameters() : SimpleXMLReader("tsr") {}
+
+        ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
+
+        bool endElement(std::string const &name) override;
+
+        bool serialize(std::ostream &O) const override;
+
+        void reset() {
+            T0_w = OpenRAVE::Transform();
+            Tw_e = OpenRAVE::Transform();
+            for (auto &i : Bw)
+                for (double &j : i)
+                    j = 0;
+        }
+    };
+
+    class TSRChainParameters : public SimpleXMLReader {
+    public:
+        enum PurposeType {
+            CONSTRAINT = 0, SAMPLE_START, SAMPLE_GOAL
+        } purpose = CONSTRAINT;
+        int manipind = -1; ///< this specifies the index of the manipulator of the robot that is associated with this TSR
+        std::string relativebodyname="NULL"; ///< name of the body T0_w is attached to (NULL = world frame)
+        std::string relativelinkname="NULL"; ///< name of the link T0_w is attached to (NULL = world frame)
+        std::string mimic_body_name = "NULL";
+        std::vector<int> mimic_inds;
+        std::vector<TSRParameters> TSRs;
+
+        TSRChainParameters() : SimpleXMLReader("tsr_chain") {}
+
+        ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
+
+        bool endElement(std::string const &name) override;
+
+        bool serialize(std::ostream &O) const override;
+
+    private:
+        TSRParameters temp_tsr;
+    };
+
     /*! \brief The parameters consisting of SolverParameters, ConstraintParameters and AtlasParameters.
      *
      * This is a complete class that is able to read from and write to a XML format string.
@@ -140,7 +187,7 @@ namespace AtlasMPNet {
         SolverParameters solver_parameters_;
         ConstraintParameters constraint_parameters_;
         AtlasParameters atlas_parameters_;
-        TaskSpaceRegionChain tsrchain_parameters_;
+        TSRChainParameters tsrchain_parameters_;
     };
 }
 

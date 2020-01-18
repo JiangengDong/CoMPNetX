@@ -31,81 +31,49 @@
 #define ATLASMPNET_TASKSPACEREGIONCHAIN_H
 
 #include <openrave/openrave.h>
+
+#include <utility>
 #include "TaskSpaceRegion.h"
+#include "Parameters.h"
 
 namespace AtlasMPNet {
     /// Class defining a TSR Chain: a more complex representation of pose constraints
-    class TaskSpaceRegionChain : public OpenRAVE::BaseXMLReader {
+    class TaskSpaceRegionChain {
     public:
         typedef std::shared_ptr<TaskSpaceRegionChain> Ptr;
+        // this is an ordered list of TSRs, where each one relies on the previous one to determine T0_w,
+        // note that the T0_w values of the TSRs in the chain will change (except the first one)
+        TSRChainParameters param;
 
-        std::vector<TaskSpaceRegion> TSRChain; ///< this is an ordered list of TSRs, where each one relies on the previous one to determine T0_w, note that the T0_w values of the TSRs in the chain will change (except the first one)
-
-        TaskSpaceRegionChain() {
-            numdof = -1;
-            _dx.resize(6);
-            _sumbounds = -1;
-        }
+        TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameters &param,
+                             OpenRAVE::RobotBasePtr &probot_out);
 
         ~TaskSpaceRegionChain() {
             DestoryRobotizedTSRChain();
         }
-        // initialize the TSR chain
-        bool Initialize(const OpenRAVE::EnvironmentBasePtr &penv_in);
 
         // create a virtual manipulator (a robot) corresponding to the TSR chain to use for ik solver calls
-        bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out, int type=0);
-
-        // compute the distance between two transforms
-        OpenRAVE::dReal TransformDifference(const OpenRAVE::Transform &tm_ref, const OpenRAVE::Transform &tm_targ) const;
+        bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out);
 
         // get the closest transform in the TSR Chain to a query transform
         OpenRAVE::dReal GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closeset) const;
-
-        // write the TSR Chain to a string
-        bool serialize(std::ostream &O, int type = 0) const;
-
-        friend std::ostream &operator<<(std::ostream &O, const TaskSpaceRegionChain &v) {
-            v.serialize(O, 1);
-            return O;
-        }
-
-        // parse a string to set the values of the TSR Chain
-        bool deserialize(std::stringstream &_ss);
-
-        // parse a string const from matlab to set the& values of the TSR Chain
-        bool deserialize_from_matlab(const OpenRAVE::RobotBasePtr &robot_in, const OpenRAVE::EnvironmentBasePtr &penv_in, std::istream &_ss);
-
-        ProcessElement startElement(const std::string &name, const OpenRAVE::AttributesList &atts) override;
-
-        bool endElement(const std::string &name) override;
-
-        void characters(const std::string &ch) override {}
-
-        // generate a sample from this TSR Chain
-        OpenRAVE::Transform GenerateSample();
-
-        // add a TSR to the chain
-        void AddTSR(TaskSpaceRegion &TSR) {
-            TSRChain.push_back(TSR);
-        }
 
         // get the joint limits of the virtual manipulator
         bool GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const;
 
         // get a pointer to the mimiced body
         OpenRAVE::RobotBasePtr GetMimicBody() const {
-            return _pmimicbody;
+            return _mimicbody;
         }
 
         // get the number of mimiced DOFs
         int GetNumMimicDOF() const {
-            return _mimicinds.size();
+            return _mimic_inds.size();
         }
 
         // get the mimiced DOFs
         std::vector<int> GetMimicDOFInds() const {
-            return _mimicinds;
+            return _mimic_inds;
         }
 
         // get the values of the mimiced DOFs
@@ -117,19 +85,9 @@ namespace AtlasMPNet {
         // apply mimiced joint values to a certain set of joints
         bool ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals);
 
-        // return the sum of the length of the bounds, summed over all TSRs in the chain
-        OpenRAVE::dReal GetSumOfBounds() const {
-            if (_sumbounds < 0)
-                        RAVELOG_INFO ("ERROR TSR not initialized\n");
-            else
-                return _sumbounds;
-        }
-
         // return the manipulator index of the first TSR
         int GetManipInd() const {
-            if (!TSRChain.empty())
-                return TSRChain[0].manipind;
-            return -1;
+            return param.manipind;
         }
 
         // get the number of DOFs of the virtual manipulator
@@ -141,59 +99,37 @@ namespace AtlasMPNet {
 
         // is this TSR chain used for sampling goals?
         bool IsForGoalSampling() const {
-            return bSampleGoalFromChain;
+            return param.purpose==TSRChainParameters::SAMPLE_GOAL;
         }
 
         // is this TSR chain used for sampling starts?
         bool IsForStartSampling() const {
-            return bSampleStartFromChain;
+            return param.purpose==TSRChainParameters::SAMPLE_START;
         }
 
         // is this TSR chain used for constraining the whole path?
         bool IsForConstraint() const {
-            return bConstrainToChain;
-        }
-
-        const std::string& getTagName() {
-            return _tag_name;
+            return param.purpose==TSRChainParameters::CONSTRAINT;
         }
 
     private:
 
         void DestoryRobotizedTSRChain(); ///< delete the virtual manipulator from the environment
 
-        bool bSampleGoalFromChain;
-        bool bSampleStartFromChain;
-        bool bConstrainToChain;
-        std::string mimicbodyname="NULL";
-        std::vector<int> _mimicinds;
-
-        OpenRAVE::Transform Tw0_e;
-        int numdof;
-
-        OpenRAVE::RobotBasePtr robot;
-        OpenRAVE::IkSolverBasePtr _pIkSolver;
-
         OpenRAVE::EnvironmentBasePtr penv;
-        OpenRAVE::RobotBasePtr _pmimicbody;
-        std::vector<OpenRAVE::dReal> _mimicjointvals_temp;
-        std::vector<OpenRAVE::dReal> _mimicjointoffsets;
+        OpenRAVE::RobotBasePtr robot;
+        int numdof;
         std::vector<OpenRAVE::dReal> _lowerlimits;
         std::vector<OpenRAVE::dReal> _upperlimits;
+
+        OpenRAVE::RobotBasePtr _mimicbody;
+        std::vector<int> _mimic_inds;
+        std::vector<OpenRAVE::dReal> _mimicjointvals_temp;
+        std::vector<OpenRAVE::dReal> _mimicjointoffsets;
+
+        OpenRAVE::KinBody::LinkPtr prelativetolink;
+
         bool _bPointTSR;
-
-        mutable OpenRAVE::Transform _tmtemp;
-        mutable std::vector<OpenRAVE::dReal> _dx;
-        mutable OpenRAVE::dReal _sumsqr;
-
-        OpenRAVE::dReal _sumbounds;
-
-        mutable std::vector<OpenRAVE::dReal> ikparams;
-
-        // inner variable for xml input
-        bool _tag_open = false;
-        std::string _tag_name = "tsr_chain";
-        TaskSpaceRegion _temp_tsr;
     };
 }
 #endif //ATLASMPNET_TASKSPACEREGIONCHAIN_H

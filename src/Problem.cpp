@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Problem.h"
 #include "Parameters.h"
+#include "TaskSpaceRegionChain.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
 
@@ -211,10 +212,7 @@ bool AtlasMPNet::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &s
 
 bool AtlasMPNet::Problem::setTSRChainRobot() {
     env_ = robot_->GetEnv();
-    tsr_chain_ = std::make_shared<TaskSpaceRegionChain>();
-    *tsr_chain_ = parameters_->tsrchain_parameters_;
-    tsr_chain_->Initialize(env_);
-    tsr_chain_->RobotizeTSRChain(env_, tsr_robot_);
+    tsr_chain_ = std::make_shared<TaskSpaceRegionChain>(env_, parameters_->tsrchain_parameters_, tsr_robot_);
 
     // print the result
     if (tsr_robot_ != nullptr) {
