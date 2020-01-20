@@ -350,7 +350,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
         T0_closeset = robot->GetActiveManipulator()->GetEndEffectorTransform();
         Tdiff = T0_s.inverse() * T0_closeset;
         squaredNorm = Tdiff.trans.lengthsqr3() + Tdiff.rot.y * Tdiff.rot.y + Tdiff.rot.z * Tdiff.rot.z + Tdiff.rot.w * Tdiff.rot.w;
-        if (squaredNorm < 1e-10)
+        if (squaredNorm < 1e-16)
             break;
         // move one step
         robot->CalculateActiveJacobian(eeIndex, T0_closeset.trans, Jtrans);
@@ -383,6 +383,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
         for (int i = 0; i < numdof; i++) {
             TSRJointVals[i] -= q[i];
         }
+        // TODO: maybe we need line-search here
     }
     return sqrt(squaredNorm);
 }

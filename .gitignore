@@ -5,3 +5,4 @@ cmake-build-release/
 /doc/
 *.pyc
 /models/
+/data/

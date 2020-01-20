@@ -4,11 +4,11 @@ import utils
 
 
 class OMPLInterface:
-    template_string = """<solver_parameters type="2" time="20" range="0.05"/>
-               <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.01" lambda="2"/>
-               <atlas_parameters exploration="0.5" epsilon="0.01" rho="1" alpha="0.2" max_charts="500" using_bias="1" separate="0"/>
+    template_string = """<solver_parameters type="2" time="120" range="0.05"/>
+               <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
+               <atlas_parameters exploration="0.5" epsilon="0.01" rho="0.5" alpha="0.1" max_charts="5000" using_bias="1" separate="1"/>
                <tsr_chain purpose="0 0 1">
-                    <tsr manipulator_index="0" relative_body_name="NULL" T0_w="%s" Tw_e="%s" Bw="%s" />
+                    <tsr manipulator_index="1" relative_body_name="NULL" T0_w="%s" Tw_e="%s" Bw="%s" />
                </tsr_chain>"""
 
     def __init__(self, env, robot):
