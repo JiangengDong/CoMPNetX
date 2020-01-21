@@ -40,7 +40,7 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
     this->param = param;
     _mimic_inds = this->param.mimic_inds;
     numdof = -1;
-    _bPointTSR = true;
+    _bPointTSR = false;
 
     // find the mimic body according to its name
     if (strcasecmp(param.mimic_body_name.c_str(), "NULL") == 0) {

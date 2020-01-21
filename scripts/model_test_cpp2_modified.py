@@ -183,17 +183,24 @@ for e in range(0, 19):
             resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
             stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
             if resp is True:
-                print("Find a solution for %s after %f seconds." % (obj_order[i], t_time))
+                print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
                 robot.GetController().SetPath(traj)
                 robot.WaitForController(0)
-
                 robot.SetActiveDOFs(arm1dofs)
                 robot.SetActiveDOFValues(goalik)
+            elif resp is False:
+                print("Failed to find a solution.")
+                t_time = 1e3
+            elif resp is None:
+                print("Start or goal is invalid!")
+                t_time = -1
+            esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
             robot.ReleaseAllGrabbed()
             robot.WaitForController(0)
             time.sleep(0.05)
 
+            # clean up
             idx = obj_names.index(obj_order[i])
             if obj_order[i] == "teakettle" or obj_order[i] == "plasticmug":
                 T0_object = T0_w2
@@ -205,4 +212,6 @@ for e in range(0, 19):
             time.sleep(0.05)
         print("")
         stat.printStat()
+        with open("../data/esc_dict_atlasrrtconnect_env7-20.p", "wb") as f:
+            pickle.dump(esc_dict, f)
     stat.export()

@@ -121,6 +121,7 @@ ompl::geometric::RRTConnect::GrowState ompl::geometric::RRTConnect::growTree(Tre
     /* find closest state in the tree */
     Motion *nmotion = tree->nearest(rmotion);
 
+    // this is designed for AtlasStateSpace only.
     std::vector<ompl::base::State *> stateList;
     bool reach = si_->getStateSpace()->as<ompl::base::AtlasStateSpace>()->discreteGeodesic(nmotion->state, rmotion->state, false, &stateList);
 

@@ -1,10 +1,11 @@
-import sys
 import numpy as np
+import sys
 
 
 def SerializeTransform(tm):
     flatten_tm = np.array(tm[0:3, 0:4]).T.flatten()
     return ' '.join(['%.5f' % v for v in flatten_tm])
+
 
 def SerializeBound(bw):
     flatten_bw = np.array(bw).flatten()
@@ -32,7 +33,7 @@ def quat2Transform(a, b, c, d, x, y, z):
                    [2 * b * d - 2 * a * c, 2 * c * d + 2 * a * b, a * 2 - b ** 2 - c ** 2 + d ** 2, z],
                    [0, 0, 0, 1]])
 
+
 def pause():
     print "Press enter to continue..."
     sys.stdin.readline()
-
