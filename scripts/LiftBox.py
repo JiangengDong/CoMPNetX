@@ -12,31 +12,36 @@
 # the command to match your acutal install destination.
 
 import numpy as np
-import sys
 
 import openravepy as orpy
 
 from utils import SerializeTransform
+from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
 
 
 class LiftingBoxProblem:
-    def __init__(self, initial_config):
+    def __init__(self, arm_initial_config, box_initial_pose):
         self.env = orpy.Environment()
         self.env.SetViewer('qtcoin')
         self.env.SetDebugLevel(orpy.DebugLevel.Info)
-        self.env.Load('scenes/herb2_liftingbox.env.xml')
+
+        self.env.Load('robots/herb2_padded.robot.xml')
         self.robot = self.env.GetRobot("Herb2")
         self.manipulator_left = self.robot.GetManipulator('left_wam')
         self.manipulator_right = self.robot.GetManipulator('right_wam')
-        self.box = self.env.GetKinBody("box")
+        self.setHandsConfig(arm_initial_config[7:], arm_initial_config[:7])
 
-        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        self.box = self.env.ReadKinBodyXMLFile('objects/misc/liftingbox.kinbody.xml')
+        self.env.AddKinBody(self.box)
+        self.box.SetTransform(np.array(box_initial_pose))
+
+        self.planner = OMPLInterface(self.env, self.robot)
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
         self.env.LoadProblem(self.cbirrt, "Herb2")
 
         self.traj = orpy.RaveCreateTrajectory(self.env, '')
-
-        self.setHandsConfig(initial_config[7:], initial_config[:7])
+        self._start_config = None
+        self._goal_config = None
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.env.GetViewer().quitmainloop()
@@ -50,21 +55,6 @@ class LiftingBoxProblem:
                                             (self.robot.GetActiveManipulatorIndex(), SerializeTransform(pose)))
         return [float(theta) for theta in q_str.split()]
 
-    def calculateHandsConfig(self, box_pose):
-        lefthand_offset = np.mat([[1, 0, 0, 0],
-                                  [0, 0, -1, 0.305],
-                                  [0, 1, 0, 0],
-                                  [0, 0, 0, 1]])
-        righthand_offset = np.mat([[1, 0, 0, 0],
-                                   [0, 0, 1, -0.285],
-                                   [0, -1, 0, 0],
-                                   [0, 0, 0, 1]])
-        lefthand_pose = box_pose * lefthand_offset
-        righthand_pose = box_pose * righthand_offset
-        lefthand_q = self.inverseKinematic(self.manipulator_left, lefthand_pose)
-        righthand_q = self.inverseKinematic(self.manipulator_right, righthand_pose)
-        return lefthand_q, righthand_q
-
     def setHandsConfig(self, lefthand_q, righthand_q):
         with self.env:
             self.robot.SetActiveDOFs(self.manipulator_left.GetArmIndices())
@@ -72,57 +62,24 @@ class LiftingBoxProblem:
             self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
             self.robot.SetActiveDOFValues(righthand_q)
 
-    def grabBox(self):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.robot.Grab(self.box)
-
-    def releaseBox(self):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.robot.Release(self.box)
-
-    def liftBox(self):
+    def display(self):
         self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
         self.robot.SetActiveManipulator(self.manipulator_right)
+
+        self.robot.SetActiveDOFValues(self._start_config)
+        self.robot.Grab(self.box)
+
         self.robot.GetController().SetPath(self.traj)
         self.robot.WaitForController(0)
 
-    def setPlannerParameters(self, initial_config, goal_config):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
+        self.robot.ReleaseAllGrabbed()
+        self.robot.WaitForController(0)
 
-        params = orpy.Planner.PlannerParameters()
-        params.SetRobotActiveJoints(self.robot)
-        params.SetInitialConfig(initial_config)
-        params.SetGoalConfig(goal_config)
-        params.SetExtraParameters(
-            """<solver_parameters type="2" time="20" range="0.05"/>
-               <constraint_parameters type="1" tolerance="0.01" max_iter="50" delta="0.05" lambda="2"/>
-               <atlas_parameters exploration="0.6" epsilon="0.05" rho="0.08" alpha="0.45" max_charts="500" using_bias="0" separate="0"/>
-               <tsr_chain purpose="0 0 1" mimic_body_name="NULL">
-               <tsr manipulator_index="0" relative_body_name="NULL" 
-                                             T0_w="1 0 0 0 1  0 0 0 1 0.6923      0 0" 
-                                             Tw_e="1 0 0 0 0 -1 0 1 0      0 -0.285 0" 
-                                             Bw="-1000 1000 -1000 1000 -1000 1000 0 0 0 0 -3 3" />
-               </tsr_chain>""")
-        return params
-
-    def solve(self, box_initial_pose, box_goal_pose):
-        self.box.SetTransform(np.array(box_initial_pose[:3, :]))
-        left_initial, right_initial = self.calculateHandsConfig(box_initial_pose)
-        left_goal, right_goal = self.calculateHandsConfig(box_goal_pose)
-        params = self.setPlannerParameters(right_initial, right_goal)
-        with self.env, self.robot:
-            self.grabBox()
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.planner.InitPlan(self.robot, params)
-            self.planner.PlanPath(self.traj)
-        orpy.planningutils.RetimeTrajectory(self.traj)
+    def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw):
+        self._start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
+        self._goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
+        planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter().addTSR(T0_w, Tw_e, Bw))
+        status, time, self.traj = self.planner.solve(self._start_config, self._goal_config, planner_parameter)
         return self.traj
 
 
@@ -138,9 +95,24 @@ def main():
                             [0, 0, 1, 1.3989],
                             [0, 0, 0, 1]])
 
-    problem = LiftingBoxProblem(arm_initial_config)
-    problem.solve(box_initial_pose, box_goal_pose)
-    problem.liftBox()
+    righthand_offset = np.mat([[1, 0, 0, 0],
+                               [0, 0, 1, -0.285],
+                               [0, -1, 0, 0],
+                               [0, 0, 0, 1]])
+
+    hand_initial_pose = box_initial_pose * righthand_offset
+    hand_goal_pose = box_goal_pose * righthand_offset
+
+    bound = np.mat([[-1000, 1000],
+                    [-1000, 1000],
+                    [-1000, 1000],
+                    [0, 0],
+                    [0, 0],
+                    [-3, 3]])
+
+    problem = LiftingBoxProblem(arm_initial_config, box_initial_pose)
+    problem.solve(hand_initial_pose, hand_goal_pose, box_initial_pose, righthand_offset, bound)
+    problem.display()
     print "Press enter to exit..."
     # sys.stdin.readline()
 

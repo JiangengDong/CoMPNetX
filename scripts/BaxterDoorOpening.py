@@ -18,7 +18,7 @@ import rospkg
 import openravepy as orpy
 
 import utils
-from OMPLInterface import OMPLInterface
+from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
 
 
 class BaxterDoorOpeningProblem:
@@ -114,7 +114,8 @@ class BaxterDoorOpeningProblem:
     def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw):
         start_config = self.inverseKinematic(self.right_arm, arm_start_pose)
         goal_config = self.inverseKinematic(self.right_arm, arm_goal_pose)
-        status, time, self.traj = self.planner.solve(start_config, goal_config, T0_w, Tw_e, Bw)
+        planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter().addTSR(T0_w, Tw_e, Bw))
+        status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
         return self.traj
 
     def display(self):

@@ -252,8 +252,7 @@ SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::stri
             for (const auto &att:atts) {
                 auto key = att.first;
                 value.clear();
-                auto value_str = att.second;
-                value.str(value_str.erase(value_str.find_last_not_of(' ') + 1));
+                value.str(att.second);
                 if (key == "manipulator_index")
                     value >> manipind;
                 else if (key == "relative_body_name")
@@ -267,6 +266,8 @@ SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::stri
                 } else if (key == "mimic_body_name") {
                     value >> mimic_body_name;
                 } else if (key == "mimic_body_index") {
+                    if(att.second.empty())
+                        continue;
                     int temp;
                     while (!value.eof()) {
                         temp = -1;

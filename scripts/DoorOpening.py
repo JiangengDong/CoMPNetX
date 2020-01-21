@@ -13,11 +13,12 @@
 
 import numpy as np
 import sys
+import time
 
 import openravepy as orpy
 
 from utils import SerializeTransform, RPY2Transform, quat2Transform
-from plannerParameters import PlannerParameters
+from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
 
 
 class DoorOpeningProblem:
@@ -31,7 +32,7 @@ class DoorOpeningProblem:
         self.manipulator_right = self.robot.GetManipulator('right_wam')
         self.kitchen = self.env.GetKinBody("kitchen")
 
-        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        self.planner = OMPLInterface(self.env, self.robot)
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
         self.env.LoadProblem(self.cbirrt, "BarrettWAM")
 
@@ -42,6 +43,7 @@ class DoorOpeningProblem:
         self.robot.SetTransform(np.array([[-0.0024, -1, 0, 1.2996],  # initial transformation of robot
                                           [1, -0.0024, 0, -0.6217],
                                           [0, 0, 1, 0]]))
+        time.sleep(1)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.env.GetViewer().quitmainloop()
@@ -80,41 +82,14 @@ class DoorOpeningProblem:
             self.robot.SetActiveDOFValues(righthand_q)
             self.robot.SetActiveDOFs(prev_active_dofs)
 
-    def setPlannerParameters(self, initial_config, goal_config):
-        with self.env:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-
-        params = orpy.Planner.PlannerParameters()
-        params.SetRobotActiveJoints(self.robot)
-        params.SetInitialConfig(initial_config)
-        params.SetGoalConfig(goal_config)
-        params.SetExtraParameters(
-            """<solver_parameters type="2" time="10" range="0.05"/>
-               <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
-               <atlas_parameters exploration="0.5" epsilon="0.01" rho="0.08" alpha="0.45" max_charts="500" using_bias="1" separate="0"/>
-               <tsr_chain purpose="0 0 1" mimic_body_name="kitchen" mimic_body_index="6">
-                    <tsr manipulator_index="0" relative_body_name="NULL" 
-                        T0_w="-1  0  0  -0  -1  0  0  0  1  1.818  0.0266  0.884" 
-                        Tw_e="1  0  0  0  1  0  0  0  1  0.3829  0.0816  0.2801" 
-                        Bw="0  0  0  0  0  0  0  0  0  0  0 3.1415926" />
-                    <tsr manipulator_index="0" relative_body_name="NULL"
-                        T0_w="1  0  0  0  1  0  0  0  1  0  0  0"
-                        Tw_e="-1  0  0  0  0  -1  0  -1  0  0  0.155 0"
-                        Bw="0  0  0  0  0  0  0  0  0  0  -1.57  0" />
-               </tsr_chain>""")
-        return params
-
-    def solve(self, arm_initial_pose, arm_goal_pose):
-        right_initial = self.inverseKinematic(self.manipulator_right, arm_initial_pose)
-        right_goal = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
-        params = self.setPlannerParameters(right_initial, right_goal)
-        with self.env, self.robot:
-            self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-            self.robot.SetActiveManipulator(self.manipulator_right)
-            self.planner.InitPlan(self.robot, params)
-            self.planner.PlanPath(self.traj)
-        orpy.planningutils.RetimeTrajectory(self.traj)
+    def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw):
+        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
+        start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
+        goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
+        planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
+                                                                             mimic_body_index=(6,)).addTSR(T0_w, Tw_e, Bw))
+        planner_parameter.constraint_parameter.tolerance=1e-3
+        status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
         return self.traj
 
     def display(self):
@@ -125,7 +100,7 @@ class DoorOpeningProblem:
 
 
 def main():
-    arm_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, -2.1,
+    hand_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, -2.1,
                           2.6, -1.9, -0.0000, 2.2022, -3.14, 0.0000, -1.0]
 
     hinge_start_pose = np.mat([[-1, 0, 0, 1.818],
@@ -136,25 +111,38 @@ def main():
                                 [0, -1, 0, -0.055],
                                 [0, 0, 1, 1.1641],
                                 [0, 0, 0, 1]])
-    arm_start_pose = np.mat([[1, 0, 0, 1.4351],
+    hand_start_pose = np.mat([[1, 0, 0, 1.4351],
                              [0, 0, 1, -0.21],
                              [0, -1, 0, 1.1641],
                              [0, 0, 0, 1]])
     handle_hinge_offset = hinge_start_pose.I * handle_start_pose
-    hand_handle_offset = handle_start_pose.I * arm_start_pose
+    hand_handle_offset = handle_start_pose.I * hand_start_pose
+    hand_hinge_offset = hinge_start_pose.I*hand_start_pose
 
     Thinge_rot = RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
-    Thandle_rot = RPY2Transform(0, 0, -np.pi / 4, 0, 0, 0)
+    Thandle_rot = RPY2Transform(0, 0, 0, 0, 0, 0)
 
     hinge_goal_pose = hinge_start_pose * Thinge_rot
+    hand_goal_pose = hinge_goal_pose * hand_hinge_offset
 
-    arm_goal_pose = hinge_goal_pose * handle_hinge_offset * Thandle_rot * hand_handle_offset
+    hinge_bound = np.array([[0, 0],
+                            [0, 0],
+                            [0, 0],
+                            [0, 0],
+                            [0, 0],
+                            [0, 3.1415928]])
+    handle_bound = np.array([[0, 0],
+                             [0, 0],
+                             [0, 0],
+                             [0, 0],
+                             [0, 0],
+                             [-1.58, 0]])
 
-    problem = DoorOpeningProblem(arm_initial_config)
-    problem.solve(arm_start_pose, arm_goal_pose)
+    problem = DoorOpeningProblem(hand_initial_config)
+    problem.solve(hand_start_pose, hand_goal_pose, hinge_start_pose, hand_hinge_offset, hinge_bound)
     problem.display()
     print "Press enter to exit..."
-    # sys.stdin.readline()
+    sys.stdin.readline()
 
 
 if __name__ == '__main__':

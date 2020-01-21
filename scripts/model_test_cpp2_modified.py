@@ -7,7 +7,7 @@ import numpy as np
 import openravepy as orpy
 import rospkg
 
-from OMPLInterface import OMPLInterface
+from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
 import utils
 
 
@@ -142,6 +142,7 @@ robot.SetActiveDOFValues(handdof)
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
 ompl_planner = OMPLInterface(orEnv, robot)
+planner_parameter = PlannerParameter()
 stat = DatasetStat(19, 10)
 for e in range(0, 19):
     for s in range(110, 120):  # 30
@@ -178,7 +179,8 @@ for e in range(0, 19):
             probs_manip.SendCommand("GrabBody name " + obj_order[i])
             time.sleep(0.05)  # draw the scene
 
-            resp, t_time, traj = ompl_planner.solve(startik, goalik, T0_w2, Tw_e, Bw2)
+            planner_parameter.clearTSRChains().addTSRChain(TSRChainParameter().addTSR(T0_w2, Tw_e, Bw2))
+            resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
             stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
             if resp is True:
                 print("Find a solution for %s after %f seconds." % (obj_order[i], t_time))
