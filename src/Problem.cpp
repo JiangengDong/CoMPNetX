@@ -139,18 +139,29 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
         case ompl::base::PlannerStatus::ABORT:
             OMPL_WARN("The planner did not find a solution for some other reason!");
             break;
-        case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
+        case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION: {
             OMPL_WARN("Found an approximate solution. ");
+            ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
             break;
+        }
         case ompl::base::PlannerStatus::EXACT_SOLUTION: {
             auto ompl_traj = simple_setup_->getSolutionPath();
-            size_t const dof_robot = robot_->GetActiveDOF();
-            ptraj->Init(robot_->GetActiveConfigurationSpecification("linear"));
+            size_t dof = robot_->GetActiveDOF();
+
+            OpenRAVE::ConfigurationSpecification planningspec = robot_->GetActiveConfigurationSpecification("linear");
+            auto mimic_body = tsr_chain_->GetMimicBody();
+            if (mimic_body != nullptr) {
+                dof = dof + tsr_chain_->GetNumMimicDOF();
+                mimic_body->SetActiveDOFs(tsr_chain_->GetMimicDOFInds());
+                planningspec = planningspec + mimic_body->GetActiveConfigurationSpecification("linear");
+            }
+
+            ptraj->Init(planningspec);
             ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
             std::vector<double> values, robot_values;
             for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
                 space->copyToReals(values, ompl_traj.getState(i));
-                robot_values.assign(values.begin(), values.begin() + dof_robot);
+                robot_values.assign(values.begin(), values.begin() + dof);
                 ptraj->Insert(i, robot_values, true);
             }
 

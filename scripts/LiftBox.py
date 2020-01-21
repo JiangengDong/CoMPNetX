@@ -15,8 +15,8 @@ import numpy as np
 
 import openravepy as orpy
 
-from utils import SerializeTransform
 from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
+from utils import SerializeTransform, pause
 
 
 class LiftingBoxProblem:
@@ -99,6 +99,10 @@ def main():
                                [0, 0, 1, -0.285],
                                [0, -1, 0, 0],
                                [0, 0, 0, 1]])
+    lefthand_offset = np.mat([[1, 0, 0, 0],
+                              [0, 0, -1, 0.305],
+                              [0, 1, 0, 0],
+                              [0, 0, 0, 1]])
 
     hand_initial_pose = box_initial_pose * righthand_offset
     hand_goal_pose = box_goal_pose * righthand_offset
@@ -110,11 +114,13 @@ def main():
                     [0, 0],
                     [-3, 3]])
 
+    planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter(manipulator_index=0).addTSR(box_initial_pose, righthand_offset, bound)) \
+        .addTSRChain(TSRChainParameter(manipulator_index=1, relative_body_name="box", relative_link_name="body")
+                     .addTSR(np.eye(4), lefthand_offset, np.zeros((6, 2))))
     problem = LiftingBoxProblem(arm_initial_config, box_initial_pose)
     problem.solve(hand_initial_pose, hand_goal_pose, box_initial_pose, righthand_offset, bound)
     problem.display()
-    print "Press enter to exit..."
-    # sys.stdin.readline()
+    pause()
 
 
 if __name__ == '__main__':

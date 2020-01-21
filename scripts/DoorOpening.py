@@ -12,13 +12,12 @@
 # the command to match your acutal install destination.
 
 import numpy as np
-import sys
 import time
 
 import openravepy as orpy
 
-from utils import SerializeTransform, RPY2Transform, quat2Transform
 from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
+from utils import SerializeTransform, RPY2Transform, pause
 
 
 class DoorOpeningProblem:
@@ -88,7 +87,7 @@ class DoorOpeningProblem:
         goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
         planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
                                                                              mimic_body_index=(6,)).addTSR(T0_w, Tw_e, Bw))
-        planner_parameter.constraint_parameter.tolerance=1e-3
+        planner_parameter.constraint_parameter.tolerance = 1e-3
         status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
         return self.traj
 
@@ -96,12 +95,14 @@ class DoorOpeningProblem:
         self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
         self.robot.SetActiveManipulator(self.manipulator_right)
         self.robot.GetController().SetPath(self.traj)
+        self.kitchen.GetController().SetPath(self.traj)
         self.robot.WaitForController(0)
+        self.kitchen.WaitForController(0)
 
 
 def main():
     hand_initial_config = [3.68, -1.9, -0.0000, 2.2022, -0.0000, 0.0000, -2.1,
-                          2.6, -1.9, -0.0000, 2.2022, -3.14, 0.0000, -1.0]
+                           2.6, -1.9, -0.0000, 2.2022, -3.14, 0.0000, -1.0]
 
     hinge_start_pose = np.mat([[-1, 0, 0, 1.818],
                                [0, -1, 0, 0.0266],
@@ -112,12 +113,12 @@ def main():
                                 [0, 0, 1, 1.1641],
                                 [0, 0, 0, 1]])
     hand_start_pose = np.mat([[1, 0, 0, 1.4351],
-                             [0, 0, 1, -0.21],
-                             [0, -1, 0, 1.1641],
-                             [0, 0, 0, 1]])
+                              [0, 0, 1, -0.21],
+                              [0, -1, 0, 1.1641],
+                              [0, 0, 0, 1]])
     handle_hinge_offset = hinge_start_pose.I * handle_start_pose
     hand_handle_offset = handle_start_pose.I * hand_start_pose
-    hand_hinge_offset = hinge_start_pose.I*hand_start_pose
+    hand_hinge_offset = hinge_start_pose.I * hand_start_pose
 
     Thinge_rot = RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
     Thandle_rot = RPY2Transform(0, 0, 0, 0, 0, 0)
@@ -141,8 +142,7 @@ def main():
     problem = DoorOpeningProblem(hand_initial_config)
     problem.solve(hand_start_pose, hand_goal_pose, hinge_start_pose, hand_hinge_offset, hinge_bound)
     problem.display()
-    print "Press enter to exit..."
-    sys.stdin.readline()
+    pause()
 
 
 if __name__ == '__main__':

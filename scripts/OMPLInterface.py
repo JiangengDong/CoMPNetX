@@ -1,17 +1,19 @@
-import openravepy as orpy
 import numpy as np
 from collections import Iterable
+
+import openravepy as orpy
 
 import utils
 
 
 class OMPLInterface:
-    def __init__(self, env, robot):
+    def __init__(self, env, robot, loglevel=2, visualize_sample=False):
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
         assert self.planner != None
-        self.planner.SendCommand("SetLogLevel 0")
+        self.planner.SendCommand("SetLogLevel %d" % loglevel)
+        self.visualize_sample = visualize_sample
 
     def solve(self, start_config, goal_config, planner_params):
         dof = self.robot.GetActiveDOF()
@@ -23,15 +25,23 @@ class OMPLInterface:
         params.SetRobotActiveJoints(self.robot)
         params.SetInitialConfig(start_config)
         params.SetGoalConfig(goal_config)
-        template_string = """<solver_parameters type="2" time="120" range="0.05"/>
-               <constraint_parameters type="1" tolerance="0.001" max_iter="50" delta="0.05" lambda="2"/>
-               <atlas_parameters exploration="0.5" epsilon="0.01" rho="0.5" alpha="0.1" max_charts="5000" using_bias="1" separate="1"/>
-               <tsr_chain purpose="0 0 1" mimic_body_name="kitchen" mimic_body_index="6">
-                    %s
-               </tsr_chain>"""
         params.SetExtraParameters(str(planner_params))
 
-        with self.env, self.robot:
+        if self.visualize_sample is False:
+            with self.env, self.robot:
+                if (self.planner.InitPlan(self.robot, params)):
+                    traj = orpy.RaveCreateTrajectory(self.env, '')
+                    status = self.planner.PlanPath(traj)
+                    if status == orpy.PlannerStatus.HasSolution:
+                        resp = True
+                        time = float(self.planner.SendCommand("GetPlanningTime"))
+                        orpy.planningutils.RetimeTrajectory(traj)
+                    else:
+                        resp = False
+                        time = -1
+                else:
+                    return None, None, None
+        else:
             if (self.planner.InitPlan(self.robot, params)):
                 traj = orpy.RaveCreateTrajectory(self.env, '')
                 status = self.planner.PlanPath(traj)
@@ -95,7 +105,7 @@ class ConstraintParameter(object):
     types = ("projection", "atlas", "tangent_bundle")
     Template_str = """<constraint_parameters type="%d" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>"""
 
-    def __init__(self, type="atlas", tolerance=1e-4, max_iter=50, delta=0.05, lambd=2.0):
+    def __init__(self, type="atlas", tolerance=1e-3, max_iter=50, delta=0.05, lambd=2.0):
         self._type = 1
         self._tolerance = 1e-4
         self._max_iter = 50
@@ -160,7 +170,13 @@ class ConstraintParameter(object):
 class AtlasParameter(object):
     Template_str = """<atlas_parameters exploration="%f" epsilon="%f" rho="%f" alpha="%f" max_charts="%d" using_bias="%d" separate="%d"/>"""
 
-    def __init__(self, exploration=0.5, rho=0.75, epsilon=0.01, alpha=np.pi / 8, max_chart=5000, using_bias=True, separate=True):
+    def __init__(self, exploration=0.5,
+                 rho=0.5,
+                 epsilon=0.01,
+                 alpha=np.pi / 16,
+                 max_chart=5000,
+                 using_bias=True,
+                 separate=True):
         self._exploration = 0.5
         self._rho = 0.75
         self._epsilon = 0.01
@@ -294,7 +310,13 @@ class TSRChainParameter(object):
     purposes = ("constraint",)
     Template_str = """<tsr_chain purpose="%d" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">%s</tsr_chain>"""
 
-    def __init__(self, purpose="constraint", manipulator_index=1, relative_body_name="NULL", relative_link_name="NULL", mimic_body_name="NULL", mimic_body_index=()):
+    def __init__(self,
+                 purpose="constraint",
+                 manipulator_index=1,
+                 relative_body_name="NULL",
+                 relative_link_name="NULL",
+                 mimic_body_name="NULL",
+                 mimic_body_index=()):
         self._purpose = 0
         self._manipulator_index = 1
         self._relative_body_name = "NULL"

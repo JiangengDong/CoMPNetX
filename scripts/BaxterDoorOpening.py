@@ -11,10 +11,10 @@
 # This path assumes that you installed OpenRAVE to /usr. You may need to alter
 # the command to match your acutal install destination.
 
-import os
 import numpy as np
-
+import os
 import rospkg
+
 import openravepy as orpy
 
 import utils
@@ -111,16 +111,17 @@ class BaxterDoorOpeningProblem:
         self.setArmsConfig(joint_val[:7], joint_val[7:])
         self.openHands()
 
-    def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw):
+    def solve(self, arm_start_pose, arm_goal_pose, planner_param):
         start_config = self.inverseKinematic(self.right_arm, arm_start_pose)
         goal_config = self.inverseKinematic(self.right_arm, arm_goal_pose)
-        planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter().addTSR(T0_w, Tw_e, Bw))
-        status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
+        status, time, self.traj = self.planner.solve(start_config, goal_config, planner_param)
         return self.traj
 
     def display(self):
         self.baxter.GetController().SetPath(self.traj)
+        self.kitchen.GetController().SetPath(self.traj)
         self.baxter.WaitForController(0)
+        self.kitchen.WaitForController(0)
 
 
 def main():
@@ -139,13 +140,10 @@ def main():
 
     handle_hinge_offset = hinge_start_pose.I * handle_start_pose
     hand_handle_offset = handle_start_pose.I * hand_start_pose
-    hand_hinge_offset = hinge_start_pose.I *hand_start_pose
+    hand_hinge_offset = hinge_start_pose.I * hand_start_pose
 
     Thinge_rot = utils.RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
-    Thandle_rot = utils.RPY2Transform(0, 0, 0, 0, 0, 0)
-
-    hinge_goal_pose = hinge_start_pose * Thinge_rot
-    hand_goal_pose = hinge_goal_pose * hand_hinge_offset
+    Thandle_rot = utils.RPY2Transform(0, 0, -np.pi / 4, 0, 0, 0)
 
     hinge_bound = np.array([[0, 0],
                             [0, 0],
@@ -160,8 +158,25 @@ def main():
                              [0, 0],
                              [-1.58, 0]])
 
+    numTSR = 2
+    planner_parameter = PlannerParameter()
+
+    if numTSR == 1:
+        hand_goal_pose = hinge_start_pose * Thinge_rot * hand_hinge_offset
+        planner_parameter.addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
+                                                        mimic_body_index=(6,)).addTSR(hinge_start_pose, hand_hinge_offset, hinge_bound))
+    elif numTSR == 2:
+        hand_goal_pose = hinge_start_pose * Thinge_rot * handle_hinge_offset * Thandle_rot * hand_handle_offset
+        planner_parameter.addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
+                                                        mimic_body_index=(6,))
+                                      .addTSR(hinge_start_pose, handle_hinge_offset, hinge_bound)
+                                      .addTSR(np.eye(4), hand_handle_offset, handle_bound))
+    else:
+        hand_goal_pose = None
+        exit(0)
+
     problem = BaxterDoorOpeningProblem()
-    problem.solve(hand_start_pose, hand_goal_pose, hinge_start_pose, hand_hinge_offset, hinge_bound)
+    problem.solve(hand_start_pose, hand_goal_pose, planner_parameter)
     problem.display()
     utils.pause()
 
