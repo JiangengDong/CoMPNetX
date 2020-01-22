@@ -36,10 +36,10 @@ namespace AtlasMPNet {
 
     /*! \brief General planner parameters
      *
-     * This class is named after "SolverParameters" to avoid the conflict with OpenRAVE::PlannnerBase::PlannerParameters.
+     * This class is named after "SolverParameter" to avoid the conflict with OpenRAVE::PlannnerBase::PlannerParameters.
      * It contains parameters for planners such as planning time, and provides input and output behaviors in the XML format.
      */
-    class SolverParameters : public SimpleXMLReader {
+    class SolverParameter : public SimpleXMLReader {
     public:
         enum SolverType {
             RRT = 0, RRTStar, RRTConnect, MPNet
@@ -47,7 +47,7 @@ namespace AtlasMPNet {
         double time_ = 5.0; // Planning time allowed.
         double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 
-        SolverParameters() : SimpleXMLReader("solver_parameters") {}
+        SolverParameter() : SimpleXMLReader("solver_parameters") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -60,7 +60,7 @@ namespace AtlasMPNet {
      *
      * Provides input and output behaviors in the XML format.
      */
-    class ConstraintParameters : public SimpleXMLReader {
+    class ConstraintParameter : public SimpleXMLReader {
     public:
         enum SpaceType {
             PROJECTION = 0, ATLAS, TANGENT_BUNDLE
@@ -70,7 +70,7 @@ namespace AtlasMPNet {
         double delta_ = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA; // Step-size for discrete geodesic on manifold.
         double lambda_ = ompl::magic::CONSTRAINED_STATE_SPACE_LAMBDA; // Maximum `wandering` allowed during traversal. Must be greater than 1.
 
-        ConstraintParameters() : SimpleXMLReader("constraint_parameters") {}
+        ConstraintParameter() : SimpleXMLReader("constraint_parameters") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -83,7 +83,7 @@ namespace AtlasMPNet {
      *
      * Provides input and output behaviors in the XML format.
      */
-    class AtlasParameters : public SimpleXMLReader {
+    class AtlasParameter : public SimpleXMLReader {
     public:
         double exploration_ = ompl::magic::ATLAS_STATE_SPACE_EXPLORATION; // Value in [0, 1] which tunes balance of refinement and exploration in atlas sampling.
         double epsilon_ = ompl::magic::ATLAS_STATE_SPACE_EPSILON; // Maximum distance from an atlas chart to the manifold. Must be positive.
@@ -94,7 +94,7 @@ namespace AtlasMPNet {
 
         bool separate_ = false; // (Only used in atlas state space!) Sets that the atlas should not compute chart separating halfspaces.
 
-        AtlasParameters() : SimpleXMLReader("atlas_parameters") {}
+        AtlasParameter() : SimpleXMLReader("atlas_parameters") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -103,13 +103,13 @@ namespace AtlasMPNet {
         bool serialize(std::ostream &O) const override;
     };
 
-    class TSRParameters : public SimpleXMLReader {
+    class TSRParameter : public SimpleXMLReader {
     public:
         OpenRAVE::Transform T0_w; ///< the center of the TSR relative to the link it is attached to (or relative to world frame)
         OpenRAVE::Transform Tw_e; ///< the end-effector offset of this TSR
         OpenRAVE::dReal Bw[6][2]{}; ///< matrix defining maximum and minimum allowable deviation from T0_w in x,y,z,roll,pitch,and yaw
 
-        TSRParameters() : SimpleXMLReader("tsr") {}
+        TSRParameter() : SimpleXMLReader("tsr") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -126,7 +126,7 @@ namespace AtlasMPNet {
         }
     };
 
-    class TSRChainParameters : public SimpleXMLReader {
+    class TSRChainParameter : public SimpleXMLReader {
     public:
         enum PurposeType {
             CONSTRAINT = 0, SAMPLE_START, SAMPLE_GOAL
@@ -136,9 +136,9 @@ namespace AtlasMPNet {
         std::string relativelinkname="NULL"; ///< name of the link T0_w is attached to (NULL = world frame)
         std::string mimic_body_name = "NULL";
         std::vector<int> mimic_inds;
-        std::vector<TSRParameters> TSRs;
+        std::vector<TSRParameter> TSRs;
 
-        TSRChainParameters() : SimpleXMLReader("tsr_chain") {}
+        TSRChainParameter() : SimpleXMLReader("tsr_chain") {}
 
         ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
 
@@ -147,7 +147,7 @@ namespace AtlasMPNet {
         bool serialize(std::ostream &O) const override;
 
     private:
-        TSRParameters temp_tsr;
+        TSRParameter temp_tsr;
     };
 
     /*! \brief The parameters consisting of SolverParameters, ConstraintParameters and AtlasParameters.
@@ -184,10 +184,13 @@ namespace AtlasMPNet {
 
         bool endElement(std::string const &name) override;
 
-        SolverParameters solver_parameters_;
-        ConstraintParameters constraint_parameters_;
-        AtlasParameters atlas_parameters_;
-        TSRChainParameters tsrchain_parameters_;
+        SolverParameter solver_parameter_;
+        ConstraintParameter constraint_parameter_;
+        AtlasParameter atlas_parameter_;
+        std::vector<TSRChainParameter> tsrchains_;
+
+    private:
+        TSRChainParameter _tsrchain_temp;
     };
 }
 

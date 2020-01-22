@@ -12,7 +12,7 @@ using namespace AtlasMPNet;
 /*
  * implementation of SolverParameters
  */
-SimpleXMLReader::ProcessElement SolverParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -40,7 +40,7 @@ SimpleXMLReader::ProcessElement SolverParameters::startElement(std::string const
         return PE_Pass;
 }
 
-bool SolverParameters::endElement(std::string const &name) {
+bool SolverParameter::endElement(std::string const &name) {
     if (name == _tag_name) {
         _tag_open = false;
         return true;
@@ -48,7 +48,7 @@ bool SolverParameters::endElement(std::string const &name) {
         return false;
 }
 
-bool SolverParameters::serialize(std::ostream &O) const {
+bool SolverParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name
       << " time=\"" << time_ << "\""
       << " range=\"" << range_ << "\""
@@ -59,7 +59,7 @@ bool SolverParameters::serialize(std::ostream &O) const {
 /*
  * implementation of ConstraintParameters
  */
-SimpleXMLReader::ProcessElement ConstraintParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -91,7 +91,7 @@ SimpleXMLReader::ProcessElement ConstraintParameters::startElement(std::string c
         return PE_Pass;
 }
 
-bool ConstraintParameters::endElement(std::string const &name) {
+bool ConstraintParameter::endElement(std::string const &name) {
     if (name == _tag_name) {
         _tag_open = false;
         return true;
@@ -99,7 +99,7 @@ bool ConstraintParameters::endElement(std::string const &name) {
         return false;
 }
 
-bool ConstraintParameters::serialize(std::ostream &O) const {
+bool ConstraintParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name
       << " type=\"" << type_ << "\""
       << " tolerance=\"" << tolerance_ << "\""
@@ -114,7 +114,7 @@ bool ConstraintParameters::serialize(std::ostream &O) const {
  * implementation of AtlasParameters
  */
 
-SimpleXMLReader::ProcessElement AtlasParameters::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -148,7 +148,7 @@ SimpleXMLReader::ProcessElement AtlasParameters::startElement(std::string const 
         return PE_Pass;
 }
 
-bool AtlasParameters::endElement(std::string const &name) {
+bool AtlasParameter::endElement(std::string const &name) {
     if (name == _tag_name) {
         _tag_open = false;
         return true;
@@ -156,7 +156,7 @@ bool AtlasParameters::endElement(std::string const &name) {
         return false;
 }
 
-bool AtlasParameters::serialize(std::ostream &O) const {
+bool AtlasParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name
       << " exploration=\"" << exploration_ << "\""
       << " epsilon=\"" << epsilon_ << "\""
@@ -169,7 +169,7 @@ bool AtlasParameters::serialize(std::ostream &O) const {
     return true;
 }
 
-SimpleXMLReader::ProcessElement TSRParameters::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
+SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -208,7 +208,7 @@ SimpleXMLReader::ProcessElement TSRParameters::startElement(const std::string &n
         return PE_Pass;
 }
 
-bool TSRParameters::endElement(const std::string &name) {
+bool TSRParameter::endElement(const std::string &name) {
     if (name == _tag_name) {
         _tag_open = false;
         return true;
@@ -216,7 +216,7 @@ bool TSRParameters::endElement(const std::string &name) {
         return false;
 }
 
-bool TSRParameters::serialize(std::ostream &O) const {
+bool TSRParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name;
     // T0_w matrix
     OpenRAVE::TransformMatrix temptm(T0_w);
@@ -244,7 +244,7 @@ bool TSRParameters::serialize(std::ostream &O) const {
     return true;
 }
 
-SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
+SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
     if (name == _tag_name) {
         if (_tag_open) {
             return PE_Ignore;
@@ -267,7 +267,7 @@ SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::stri
                 } else if (key == "mimic_body_name") {
                     value >> mimic_body_name;
                 } else if (key == "mimic_body_index") {
-                    if(att.second.empty())
+                    if (att.second.empty())
                         continue;
                     int temp;
                     while (!value.eof()) {
@@ -298,10 +298,13 @@ SimpleXMLReader::ProcessElement TSRChainParameters::startElement(const std::stri
     }
 }
 
-bool TSRChainParameters::endElement(const std::string &name) {
+bool TSRChainParameter::endElement(const std::string &name) {
     if (name == _tag_name) {
-        _tag_open = false;
-        return true;
+        if (_tag_open) {
+            _tag_open = false;
+            return true;
+        } else
+            return false;
     } else if (name == "tsr") {
         if (_tag_open) {
             temp_tsr.endElement(name);
@@ -314,7 +317,7 @@ bool TSRChainParameters::endElement(const std::string &name) {
     }
 }
 
-bool TSRChainParameters::serialize(std::ostream &O) const {
+bool TSRChainParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name << " ";
     O << "purpose=\"" << purpose << "\" "
       << "manipulator_index=\"" << manipind << "\" "
@@ -340,10 +343,10 @@ bool TSRChainParameters::serialize(std::ostream &O) const {
  * implementation of PlannnerParameters
  */
 Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
-    _vXMLParameters.emplace_back(solver_parameters_.getTagName());
-    _vXMLParameters.emplace_back(constraint_parameters_.getTagName());
-    _vXMLParameters.emplace_back(atlas_parameters_.getTagName());
-    _vXMLParameters.emplace_back(tsrchain_parameters_.getTagName());
+    _vXMLParameters.emplace_back(solver_parameter_.getTagName());
+    _vXMLParameters.emplace_back(constraint_parameter_.getTagName());
+    _vXMLParameters.emplace_back(atlas_parameter_.getTagName());
+    _vXMLParameters.emplace_back(_tsrchain_temp.getTagName());
     _vXMLParameters.emplace_back("tsr");    // Avoid hard code the tag names. Improve this part later
 }
 
@@ -401,10 +404,12 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     if (!OpenRAVE::PlannerBase::PlannerParameters::serialize(O, options)) {
         return false;
     }
-    O << solver_parameters_ << std::endl
-      << constraint_parameters_ << std::endl
-      << atlas_parameters_ << std::endl
-      << tsrchain_parameters_ << std::endl;
+    O << solver_parameter_ << std::endl
+      << constraint_parameter_ << std::endl
+      << atlas_parameter_ << std::endl;
+    for (const auto &tsr_chain:tsrchains_) {
+        O << tsr_chain << std::endl;
+    }
     return !!O;
 }
 
@@ -412,22 +417,25 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
     OpenRAVE::BaseXMLReader::ProcessElement status;
     if ((status = OpenRAVE::PlannerBase::PlannerParameters::startElement(name, atts)) != PE_Pass)
         return status;
-    if ((status = solver_parameters_.startElement(name, atts)) != PE_Pass)
+    if ((status = solver_parameter_.startElement(name, atts)) != PE_Pass)
         return status;
-    if ((status = constraint_parameters_.startElement(name, atts)) != PE_Pass)
+    if ((status = constraint_parameter_.startElement(name, atts)) != PE_Pass)
         return status;
-    if ((status = atlas_parameters_.startElement(name, atts)) != PE_Pass)
+    if ((status = atlas_parameter_.startElement(name, atts)) != PE_Pass)
         return status;
-    if ((status = tsrchain_parameters_.startElement(name, atts)) != PE_Pass)
+    if ((status = _tsrchain_temp.startElement(name, atts)) != PE_Pass)
         return status;
     return PE_Pass;
 }
 
 bool Parameters::endElement(std::string const &name) {
-    return !tsrchain_parameters_.endElement(name) &&
-           !atlas_parameters_.endElement(name) &&
-           !constraint_parameters_.endElement(name) &&
-           !solver_parameters_.endElement(name) &&
-           PlannerParameters::endElement(name);
+    if (_tsrchain_temp.endElement(name)) {
+        tsrchains_.emplace_back(_tsrchain_temp);
+        return false;
+    } else
+        return !atlas_parameter_.endElement(name) &&
+               !constraint_parameter_.endElement(name) &&
+               !solver_parameter_.endElement(name) &&
+               PlannerParameters::endElement(name);
 }
 

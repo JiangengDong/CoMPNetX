@@ -35,8 +35,7 @@
 
 using namespace AtlasMPNet;
 
-TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameters &param,
-                                           OpenRAVE::RobotBasePtr &probot_out) {
+TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameter &param) {
     this->param = param;
     _mimic_inds = this->param.mimic_inds;
     numdof = -1;
@@ -77,14 +76,13 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
                     RAVELOG_INFO("Error: could not find the specified link of the object to attach frame\n");
         }
     }
-    RobotizeTSRChain(penv_in, probot_out);
+    RobotizeTSRChain(penv_in);
 }
 
-bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out) {
+bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in) {
     bool bFlipAxis;
     if (penv_in.get() == nullptr) {
                 RAVELOG_INFO("Environment pointer is null!\n");
-        probot_out = OpenRAVE::RobotBasePtr();
         return false;
     }
 
@@ -102,7 +100,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     robot = RaveCreateRobot(penv_in, robottype);
     if (robot.get() == nullptr) {
                 RAVELOG_INFO("Failed to create robot %s", robottype);
-        probot_out = OpenRAVE::RobotBasePtr();
         return false;
     }
 
@@ -141,7 +138,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
             if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
                         RAVELOG_FATAL(
                         "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
-                probot_out = OpenRAVE::RobotBasePtr();
                 return false;
             }
 
@@ -293,13 +289,11 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         _bPointTSR = true;
         numdof = bodynumber - 1;
                 RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
-        probot_out = OpenRAVE::RobotBasePtr();
         return true;
     }
 
     if (_bPointTSR && param.TSRs.size() != 1) {
                 RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
-        probot_out = OpenRAVE::RobotBasePtr();
         return false;
     }
 
@@ -308,7 +302,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     robot = penv->ReadRobotXMLData(OpenRAVE::RobotBasePtr(), O.str(), std::list<std::pair<std::string, std::string> >());
     if (robot.get() == nullptr) {
                 RAVELOG_INFO("Could not init robot from data!\n");
-        probot_out = OpenRAVE::RobotBasePtr();
         return false;
     }
 
@@ -324,7 +317,6 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     robot->SetActiveDOFs(pmanip->GetArmIndices());
     numdof = bodynumber - 1;
     robot->Enable(false);
-    probot_out = robot;
     return true;
 }
 
@@ -389,6 +381,16 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
 }
 
 bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const {
+    for (unsigned int i = 0; i < _lowerlimits.size(); i++) {
+        lowerlimits[i] = _lowerlimits[i];
+        upperlimits[i] = _upperlimits[i];
+                RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
+    }
+
+    return true;
+}
+
+bool TaskSpaceRegionChain::GetChainJointLimits(std::vector<OpenRAVE::dReal> &lowerlimits, std::vector<OpenRAVE::dReal> &upperlimits) const {
     for (unsigned int i = 0; i < _lowerlimits.size(); i++) {
         lowerlimits[i] = _lowerlimits[i];
         upperlimits[i] = _upperlimits[i];

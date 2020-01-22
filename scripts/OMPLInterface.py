@@ -46,7 +46,7 @@ def pause():
 
 class SolverParameter(object):
     types = ("rrt", "rrtstar", "rrtconnect")
-    Template_str = """<solver_parameters type="%d" time="%d" range="%f"/>"""
+    Template_str = """<solver_parameters type="%d" time="%d" range="%f"/>\n"""
 
     def __init__(self, type="rrtconnect", time=120, range=0.05):
         self._type = 2
@@ -90,7 +90,7 @@ class SolverParameter(object):
 
 class ConstraintParameter(object):
     types = ("projection", "atlas", "tangent_bundle")
-    Template_str = """<constraint_parameters type="%d" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>"""
+    Template_str = """<constraint_parameters type="%d" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>\n"""
 
     def __init__(self, type="atlas", tolerance=1e-3, max_iter=50, delta=0.05, lambd=2.0):
         self._type = 1
@@ -155,7 +155,7 @@ class ConstraintParameter(object):
 
 
 class AtlasParameter(object):
-    Template_str = """<atlas_parameters exploration="%f" epsilon="%f" rho="%f" alpha="%f" max_charts="%d" using_bias="%d" separate="%d"/>"""
+    Template_str = """<atlas_parameters exploration="%f" epsilon="%f" rho="%f" alpha="%f" max_charts="%d" using_bias="%d" separate="%d"/>\n"""
 
     def __init__(self, exploration=0.5,
                  rho=0.5,
@@ -248,7 +248,7 @@ class AtlasParameter(object):
 
 
 class TSRParameter(object):
-    Template_str = """<tsr T0_w="%s" Tw_e="%s" Bw="%s"/>"""
+    Template_str = """<tsr T0_w="%s" Tw_e="%s" Bw="%s"/>\n"""
 
     def __init__(self, T0_w=np.eye(4), Tw_e=np.eye(4), Bw=np.zeros((6, 2))):
         self._T0_w = np.eye(4)
@@ -295,7 +295,7 @@ class TSRParameter(object):
 
 class TSRChain(object):
     purposes = ("constraint",)
-    Template_str = """<tsr_chain purpose="%d" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">%s</tsr_chain>"""
+    Template_str = """<tsr_chain purpose="%d" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">\n%s</tsr_chain>\n"""
 
     def __init__(self,
                  purpose="constraint",
@@ -442,21 +442,7 @@ class OMPLInterface:
         params.SetGoalConfig(goal_config)
         params.SetExtraParameters(str(planner_params))
 
-        if self.visualize_sample is False:
-            with self.env, self.robot:
-                if (self.planner.InitPlan(self.robot, params)):
-                    traj = orpy.RaveCreateTrajectory(self.env, '')
-                    status = self.planner.PlanPath(traj)
-                    if status == orpy.PlannerStatus.HasSolution:
-                        resp = True
-                        time = float(self.planner.SendCommand("GetPlanningTime"))
-                        orpy.planningutils.RetimeTrajectory(traj)
-                    else:
-                        resp = False
-                        time = -1
-                else:
-                    return None, None, None
-        else:
+        with self.env, self.robot:
             if (self.planner.InitPlan(self.robot, params)):
                 traj = orpy.RaveCreateTrajectory(self.env, '')
                 status = self.planner.PlanPath(traj)
@@ -469,4 +455,5 @@ class OMPLInterface:
                     time = -1
             else:
                 return None, None, None
+
         return resp, time, traj

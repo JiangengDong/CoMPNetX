@@ -47,7 +47,7 @@ class BaxterDoorOpeningProblem:
 
         self.kitchen = self.env.GetKinBody("kitchen")
 
-        self.planner = OMPLInterface(self.env, self.baxter)
+        self.planner = OMPLInterface(self.env, self.baxter, loglevel=0)
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
         self.env.LoadProblem(self.cbirrt, name)
 

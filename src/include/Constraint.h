@@ -15,7 +15,7 @@ namespace AtlasMPNet {
     public:
         typedef std::shared_ptr<TSRChainConstraint> Ptr;
 
-        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot);
+        TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain::Ptr &tsr_chain);
 
         void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
 
@@ -23,12 +23,12 @@ namespace AtlasMPNet {
 
     private:
         OpenRAVE::RobotBasePtr _robot;
-        OpenRAVE::RobotBasePtr _tsr_robot;
         int _dof_robot;
-        int _dof_tsr;
-
-        // temporary variables
         int _robot_eeindex;
+
+        TaskSpaceRegionChain::Ptr _tsr_chain;
+        OpenRAVE::RobotBasePtr _tsr_robot;
+        int _dof_tsr;
         int _tsr_eeindex;
 
         void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const;

@@ -34,7 +34,7 @@ class LiftingBoxProblem:
         self.env.AddKinBody(self.box)
         self.box.SetTransform(np.array(box_initial_pose))
 
-        self.planner = OMPLInterface(self.env, self.robot)
+        self.planner = OMPLInterface(self.env, self.robot, loglevel=0)
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
         self.env.LoadProblem(self.cbirrt, "Herb2")
 
@@ -113,9 +113,12 @@ def main():
                     [0, 0],
                     [-3, 3]])
 
-    planner_parameter = PlannerParameter().addTSRChain(TSRChain(manipulator_index=0).addTSR(box_initial_pose, righthand_offset, bound)) \
+    planner_parameter = PlannerParameter()\
+        .addTSRChain(TSRChain(manipulator_index=0)
+                     .addTSR(box_initial_pose, righthand_offset, bound))\
         .addTSRChain(TSRChain(manipulator_index=1, relative_body_name="box", relative_link_name="body")
                      .addTSR(np.eye(4), lefthand_offset, np.zeros((6, 2))))
+    print(planner_parameter)
     problem = LiftingBoxProblem(arm_initial_config, box_initial_pose)
     problem.solve(hand_initial_pose, hand_goal_pose, box_initial_pose, righthand_offset, bound)
     problem.display()

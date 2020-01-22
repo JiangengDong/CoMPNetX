@@ -42,23 +42,23 @@ namespace AtlasMPNet {
         typedef std::shared_ptr<TaskSpaceRegionChain> Ptr;
         // this is an ordered list of TSRs, where each one relies on the previous one to determine T0_w,
         // note that the T0_w values of the TSRs in the chain will change (except the first one)
-        TSRChainParameters param;
+        TSRChainParameter param;
 
-        TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameters &param,
-                             OpenRAVE::RobotBasePtr &probot_out);
+        TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameter &param);
 
         ~TaskSpaceRegionChain() {
             DestoryRobotizedTSRChain();
         }
 
         // create a virtual manipulator (a robot) corresponding to the TSR chain to use for ik solver calls
-        bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in, OpenRAVE::RobotBasePtr &probot_out);
+        bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in);
 
         // get the closest transform in the TSR Chain to a query transform
         OpenRAVE::dReal GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closeset) const;
 
         // get the joint limits of the virtual manipulator
         bool GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const;
+        bool GetChainJointLimits(std::vector<OpenRAVE::dReal> &lowerlimits, std::vector<OpenRAVE::dReal> &upperlimits) const;
 
         // get a pointer to the mimiced body
         OpenRAVE::RobotBasePtr GetMimicBody() const {
@@ -98,17 +98,17 @@ namespace AtlasMPNet {
 
         // is this TSR chain used for sampling goals?
         bool IsForGoalSampling() const {
-            return param.purpose==TSRChainParameters::SAMPLE_GOAL;
+            return param.purpose == TSRChainParameter::SAMPLE_GOAL;
         }
 
         // is this TSR chain used for sampling starts?
         bool IsForStartSampling() const {
-            return param.purpose==TSRChainParameters::SAMPLE_START;
+            return param.purpose == TSRChainParameter::SAMPLE_START;
         }
 
         // is this TSR chain used for constraining the whole path?
         bool IsForConstraint() const {
-            return param.purpose==TSRChainParameters::CONSTRAINT;
+            return param.purpose == TSRChainParameter::CONSTRAINT;
         }
 
         OpenRAVE::RobotBasePtr GetRobot() const {

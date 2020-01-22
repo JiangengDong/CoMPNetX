@@ -64,7 +64,7 @@ namespace AtlasMPNet {
         OpenRAVE::EnvironmentBasePtr env_;
         OpenRAVE::RobotBasePtr robot_;
         OpenRAVE::RobotBasePtr tsr_robot_;
-        TaskSpaceRegionChain::Ptr tsr_chain_;
+        std::vector<TaskSpaceRegionChain::Ptr> tsrchains_;
 
         ompl::base::StateSpacePtr ambient_state_space_;
         ompl::base::ConstraintPtr constraint_;

@@ -79,7 +79,7 @@ def setup_esc(orEnv, targObj, obj_names, e_no, s_no, esc_dict):
 
 
 orEnv = orpy.Environment()
-orEnv.SetViewer('qtcoin')
+# orEnv.SetViewer('qtcoin')
 orEnv.Reset()
 orEnv.SetDebugLevel(orpy.DebugLevel.Info)
 
@@ -141,8 +141,9 @@ robot.SetActiveDOFValues(handdof)
 
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
-ompl_planner = OMPLInterface(orEnv, robot)
+ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
+planner_parameter.solver_parameter.time = 120
 planner_parameter.constraint_parameter.type = "tangent_bundle"
 stat = DatasetStat(19, 10)
 for e in range(0, 19):
@@ -187,8 +188,6 @@ for e in range(0, 19):
                 print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
                 robot.GetController().SetPath(traj)
                 robot.WaitForController(0)
-                robot.SetActiveDOFs(arm1dofs)
-                robot.SetActiveDOFValues(goalik)
             elif resp is False:
                 print("Failed to find a solution.")
                 t_time = 1e3
@@ -197,6 +196,8 @@ for e in range(0, 19):
                 t_time = -1
             esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
+            robot.SetActiveDOFs(arm1dofs)
+            robot.SetActiveDOFValues(goalik)
             robot.ReleaseAllGrabbed()
             robot.WaitForController(0)
             time.sleep(0.05)

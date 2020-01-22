@@ -132,6 +132,8 @@ ompl::geometric::RRTConnect::GrowState ompl::geometric::RRTConnect::growTree(Tre
 
     Motion *motion = nullptr;
     for(auto dstate: stateList) {
+        if(!si_->satisfiesBounds(dstate))
+            break;
         motion = new Motion(si_);
         si_->copyState(motion->state, dstate);
         motion->parent = nmotion;

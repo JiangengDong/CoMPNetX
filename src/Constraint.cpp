@@ -10,12 +10,14 @@
 
 using namespace AtlasMPNet;
 
-TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const OpenRAVE::RobotBasePtr &tsr_robot) :
-        Constraint(robot->GetActiveDOF() + tsr_robot->GetDOF(), 6), _robot(robot), _tsr_robot(tsr_robot) {
-    _dof_robot = _robot->GetActiveDOF();
-    _dof_tsr = _tsr_robot->GetActiveDOF();
-
-    _robot_eeindex = _robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
+TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain::Ptr &tsr_chain) :
+        Constraint(robot->GetActiveDOF() + tsr_chain->GetNumDOF(), 6),
+        _robot(robot),
+        _dof_robot(robot->GetActiveDOF()),
+        _robot_eeindex(robot->GetActiveManipulator()->GetEndEffector()->GetIndex()),
+        _tsr_chain(tsr_chain) {
+    _dof_tsr = _tsr_chain->GetNumDOF();
+    _tsr_robot = _tsr_chain->GetRobot();
     _tsr_eeindex = _tsr_robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
 }
 

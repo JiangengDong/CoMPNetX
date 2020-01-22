@@ -30,7 +30,7 @@ class DoorOpeningProblem:
         self.manipulator_right = self.robot.GetManipulator('right_wam')
         self.kitchen = self.env.GetKinBody("kitchen")
 
-        self.planner = OMPLInterface(self.env, self.robot)
+        self.planner = OMPLInterface(self.env, self.robot, loglevel=0)
         self.cbirrt = orpy.RaveCreateProblem(self.env, "CBiRRT")
         self.env.LoadProblem(self.cbirrt, "BarrettWAM")
 
