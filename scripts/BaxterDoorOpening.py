@@ -14,11 +14,11 @@
 import numpy as np
 import os
 import rospkg
+import time
 
 import openravepy as orpy
 
-import utils
-from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
+from OMPLInterface import OMPLInterface, TSRChain, PlannerParameter, SerializeTransform, RPY2Transform, pause
 
 
 class BaxterDoorOpeningProblem:
@@ -55,7 +55,7 @@ class BaxterDoorOpeningProblem:
 
         self.gotoInitialPose()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __del__(self):
         self.env.GetViewer().quitmainloop()
         self.env.Destroy()
 
@@ -69,7 +69,7 @@ class BaxterDoorOpeningProblem:
                 raise Exception("Invalid manipulator!")
             self.baxter.SetActiveManipulator(manipulator)
             q_str = self.cbirrt.SendCommand('DoGeneralIK exec nummanips 1 maniptm %d %s' %
-                                            (self.baxter.GetActiveManipulatorIndex(), utils.SerializeTransform(pose)))
+                                            (self.baxter.GetActiveManipulatorIndex(), SerializeTransform(pose)))
         return [float(q) for q in q_str.split()]
 
     def setLeftArmConfig(self, leftarm_q):
@@ -101,7 +101,7 @@ class BaxterDoorOpeningProblem:
         self.setHandsConfig([1, 1])
 
     def gotoInitialPose(self):
-        baxter_pose = np.array(utils.RPY2Transform(0, 0, np.pi / 2, 0, 0, 0) * utils.RPY2Transform(0, 0, 0, -0.8, -1.2217, 0.9614))
+        baxter_pose = np.array(RPY2Transform(0, 0, np.pi / 2, 0, 0, 0) * RPY2Transform(0, 0, 0, -0.8, -1.2217, 0.9614))
         self.baxter.SetTransform(baxter_pose)
 
         self.baxter.SetActiveDOFs(self.right_arm_indices)
@@ -142,8 +142,8 @@ def main():
     hand_handle_offset = handle_start_pose.I * hand_start_pose
     hand_hinge_offset = hinge_start_pose.I * hand_start_pose
 
-    Thinge_rot = utils.RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
-    Thandle_rot = utils.RPY2Transform(0, 0, -np.pi / 4, 0, 0, 0)
+    Thinge_rot = RPY2Transform(0, 0, np.pi / 3, 0, 0, 0)
+    Thandle_rot = RPY2Transform(0, 0, -np.pi / 4, 0, 0, 0)
 
     hinge_bound = np.array([[0, 0],
                             [0, 0],
@@ -163,12 +163,12 @@ def main():
 
     if numTSR == 1:
         hand_goal_pose = hinge_start_pose * Thinge_rot * hand_hinge_offset
-        planner_parameter.addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
-                                                        mimic_body_index=(6,)).addTSR(hinge_start_pose, hand_hinge_offset, hinge_bound))
+        planner_parameter.addTSRChain(TSRChain(mimic_body_name="kitchen",
+                                               mimic_body_index=(6,)).addTSR(hinge_start_pose, hand_hinge_offset, hinge_bound))
     elif numTSR == 2:
         hand_goal_pose = hinge_start_pose * Thinge_rot * handle_hinge_offset * Thandle_rot * hand_handle_offset
-        planner_parameter.addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
-                                                        mimic_body_index=(6,))
+        planner_parameter.addTSRChain(TSRChain(mimic_body_name="kitchen",
+                                               mimic_body_index=(6,))
                                       .addTSR(hinge_start_pose, handle_hinge_offset, hinge_bound)
                                       .addTSR(np.eye(4), hand_handle_offset, handle_bound))
     else:
@@ -178,7 +178,7 @@ def main():
     problem = BaxterDoorOpeningProblem()
     problem.solve(hand_start_pose, hand_goal_pose, planner_parameter)
     problem.display()
-    utils.pause()
+    pause()
 
 
 if __name__ == '__main__':

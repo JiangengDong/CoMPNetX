@@ -16,8 +16,7 @@ import time
 
 import openravepy as orpy
 
-from OMPLInterface import OMPLInterface, TSRChainParameter, PlannerParameter
-from utils import SerializeTransform, RPY2Transform, pause
+from OMPLInterface import OMPLInterface, TSRChain, PlannerParameter, SerializeTransform, RPY2Transform, pause
 
 
 class DoorOpeningProblem:
@@ -85,8 +84,8 @@ class DoorOpeningProblem:
         self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
         start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
         goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
-        planner_parameter = PlannerParameter().addTSRChain(TSRChainParameter(mimic_body_name="kitchen",
-                                                                             mimic_body_index=(6,)).addTSR(T0_w, Tw_e, Bw))
+        planner_parameter = PlannerParameter().addTSRChain(TSRChain(mimic_body_name="kitchen",
+                                                                    mimic_body_index=(6,)).addTSR(T0_w, Tw_e, Bw))
         planner_parameter.constraint_parameter.tolerance = 1e-3
         status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
         return self.traj

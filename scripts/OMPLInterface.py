@@ -1,60 +1,47 @@
+# encoding: utf-8
+
 import numpy as np
+import sys
 from collections import Iterable
 
 import openravepy as orpy
 
-import utils
+
+def SerializeTransform(tm):
+    flatten_tm = np.array(tm[0:3, 0:4]).T.flatten()
+    return ' '.join(['%.5f' % v for v in flatten_tm])
 
 
-class OMPLInterface:
-    def __init__(self, env, robot, loglevel=2, visualize_sample=False):
-        self.env = env
-        self.robot = robot
-        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
-        assert self.planner != None
-        self.planner.SendCommand("SetLogLevel %d" % loglevel)
-        self.visualize_sample = visualize_sample
+def SerializeBound(bw):
+    flatten_bw = np.array(bw).flatten()
+    return ' '.join(['%.5f' % v for v in flatten_bw])
 
-    def solve(self, start_config, goal_config, planner_params):
-        dof = self.robot.GetActiveDOF()
-        assert len(start_config) == dof
-        assert len(goal_config) == dof
 
-        params = orpy.Planner.PlannerParameters()
+def RPY2Transform(psi, theta, phi, x, y, z):
+    cPsi = np.cos(psi)
+    sPsi = np.sin(psi)
+    cTheta = np.cos(theta)
+    sTheta = np.sin(theta)
+    cPhi = np.cos(phi)
+    sPhi = np.sin(phi)
+    return np.mat([[cTheta * cPhi, sPsi * sTheta * cPhi - cPsi * sPhi, cPsi * sTheta * cPhi + sPsi * sPhi, x],
+                   [cTheta * sPhi, sPsi * sTheta * sPhi + cPsi * cPhi, cPsi * sTheta * sPhi - sPsi * cPhi, y],
+                   [-sTheta, sPsi * cTheta, cPsi * cTheta, z],
+                   [0, 0, 0, 1]])
 
-        params.SetRobotActiveJoints(self.robot)
-        params.SetInitialConfig(start_config)
-        params.SetGoalConfig(goal_config)
-        params.SetExtraParameters(str(planner_params))
 
-        if self.visualize_sample is False:
-            with self.env, self.robot:
-                if (self.planner.InitPlan(self.robot, params)):
-                    traj = orpy.RaveCreateTrajectory(self.env, '')
-                    status = self.planner.PlanPath(traj)
-                    if status == orpy.PlannerStatus.HasSolution:
-                        resp = True
-                        time = float(self.planner.SendCommand("GetPlanningTime"))
-                        orpy.planningutils.RetimeTrajectory(traj)
-                    else:
-                        resp = False
-                        time = -1
-                else:
-                    return None, None, None
-        else:
-            if (self.planner.InitPlan(self.robot, params)):
-                traj = orpy.RaveCreateTrajectory(self.env, '')
-                status = self.planner.PlanPath(traj)
-                if status == orpy.PlannerStatus.HasSolution:
-                    resp = True
-                    time = float(self.planner.SendCommand("GetPlanningTime"))
-                    orpy.planningutils.RetimeTrajectory(traj)
-                else:
-                    resp = False
-                    time = -1
-            else:
-                return None, None, None
-        return resp, time, traj
+def quat2Transform(a, b, c, d, x, y, z):
+    # a+bi+cj+dk
+    assert 1 - 1e-4 < a ** 2 + b ** 2 + c ** 2 + d ** 2 < 1 + 1e-4
+    return np.mat([[a ** 2 + b ** 2 - c ** 2 - d ** 2, 2 * b * c - 2 * a * d, 2 * b * d + 2 * a * c, x],
+                   [2 * b * c + 2 * a * d, a ** 2 - b ** 2 + c ** 2 - d ** 2, 2 * c * d - 2 * a * b, y],
+                   [2 * b * d - 2 * a * c, 2 * c * d + 2 * a * b, a * 2 - b ** 2 - c ** 2 + d ** 2, z],
+                   [0, 0, 0, 1]])
+
+
+def pause():
+    print "Press enter to continue..."
+    sys.stdin.readline()
 
 
 class SolverParameter(object):
@@ -273,7 +260,7 @@ class TSRParameter(object):
         self.Bw = Bw
 
     def __str__(self):
-        return TSRParameter.Template_str % (utils.SerializeTransform(self._T0_w), utils.SerializeTransform(self._Tw_e), utils.SerializeBound(self._Bw))
+        return TSRParameter.Template_str % (SerializeTransform(self._T0_w), SerializeTransform(self._Tw_e), SerializeBound(self._Bw))
 
     @property
     def T0_w(self):
@@ -306,7 +293,7 @@ class TSRParameter(object):
         self._Bw = temp
 
 
-class TSRChainParameter(object):
+class TSRChain(object):
     purposes = ("constraint",)
     Template_str = """<tsr_chain purpose="%d" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">%s</tsr_chain>"""
 
@@ -335,16 +322,16 @@ class TSRChainParameter(object):
     def __str__(self):
         TSR_str = "".join([str(tsr) for tsr in self.TSRs])
         mimic_indices_str = " ".join([str(ind) for ind in self._mimic_body_index])
-        return TSRChainParameter.Template_str % (self._purpose, self._manipulator_index, self._relative_body_name, self._relative_link_name, self._mimic_body_name, mimic_indices_str, TSR_str)
+        return TSRChain.Template_str % (self._purpose, self._manipulator_index, self._relative_body_name, self._relative_link_name, self._mimic_body_name, mimic_indices_str, TSR_str)
 
     @property
     def purpose(self):
-        return TSRChainParameter.purposes[self._purpose]
+        return TSRChain.purposes[self._purpose]
 
     @purpose.setter
     def purpose(self, value):
-        assert value in TSRChainParameter.purposes
-        self._purpose = TSRChainParameter.purposes.index(value)
+        assert value in TSRChain.purposes
+        self._purpose = TSRChain.purposes.index(value)
 
     @property
     def manipulator_index(self):
@@ -424,10 +411,62 @@ class PlannerParameter(object):
         return self._atlas_parameter
 
     def addTSRChain(self, tsrchain):
-        assert isinstance(tsrchain, TSRChainParameter)
+        assert isinstance(tsrchain, TSRChain)
         self.TSRChains.append(tsrchain)
         return self
 
     def clearTSRChains(self):
         self.TSRChains = []
         return self
+
+
+class OMPLInterface:
+    def __init__(self, env, robot, loglevel=2, visualize_sample=False):
+        self.env = env
+        self.robot = robot
+        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        assert self.planner != None
+        self.planner.SendCommand("SetLogLevel %d" % loglevel)
+        self.visualize_sample = visualize_sample
+
+    def solve(self, start_config, goal_config, planner_params):
+        assert isinstance(planner_params, PlannerParameter)
+        dof = self.robot.GetActiveDOF()
+        assert len(start_config) == dof
+        assert len(goal_config) == dof
+
+        params = orpy.Planner.PlannerParameters()
+
+        params.SetRobotActiveJoints(self.robot)
+        params.SetInitialConfig(start_config)
+        params.SetGoalConfig(goal_config)
+        params.SetExtraParameters(str(planner_params))
+
+        if self.visualize_sample is False:
+            with self.env, self.robot:
+                if (self.planner.InitPlan(self.robot, params)):
+                    traj = orpy.RaveCreateTrajectory(self.env, '')
+                    status = self.planner.PlanPath(traj)
+                    if status == orpy.PlannerStatus.HasSolution:
+                        resp = True
+                        time = float(self.planner.SendCommand("GetPlanningTime"))
+                        orpy.planningutils.RetimeTrajectory(traj)
+                    else:
+                        resp = False
+                        time = -1
+                else:
+                    return None, None, None
+        else:
+            if (self.planner.InitPlan(self.robot, params)):
+                traj = orpy.RaveCreateTrajectory(self.env, '')
+                status = self.planner.PlanPath(traj)
+                if status == orpy.PlannerStatus.HasSolution:
+                    resp = True
+                    time = float(self.planner.SendCommand("GetPlanningTime"))
+                    orpy.planningutils.RetimeTrajectory(traj)
+                else:
+                    resp = False
+                    time = -1
+            else:
+                return None, None, None
+        return resp, time, traj
