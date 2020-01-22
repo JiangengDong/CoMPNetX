@@ -79,7 +79,7 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
     _robot->CalculateActiveJacobian(_robot_eeindex, Trobot.trans, Jrobot);
     _tsr_robot->CalculateActiveJacobian(_tsr_eeindex, Ttsr.trans, Jtsr);
     for (int i = 0; i < 3; i++) {
-        unsigned int j;
+        int j;
         for (j = 0; j < _dof_robot; j++) {
             Jtrans_robot(i, j) = Jrobot[i * _dof_robot + j];
         }
@@ -92,12 +92,12 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
 void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
     std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
     // joint values of real robot
-    for (unsigned int i = 0; i < _dof_robot; ++i) {
+    for (int i = 0; i < _dof_robot; ++i) {
         q_robot[i] = x[i];
     }
     _robot->SetActiveDOFValues(q_robot, 0);
     // joint values of virtual tsr robot
-    for (unsigned int i = 0; i < _dof_tsr; ++i) {
+    for (int i = 0; i < _dof_tsr; ++i) {
         q_tsr[i] = x[i + _dof_robot];
     }
     _tsr_robot->SetActiveDOFValues(q_tsr, 0);

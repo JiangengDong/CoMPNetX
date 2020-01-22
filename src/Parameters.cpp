@@ -107,6 +107,7 @@ bool ConstraintParameters::serialize(std::ostream &O) const {
       << " delta=\"" << delta_ << "\""
       << " lambda=\"" << lambda_ << "\""
       << "/>";
+    return true;
 }
 
 /*
@@ -321,7 +322,7 @@ bool TSRChainParameters::serialize(std::ostream &O) const {
       << "relative_link_name=\"" << relativelinkname << "\" ";
     O << "mimic_body_name=\"" << mimic_body_name << "\" ";
     O << "mimic_body_index=\"";
-    for (int i = 0; i < mimic_inds.size(); i++) {
+    for (unsigned int i = 0; i < mimic_inds.size(); i++) {
         if (i == 0)
             O << mimic_inds[i];
         else
@@ -419,6 +420,7 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
         return status;
     if ((status = tsrchain_parameters_.startElement(name, atts)) != PE_Pass)
         return status;
+    return PE_Pass;
 }
 
 bool Parameters::endElement(std::string const &name) {

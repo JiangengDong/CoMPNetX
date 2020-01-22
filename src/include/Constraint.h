@@ -24,8 +24,8 @@ namespace AtlasMPNet {
     private:
         OpenRAVE::RobotBasePtr _robot;
         OpenRAVE::RobotBasePtr _tsr_robot;
-        unsigned int _dof_robot;
-        unsigned int _dof_tsr;
+        int _dof_robot;
+        int _dof_tsr;
 
         // temporary variables
         int _robot_eeindex;

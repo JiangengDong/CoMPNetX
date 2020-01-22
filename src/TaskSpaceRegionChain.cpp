@@ -128,7 +128,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     O << "\t\t\t</Geom>" << std::endl;
     O << "\t\t</Body>" << std::endl;
 
-    int bodynumber = 1;
+    unsigned int bodynumber = 1;
     OpenRAVE::Transform Tw0_e = OpenRAVE::Transform();
 
     for (auto &tsr : param.TSRs) {
@@ -389,7 +389,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
 }
 
 bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const {
-    for (int i = 0; i < _lowerlimits.size(); i++) {
+    for (unsigned int i = 0; i < _lowerlimits.size(); i++) {
         lowerlimits[i] = _lowerlimits[i];
         upperlimits[i] = _upperlimits[i];
                 RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
@@ -400,7 +400,7 @@ bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, Ope
 
 bool TaskSpaceRegionChain::ExtractMimicDOFValues(const OpenRAVE::dReal *TSRValues, OpenRAVE::dReal *MimicDOFVals) const {
     //NOTE: THIS ASSUMES MIMIC INDS ARE THE 1ST N DOF OF THE CHAIN, THIS MAY CHANGE!!!!
-    for (int i = 0; i < _mimic_inds.size(); i++)
+    for (unsigned int i = 0; i < _mimic_inds.size(); i++)
         MimicDOFVals[i] = TSRValues[i];
 
     return true;
@@ -413,7 +413,7 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dRea
 
     mimicbodyvals.resize(_mimicbody->GetDOF());
     _mimicbody->GetDOFValues(mimicbodyvals);
-    for (int i = 0; i < _mimic_inds.size(); i++) {
+    for (unsigned int i = 0; i < _mimic_inds.size(); i++) {
         mimicbodyvals[_mimic_inds[i]] = _mimicjointoffsets[_mimic_inds[i]] + TSRJointVals[i];
     }
     return true;

@@ -177,7 +177,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
                 }
                 ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
             }
-            for (int i = ompl_traj.getStateCount() - 3; i < ompl_traj.getStateCount(); i++) {
+            for (unsigned long i = ompl_traj.getStateCount() - 3; i < ompl_traj.getStateCount(); i++) {
                 ss << "\tState " << i << ":";
                 space->copyToReals(values, ompl_traj.getState(i));
                 for (auto v:values) {
@@ -219,6 +219,7 @@ bool AtlasMPNet::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &s
     level = static_cast<ompl::msg::LogLevel>(leveli);
     ompl::msg::setLogLevel(level);
     sout << "1";
+    return true;
 }
 
 bool AtlasMPNet::Problem::setTSRChainRobot() {
@@ -251,8 +252,8 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
  * @return true if setup successfully
  */
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
-    const int dof = robot_->GetActiveDOF();
-    const int dof_tsr = tsr_robot_->GetActiveDOF();
+    const unsigned int dof = robot_->GetActiveDOF();
+    const unsigned int dof_tsr = tsr_robot_->GetActiveDOF();
     ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof + dof_tsr);
     if (ambient_state_space_ == nullptr) {
         OMPL_ERROR("Failed to construct ambient state space!");
@@ -528,7 +529,7 @@ bool AtlasMPNet::Problem::simpleSetup() {
     }
     // do some setup if constructed successfully
     ompl::base::ScopedState<> start(constrained_state_space_), goal(constrained_state_space_);
-    for (int i = 0; i < constrained_state_space_->getAmbientDimension(); i++) {
+    for (unsigned int i = 0; i < constrained_state_space_->getAmbientDimension(); i++) {
         start[i] = start_[i];
         goal[i] = goal_[i];
     }
