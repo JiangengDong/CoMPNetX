@@ -79,7 +79,7 @@ def setup_esc(orEnv, targObj, obj_names, e_no, s_no, esc_dict):
 
 
 orEnv = orpy.Environment()
-# orEnv.SetViewer('qtcoin')
+orEnv.SetViewer('qtcoin')
 orEnv.Reset()
 orEnv.SetDebugLevel(orpy.DebugLevel.Info)
 
@@ -143,8 +143,12 @@ robot.SetActiveDOFValues(handdof)
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
 ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
+
 planner_parameter.solver_parameter.time = 120
 planner_parameter.constraint_parameter.type = "tangent_bundle"
+planner_parameter.constraint_parameter.tolerance = 1e-3
+planner_parameter.atlas_parameter.epsilon = 1e-2
+
 stat = DatasetStat(19, 10)
 for e in range(0, 19):
     for s in range(110, 120):  # 30

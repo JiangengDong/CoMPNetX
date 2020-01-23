@@ -53,8 +53,15 @@ namespace AtlasMPNet {
         // create a virtual manipulator (a robot) corresponding to the TSR chain to use for ik solver calls
         bool RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in);
 
+        double TransformDifference(const OpenRAVE::Transform &T0_s, const OpenRAVE::Transform &T0_g, OpenRAVE::Transform &Tdiff) const{
+            Tdiff = T0_s.inverse() * T0_g;
+            return Tdiff.trans.lengthsqr3() + Tdiff.rot.y * Tdiff.rot.y + Tdiff.rot.z * Tdiff.rot.z + Tdiff.rot.w * Tdiff.rot.w;
+        }
+
+
+
         // get the closest transform in the TSR Chain to a query transform
-        OpenRAVE::dReal GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closeset) const;
+        OpenRAVE::dReal GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closest) const;
 
         // get the joint limits of the virtual manipulator
         bool GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const;
@@ -118,6 +125,9 @@ namespace AtlasMPNet {
     private:
 
         void DestoryRobotizedTSRChain(); ///< delete the virtual manipulator from the environment
+
+        void GetJacobian(const OpenRAVE::Transform &T0_s, const OpenRAVE::Transform &T0_closest, Eigen::Ref<Eigen::MatrixXd> J) const;
+        OpenRAVE::Transform ForwardKinematics(std::vector<OpenRAVE::dReal> &TSRJointVals) const;
 
         OpenRAVE::EnvironmentBasePtr penv;
         OpenRAVE::RobotBasePtr robot;

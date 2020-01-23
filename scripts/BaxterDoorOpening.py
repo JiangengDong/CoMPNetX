@@ -175,6 +175,9 @@ def main():
         hand_goal_pose = None
         exit(0)
 
+    planner_parameter.constraint_parameter.tolerance = 1e-4
+    planner_parameter.atlas_parameter.epsilon = 1e-3
+    planner_parameter.solver_parameter.time = 5
     problem = BaxterDoorOpeningProblem()
     problem.solve(hand_start_pose, hand_goal_pose, planner_parameter)
     problem.display()
