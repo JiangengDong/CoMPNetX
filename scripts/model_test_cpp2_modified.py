@@ -146,8 +146,6 @@ planner_parameter = PlannerParameter()
 
 planner_parameter.solver_parameter.time = 120
 planner_parameter.constraint_parameter.type = "tangent_bundle"
-planner_parameter.constraint_parameter.tolerance = 1e-3
-planner_parameter.atlas_parameter.epsilon = 1e-2
 
 stat = DatasetStat(19, 10)
 for e in range(0, 19):
