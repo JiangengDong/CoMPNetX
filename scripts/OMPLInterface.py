@@ -396,7 +396,7 @@ class PlannerParameter(object):
 
     def __str__(self):
         tsrchain_str = "".join([str(tsrchain) for tsrchain in self.TSRChains])
-        return str(self._solver_parameter) + str(self._contraint_parameter) + str(self._atlas_parameter) + tsrchain_str
+        return str(self._solver_parameter) + str(self._contraint_parameter) + str(self._atlas_parameter) + "<tsr_chains>\n" + tsrchain_str + "</tsr_chains>\n"
 
     @property
     def solver_parameter(self):

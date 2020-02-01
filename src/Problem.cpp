@@ -97,7 +97,7 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
 
     robot_ = std::move(robot);
     parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
-    parameters_->copy(params);  // TODO: seems that duplicated top-level XML parameter tags are forbidden so I cannot set multi TSRChain
+    parameters_->copy(params);
 
     initialized_ = setTSRChainRobot() &&
                    setAmbientStateSpace() &&
@@ -259,8 +259,11 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
  */
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const unsigned int dof = robot_->GetActiveDOF();
-    const unsigned int dof_tsr = tsrchains_[0]->GetNumDOF();
-    ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof + dof_tsr);
+    unsigned int dof_tsrs = 0;
+    for(const auto& tsrchain:tsrchains_) {
+        dof_tsrs += tsrchain->GetNumDOF();
+    }
+    ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof + dof_tsrs);
     if (ambient_state_space_ == nullptr) {
         OMPL_ERROR("Failed to construct ambient state space!");
         return false;
@@ -269,20 +272,27 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     // set bound and resolution if constructed successfully
     auto ambient_state_space_temp = ambient_state_space_->as<ompl::base::RealVectorStateSpace>();
     // Set bounds
-    ompl::base::RealVectorBounds bounds(dof + dof_tsr);
+    ompl::base::RealVectorBounds bounds(dof + dof_tsrs);
     std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
+    unsigned int offset = 0;
     // get bounds for real robot
     robot_->GetActiveDOFLimits(lower_limits, upper_limits);
-    for (size_t i = 0; i < dof; ++i) {
+    for (unsigned int i = 0; i < dof; ++i) {
         bounds.setLow(i, lower_limits[i]);
         bounds.setHigh(i, upper_limits[i]);
     }
+    offset += dof;
     // get bounds for virtual robot
-    tsrchains_[0]->GetChainJointLimits(lower_limits, upper_limits);
-    for (size_t i = 0; i < dof_tsr; ++i) {
-        bounds.setLow(i + dof, lower_limits[i]);
-        bounds.setHigh(i + dof, upper_limits[i]);
+    for(const auto& tsrchain:tsrchains_) {
+        unsigned int dof_tsr = tsrchain->GetNumDOF();
+        tsrchain->GetChainJointLimits(lower_limits, upper_limits);
+        for (unsigned int i = 0; i < dof_tsr; ++i) {
+            bounds.setLow(i + offset, lower_limits[i]);
+            bounds.setHigh(i + offset, upper_limits[i]);
+        }
+        offset += dof_tsr;
     }
+
     ambient_state_space_temp->setBounds(bounds);
     bounds = ambient_state_space_temp->getBounds();
 

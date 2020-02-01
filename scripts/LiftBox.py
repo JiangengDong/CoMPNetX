@@ -74,10 +74,9 @@ class LiftingBoxProblem:
         self.robot.ReleaseAllGrabbed()
         self.robot.WaitForController(0)
 
-    def solve(self, arm_start_pose, arm_goal_pose, T0_w, Tw_e, Bw):
+    def solve(self, arm_start_pose, arm_goal_pose, planner_parameter):
         self._start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
         self._goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
-        planner_parameter = PlannerParameter().addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
         status, time, self.traj = self.planner.solve(self._start_config, self._goal_config, planner_parameter)
         return self.traj
 
@@ -118,9 +117,8 @@ def main():
                      .addTSR(box_initial_pose, righthand_offset, bound))\
         .addTSRChain(TSRChain(manipulator_index=1, relative_body_name="box", relative_link_name="body")
                      .addTSR(np.eye(4), lefthand_offset, np.zeros((6, 2))))
-    print(planner_parameter)
     problem = LiftingBoxProblem(arm_initial_config, box_initial_pose)
-    problem.solve(hand_initial_pose, hand_goal_pose, box_initial_pose, righthand_offset, bound)
+    problem.solve(hand_initial_pose, hand_goal_pose, planner_parameter)
     problem.display()
     pause()
 

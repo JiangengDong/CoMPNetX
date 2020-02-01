@@ -313,8 +313,9 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     else
         robot->SetTransform(prelativetolink->GetTransform() * param.TSRs[0].T0_w);    // TODO: this is not the relative that I think
 
-    OpenRAVE::RobotBase::ManipulatorPtr pmanip = robot->GetActiveManipulator();
-    robot->SetActiveDOFs(pmanip->GetArmIndices());
+    manipulator = robot->GetActiveManipulator();
+    eeIndex = manipulator->GetEndEffector()->GetIndex();
+    robot->SetActiveDOFs(manipulator->GetArmIndices());
     numdof = bodynumber - 1;
     robot->Enable(false);
     return true;

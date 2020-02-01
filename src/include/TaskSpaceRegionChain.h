@@ -122,6 +122,30 @@ namespace AtlasMPNet {
             return robot;
         }
 
+        void SetActiveDOFValues(const std::vector<double>& q) const{
+            if(!_bPointTSR) {
+                if(q.size() == numdof)
+                    robot->SetActiveDOFValues(q, 0);
+                else
+                    RAVELOG_WARN("Incompatible dof values. ");
+            }
+        }
+
+        OpenRAVE::Transform GetEndEffectorTransform() const{
+            if(!_bPointTSR)
+                return manipulator->GetEndEffectorTransform();
+            else
+                return prelativetolink->GetTransform()*param.TSRs[0].T0_w*param.TSRs[0].Tw_e;
+        }
+
+        void CalculateActiveRotationJacobian(const OpenRAVE::Vector& qInitialRot, std::vector<OpenRAVE::dReal>& jacobian) const {
+            robot->CalculateActiveRotationJacobian(eeIndex, qInitialRot, jacobian);
+        }
+
+        void CalculateActiveJacobian(const OpenRAVE::Vector& offset, std::vector<OpenRAVE::dReal>& jacobian) {
+            robot->CalculateActiveJacobian(eeIndex, offset, jacobian);
+        }
+
     private:
 
         void DestoryRobotizedTSRChain(); ///< delete the virtual manipulator from the environment
@@ -132,6 +156,8 @@ namespace AtlasMPNet {
 
         OpenRAVE::EnvironmentBasePtr penv;
         OpenRAVE::RobotBasePtr robot;
+        OpenRAVE::RobotBase::ManipulatorPtr manipulator;
+        int eeIndex;
         int numdof;
         std::vector<OpenRAVE::dReal> _lowerlimits;
         std::vector<OpenRAVE::dReal> _upperlimits;

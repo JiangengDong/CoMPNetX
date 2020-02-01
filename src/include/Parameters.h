@@ -146,6 +146,8 @@ namespace AtlasMPNet {
 
         bool serialize(std::ostream &O) const override;
 
+        bool reset();
+
     private:
         TSRParameter temp_tsr;
     };

@@ -10,33 +10,63 @@
 
 using namespace AtlasMPNet;
 
-TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const TaskSpaceRegionChain::Ptr &tsr_chain) :
-        Constraint(robot->GetActiveDOF() + tsr_chain->GetNumDOF(), 6),
+TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains) :
+        Constraint([&robot, &tsr_chains] {
+            unsigned int dof_tsrs = robot->GetActiveDOF();
+            for (const auto &tsr_chain:tsr_chains)
+                dof_tsrs += tsr_chain->GetNumDOF();
+            return dof_tsrs;
+        }(), 6 * tsr_chains.size()),
         _robot(robot),
         _dof_robot(robot->GetActiveDOF()),
         _robot_eeindex(robot->GetActiveManipulator()->GetEndEffector()->GetIndex()),
-        _tsr_chain(tsr_chain) {
-    _dof_tsr = _tsr_chain->GetNumDOF();
-    _tsr_robot = _tsr_chain->GetRobot();
-    _tsr_eeindex = _tsr_robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
+        _tsr_chains(tsr_chains),
+        _num_tsr_chains(tsr_chains.size()) {
+    std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manipulators = robot->GetManipulators();
+    for (const auto &tsr_chain: _tsr_chains) {
+        _dof_tsrs.emplace_back(tsr_chain->GetNumDOF());
+        if (_dof_tsrs.back() != 0) {
+            _tsr_eeindices.emplace_back(tsr_chain->GetRobot()->GetActiveManipulator()->GetEndEffector()->GetIndex());
+        } else {    // Point TSR
+            _tsr_eeindices.emplace_back(-1);
+        }
+        _robot_manipulators.emplace_back(manipulators[tsr_chain->GetManipInd()]);
+        _robot_eeindices.emplace_back(manipulators[tsr_chain->GetManipInd()]->GetEndEffector()->GetIndex());
+    }
 }
 
 void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const {
-    robotFK(x);
-    OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
-    OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-    OpenRAVE::Transform Tdiff = Trobot.inverse() * Ttsr;
-
-    out[0] = Tdiff.rot[1];
-    out[1] = Tdiff.rot[2];
-    out[2] = Tdiff.rot[3];
-    out[3] = Trobot.trans[0] - Ttsr.trans[0];
-    out[4] = Trobot.trans[1] - Ttsr.trans[1];
-    out[5] = Trobot.trans[2] - Ttsr.trans[2];
+    TransformPairVector Tpairs;
+    robotFK(x, Tpairs);
+    for (int i = 0; i < _num_tsr_chains; i++) {
+        OpenRAVE::Transform &Trobot = Tpairs[i].first;
+        OpenRAVE::Transform &Ttsr = Tpairs[i].second;
+        OpenRAVE::Transform Tdiff = Trobot.inverse() * Ttsr;
+        out[i * 6 + 0] = Tdiff.rot[1];
+        out[i * 6 + 1] = Tdiff.rot[2];
+        out[i * 6 + 2] = Tdiff.rot[3];
+        out[i * 6 + 3] = Trobot.trans[0] - Ttsr.trans[0];
+        out[i * 6 + 4] = Trobot.trans[1] - Ttsr.trans[1];
+        out[i * 6 + 5] = Trobot.trans[2] - Ttsr.trans[2];
+    }
 }
 
 void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
-    robotFK(x);
+    TransformPairVector Tpairs;
+    robotFK(x, Tpairs);
+    int offset = _dof_robot;
+    for (int i=0;i<_num_tsr_chains;i++) {
+        OpenRAVE::Transform& Trobot = Tpairs[i].first;
+        OpenRAVE::Transform& Ttsr = Tpairs[i].second;
+        std::vector<OpenRAVE::dReal> Jrobot_temp, Jtsr_temp;
+
+        auto Jrobot = out.block(6*i, 0, 6, _dof_robot);
+        auto Jtsr = out.block(6*i, offset, 6, _dof_tsrs[i]);
+        offset += _dof_tsrs[i];
+
+        _robot->CalculateActiveRotationJacobian(_robot_eeindices[i], Trobot.rot, Jrobot_temp);
+        _tsr_chains[i]->CalculateActiveRotationJacobian(Ttsr.rot, Jtsr_temp);
+    }
     OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
     OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
 
@@ -91,16 +121,29 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
     }
 }
 
-void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x) const {
-    std::vector<double> q_robot(_dof_robot), q_tsr(_dof_tsr);
+void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector& Tpairs) const {
+    std::vector<double> q;
+    Tpairs.clear();
+    int offset = 0;
     // joint values of real robot
+    q.resize(_dof_robot);
     for (int i = 0; i < _dof_robot; ++i) {
-        q_robot[i] = x[i];
+        q[i] = x[i + offset];
     }
-    _robot->SetActiveDOFValues(q_robot, 0);
+    _robot->SetActiveDOFValues(q, 0);
+    offset += _dof_robot;
     // joint values of virtual tsr robot
-    for (int i = 0; i < _dof_tsr; ++i) {
-        q_tsr[i] = x[i + _dof_robot];
+    for (int i = 0; i < _num_tsr_chains; i++) {
+        if (_dof_tsrs[i] == 0)   // Point TSR
+        {
+            continue;
+        }
+        q.resize(_dof_tsrs[i]);
+        for (int j = 0; j < _dof_tsrs[i]; ++j) {
+            q[j] = x[j + offset];
+        }
+        _tsr_chains[i]->SetActiveDOFValues(q);
+        Tpairs.emplace_back(_robot_manipulators[i]->GetEndEffectorTransform(), _tsr_chains[i]->GetEndEffectorTransform());
+        offset += _dof_tsrs[i];
     }
-    _tsr_robot->SetActiveDOFValues(q_tsr, 0);
 }

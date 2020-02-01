@@ -339,6 +339,16 @@ bool TSRChainParameter::serialize(std::ostream &O) const {
     return true;
 }
 
+bool TSRChainParameter::reset(){
+    purpose = CONSTRAINT;
+    manipind = -1;
+    relativebodyname="NULL";
+    relativelinkname="NULL";
+    mimic_body_name = "NULL";
+    mimic_inds.clear();
+    TSRs.clear();
+}
+
 /*
  * implementation of PlannnerParameters
  */
@@ -348,6 +358,7 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back(atlas_parameter_.getTagName());
     _vXMLParameters.emplace_back(_tsrchain_temp.getTagName());
     _vXMLParameters.emplace_back("tsr");    // Avoid hard code the tag names. Improve this part later
+    _vXMLParameters.emplace_back("tsr_chains");    // Avoid hard code the tag names. Improve this part later
 }
 
 Parameters::~Parameters() = default;
@@ -425,14 +436,20 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
         return status;
     if ((status = _tsrchain_temp.startElement(name, atts)) != PE_Pass)
         return status;
+    if (name=="tsr_chains")
+        return PE_Support;
     return PE_Pass;
 }
 
 bool Parameters::endElement(std::string const &name) {
     if (_tsrchain_temp.endElement(name)) {
         tsrchains_.emplace_back(_tsrchain_temp);
+        _tsrchain_temp.reset();
         return false;
-    } else
+    } else if(name=="tsr_chains") {
+        return false;
+    }
+    else
         return !atlas_parameter_.endElement(name) &&
                !constraint_parameter_.endElement(name) &&
                !solver_parameter_.endElement(name) &&
