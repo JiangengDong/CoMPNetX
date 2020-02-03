@@ -108,11 +108,11 @@ robot.SetTransform(np.array(T0_baxter[0:3][:, 0:4]))
 # set initial configuration
 arm0dofs = [2, 3, 4, 5, 6, 7, 8]
 arm1dofs = [10, 11, 12, 13, 14, 15, 16]
+arm0initvals = [-0.386, 1.321, -0.06, 0.916, -0.349, -0.734, -1.84]
+arm1initvals = [0.216, 1.325, 0.173, 0.581, 0.490, -0.3883, 1.950]
 
-activedofs = arm0dofs + arm1dofs
-initdofvals = [-0.386, 1.321, -0.06, 0.916, -0.349, -0.734, -1.84, 0.216, 1.325, 0.173, 0.581, 0.490, -0.3883, 1.950]
-robot.SetActiveDOFs(activedofs)
-robot.SetActiveDOFValues(initdofvals)
+robot.SetActiveDOFs(arm0dofs + arm1dofs)
+robot.SetActiveDOFValues(arm0initvals + arm1initvals)
 robot.SetActiveManipulator(1)
 
 # open hands
@@ -125,13 +125,8 @@ sc_no = 30
 
 with open("../data/esc_dict_door9_30_test4.p", "rb") as f:
     esc_dict = pickle.load(f)
-fpr = 0
-fpp = 0
-tpr = 0
-tpp = 0
-total_time_reach = 0
-total_time_pp = 0
 param = PlannerParameter()
+param.solver_parameter.time = 180
 planner = OMPLInterface(orEnv, robot, loglevel=0)
 for i in range(0, 9):
     for j in range(0, 30):
@@ -140,14 +135,12 @@ for i in range(0, 9):
         rgconf = esc_dict[env_no][sc_no]["mugblack"]["rgconf"]
         esc_dict[env_no][sc_no]["initial"]["plasticmug"]["riconf"] = rgconf
 ### when loading files
-for e in range(0, 1):
-    for s in range(0, 30):  # 30
+for e in range(0, 9):
+    for s in range(0, 30):
         env_no = "env_" + str(e)
         s_no = "s_" + str(s)
-        arm1dofs = [10, 11, 12, 13, 14, 15, 16]
-        initdofvals = [-0.386, 1.321, -0.06, 0.916, -0.349, -0.734, -1.84]
         robot.SetActiveDOFs(arm1dofs)
-        robot.SetActiveDOFValues(initdofvals)
+        robot.SetActiveDOFValues(arm1initvals)
         numTSRChainMimicDOF = 1
 
         setup_init_sc(orEnv, targobject, obj_names, e, s, esc_dict, cabinets)
@@ -155,11 +148,11 @@ for e in range(0, 1):
         obj_order = esc_dict[env_no][s_no]["obj_order"]
         print("Object order: %s" % str(obj_order))
 
-        ##main loop
+        # main loop
         idx = None
         names1 = ("juice", "fuze_bottle", "coke_can", "pitcher")
         names2 = ("mugblack", "plasticmug")
-        for i in range(2, len(obj_order)):
+        for i in range(0, len(obj_order)):
             print("Planning for %s ..." % obj_order[i])
             param.clearTSRChains()
             if obj_order[i] in names1:
@@ -213,7 +206,7 @@ for e in range(0, 1):
                 resp, t_time, traj = planner.solve(startik, goalik, param)
 
             if resp is True:
-                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
+                print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
                 if obj_order[i] != "door":
                     robot.GetController().SetPath(traj)
                     robot.WaitForController(0)
@@ -222,14 +215,19 @@ for e in range(0, 1):
                     cabinets.GetController().SetPath(traj)
                     robot.WaitForController(0)
                     cabinets.WaitForController(0)
+            elif resp is False:
+                print("Failed to find a solution.")
+                t_time = 1e3
+            elif resp is None:
+                print("Start or goal is invalid!")
+                t_time = -1
+            if obj_order[i] != "door":
+                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
             robot.ReleaseAllGrabbed()
             robot.WaitForController(0)
             robot.SetActiveDOFs(arm1dofs)
             robot.SetActiveDOFValues(goalik)
-
-            tpr = tpr + 1
-            tpp = tpp + 1
 
             if obj_order[i] == "mugblack" or obj_order[i] == "plasticmug" or obj_order[i] == "pitcher":
                 idx = obj_names.index(obj_order[i])
@@ -237,7 +235,6 @@ for e in range(0, 1):
                 print("----------move " + obj_order[i])
                 idx = None
             elif obj_order[i] == "door":
-                cabinets.SetActiveDOFs([3])
                 cabinets.SetActiveDOFValues([door_end])
                 print("----------open " + obj_order[i])
                 idx = None
@@ -246,7 +243,8 @@ for e in range(0, 1):
                 orEnv.Remove(targobject[idx])
                 print("----------remove " + obj_order[i])
                 idx = None
-            time.sleep(0.05)
+            time.sleep(0.02)
+        print("\n")
         with open("../data/esc_dict_door_test4_atlasrrt.p", "wb") as f:
             pickle.dump(esc_dict, f)
         time.sleep(0.02)

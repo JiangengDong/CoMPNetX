@@ -370,7 +370,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
     T0_closest = ForwardKinematics(TSRJointVals);
     squaredNorm = TransformDifference(T0_s, T0_closest, Tdiff);
     for (int it = 0; it < 50; it++) {
-        if (squaredNorm < 1e-10)
+        if (squaredNorm < 1e-16)
             break;
 
         // copy to Eigen
@@ -390,7 +390,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
                 probe[i] = TSRJointVals[i] - stepsize*q[i];
             T0_closest = ForwardKinematics(probe);
             probe_norm = TransformDifference(T0_s, T0_closest, Tdiff);
-            if (probe_norm < squaredNorm || probe_norm < 1e-10)
+            if (probe_norm < squaredNorm || probe_norm < 1e-16)
                 break;
         }
         squaredNorm = probe_norm;
