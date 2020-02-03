@@ -119,10 +119,6 @@ robot = orEnv.GetRobot(name)
 T0_baxter = RPY2Transform(0, 0, 0, 0.20, 0.15, 0.9242)
 robot.SetTransform(np.array(T0_baxter[0:3][:, 0:4]))
 
-# create problem instances
-probs_manip = orpy.RaveCreateProblem(orEnv, 'Manipulation')
-orEnv.LoadProblem(probs_manip, robot.GetName())
-
 # set initial configuration
 arm0dofs = [2, 3, 4, 5, 6, 7, 8]
 arm1dofs = [10, 11, 12, 13, 14, 15, 16]
@@ -138,6 +134,7 @@ robot.SetActiveDOFValues(initdofvals)
 handdof = np.r_[(1 * np.ones([1, 2]))[0]]
 robot.SetActiveDOFs([1, 9])
 robot.SetActiveDOFValues(handdof)
+robot.SetActiveManipulator(1)
 
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
@@ -179,8 +176,7 @@ for e in range(0, 19):
 
             robot.SetActiveDOFs(arm1dofs)
             robot.SetActiveDOFValues(startik)
-            probs_manip.SendCommand('setactivemanip index 1')
-            probs_manip.SendCommand("GrabBody name " + obj_order[i])
+            robot.Grab(targobject[obj_names.index(obj_order[i])])
             time.sleep(0.05)  # draw the scene
 
             planner_parameter.clearTSRChains().addTSRChain(TSRChain().addTSR(T0_w2, Tw_e, Bw2))

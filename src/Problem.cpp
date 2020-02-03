@@ -545,11 +545,21 @@ bool AtlasMPNet::Problem::simpleSetup() {
     simple_setup_->setPlanner(planner_);
     simple_setup_->setup();
     if (!state_validity_checker_->isValid(start.get())) {
+        OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
         OMPL_WARN("Start is not valid!");
+        if(env_->CheckCollision(robot_, report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName()
+                      << "----" << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        }
         return false;
     }
     if (!state_validity_checker_->isValid(goal.get())) {
+        OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
         OMPL_WARN("Goal is not valid!");
+        if(env_->CheckCollision(robot_, report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName()
+                      << "----" << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        }
         return false;
     }
     OMPL_INFORM("Constructed simple setup successfully.");
