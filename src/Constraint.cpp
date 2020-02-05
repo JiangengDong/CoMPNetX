@@ -19,17 +19,11 @@ TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, cons
         }(), 6 * tsr_chains.size()),
         _robot(robot),
         _dof_robot(robot->GetActiveDOF()),
-        _robot_eeindex(robot->GetActiveManipulator()->GetEndEffector()->GetIndex()),
         _tsr_chains(tsr_chains),
         _num_tsr_chains(tsr_chains.size()) {
     std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manipulators = robot->GetManipulators();
     for (const auto &tsr_chain: _tsr_chains) {
         _dof_tsrs.emplace_back(tsr_chain->GetNumDOF());
-        if (_dof_tsrs.back() != 0) {
-            _tsr_eeindices.emplace_back(tsr_chain->GetRobot()->GetActiveManipulator()->GetEndEffector()->GetIndex());
-        } else {    // Point TSR
-            _tsr_eeindices.emplace_back(-1);
-        }
         _robot_manipulators.emplace_back(manipulators[tsr_chain->GetManipInd()]);
         _robot_eeindices.emplace_back(manipulators[tsr_chain->GetManipInd()]->GetEndEffector()->GetIndex());
     }
@@ -55,73 +49,66 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
     TransformPairVector Tpairs;
     robotFK(x, Tpairs);
     int offset = _dof_robot;
-    for (int i=0;i<_num_tsr_chains;i++) {
-        OpenRAVE::Transform& Trobot = Tpairs[i].first;
-        OpenRAVE::Transform& Ttsr = Tpairs[i].second;
-        std::vector<OpenRAVE::dReal> Jrobot_temp, Jtsr_temp;
+    for (int i = 0; i < _num_tsr_chains; i++) {
+        OpenRAVE::Transform &Trobot = Tpairs[i].first;
+        OpenRAVE::Transform &Ttsr = Tpairs[i].second;
+        std::vector<OpenRAVE::dReal> Jrobot, Jtsr;
 
-        auto Jrobot = out.block(6*i, 0, 6, _dof_robot);
-        auto Jtsr = out.block(6*i, offset, 6, _dof_tsrs[i]);
+        auto Jrot_robot = out.block(6 * i, 0, 3, _dof_robot);
+        auto Jrot_tsr = out.block(6 * i, offset, 3, _dof_tsrs[i]);
+        auto Jtrans_robot = out.block(6 * i + 3, 0, 3, _dof_robot);
+        auto Jtrans_tsr = out.block(6 * i + 3, offset, 3, _dof_tsrs[i]);
         offset += _dof_tsrs[i];
 
-        _robot->CalculateActiveRotationJacobian(_robot_eeindices[i], Trobot.rot, Jrobot_temp);
-        _tsr_chains[i]->CalculateActiveRotationJacobian(Ttsr.rot, Jtsr_temp);
-    }
-    OpenRAVE::Transform Trobot = _robot->GetActiveManipulator()->GetEndEffectorTransform();
-    OpenRAVE::Transform Ttsr = _tsr_robot->GetActiveManipulator()->GetEndEffectorTransform();
-
-    auto Jrot_robot = out.block(0, 0, 3, _dof_robot);
-    auto Jrot_tsr = out.block(0, _dof_robot, 3, _dof_tsr);
-    auto Jtrans_robot = out.block(3, 0, 3, _dof_robot);
-    auto Jtrans_tsr = out.block(3, _dof_robot, 3, _dof_tsr);
-
-    std::vector<OpenRAVE::dReal> Jrobot, Jtsr;
-
-    _robot->CalculateActiveRotationJacobian(_robot_eeindex, Trobot.rot, Jrobot);
-    _tsr_robot->CalculateActiveRotationJacobian(_tsr_eeindex, Ttsr.rot, Jtsr);
-    for (int j = 0; j < _dof_robot; j++) {
-        Jrot_robot(0, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[1]
-                           - Jrobot[1 * _dof_robot + j] * Ttsr.rot[0]
-                           - Jrobot[2 * _dof_robot + j] * Ttsr.rot[3]
-                           + Jrobot[3 * _dof_robot + j] * Ttsr.rot[2];
-        Jrot_robot(1, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[2]
-                           + Jrobot[1 * _dof_robot + j] * Ttsr.rot[3]
-                           - Jrobot[2 * _dof_robot + j] * Ttsr.rot[0]
-                           - Jrobot[3 * _dof_robot + j] * Ttsr.rot[1];
-        Jrot_robot(2, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[3]
-                           - Jrobot[1 * _dof_robot + j] * Ttsr.rot[2]
-                           + Jrobot[2 * _dof_robot + j] * Ttsr.rot[1]
-                           - Jrobot[3 * _dof_robot + j] * Ttsr.rot[0];
-    }
-    for (int j = 0; j < _dof_tsr; j++) {
-        Jrot_tsr(0, j) = Trobot.rot[0] * Jtsr[1 * _dof_tsr + j]
-                         - Trobot.rot[1] * Jtsr[0 * _dof_tsr + j]
-                         - Trobot.rot[2] * Jtsr[3 * _dof_tsr + j]
-                         + Trobot.rot[3] * Jtsr[2 * _dof_tsr + j];
-        Jrot_tsr(1, j) = Trobot.rot[0] * Jtsr[2 * _dof_tsr + j]
-                         + Trobot.rot[1] * Jtsr[3 * _dof_tsr + j]
-                         - Trobot.rot[2] * Jtsr[0 * _dof_tsr + j]
-                         - Trobot.rot[3] * Jtsr[1 * _dof_tsr + j];
-        Jrot_tsr(2, j) = Trobot.rot[0] * Jtsr[3 * _dof_tsr + j]
-                         - Trobot.rot[1] * Jtsr[2 * _dof_tsr + j]
-                         + Trobot.rot[2] * Jtsr[1 * _dof_tsr + j]
-                         - Trobot.rot[3] * Jtsr[0 * _dof_tsr + j];
-    }
-
-    _robot->CalculateActiveJacobian(_robot_eeindex, Trobot.trans, Jrobot);
-    _tsr_robot->CalculateActiveJacobian(_tsr_eeindex, Ttsr.trans, Jtsr);
-    for (int i = 0; i < 3; i++) {
-        int j;
-        for (j = 0; j < _dof_robot; j++) {
-            Jtrans_robot(i, j) = Jrobot[i * _dof_robot + j];
+        // rotation Jacobian
+        _robot->CalculateActiveRotationJacobian(_robot_eeindices[i], Trobot.rot, Jrobot);
+        _tsr_chains[i]->CalculateActiveRotationJacobian(Ttsr.rot, Jtsr);
+        for (int j = 0; j < _dof_robot; j++) {
+            Jrot_robot(0, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[1]
+                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[0]
+                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[3]
+                               + Jrobot[3 * _dof_robot + j] * Ttsr.rot[2];
+            Jrot_robot(1, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[2]
+                               + Jrobot[1 * _dof_robot + j] * Ttsr.rot[3]
+                               - Jrobot[2 * _dof_robot + j] * Ttsr.rot[0]
+                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[1];
+            Jrot_robot(2, j) = Jrobot[0 * _dof_robot + j] * Ttsr.rot[3]
+                               - Jrobot[1 * _dof_robot + j] * Ttsr.rot[2]
+                               + Jrobot[2 * _dof_robot + j] * Ttsr.rot[1]
+                               - Jrobot[3 * _dof_robot + j] * Ttsr.rot[0];
         }
-        for (j = 0; j < _dof_tsr; j++) {
-            Jtrans_tsr(i, j) = -Jtsr[i * _dof_tsr + j];
+        for (int j = 0; j < _dof_tsrs[i]; j++) {
+            Jrot_tsr(0, j) = Trobot.rot[0] * Jtsr[1 * _dof_tsrs[i] + j]
+                             - Trobot.rot[1] * Jtsr[0 * _dof_tsrs[i] + j]
+                             - Trobot.rot[2] * Jtsr[3 * _dof_tsrs[i] + j]
+                             + Trobot.rot[3] * Jtsr[2 * _dof_tsrs[i] + j];
+            Jrot_tsr(1, j) = Trobot.rot[0] * Jtsr[2 * _dof_tsrs[i] + j]
+                             + Trobot.rot[1] * Jtsr[3 * _dof_tsrs[i] + j]
+                             - Trobot.rot[2] * Jtsr[0 * _dof_tsrs[i] + j]
+                             - Trobot.rot[3] * Jtsr[1 * _dof_tsrs[i] + j];
+            Jrot_tsr(2, j) = Trobot.rot[0] * Jtsr[3 * _dof_tsrs[i] + j]
+                             - Trobot.rot[1] * Jtsr[2 * _dof_tsrs[i] + j]
+                             + Trobot.rot[2] * Jtsr[1 * _dof_tsrs[i] + j]
+                             - Trobot.rot[3] * Jtsr[0 * _dof_tsrs[i] + j];
+        }
+
+        // Translation Jacobian
+        _robot->CalculateActiveJacobian(_robot_eeindices[i], Trobot.trans, Jrobot);
+        _tsr_chains[i]->CalculateActiveJacobian(Ttsr.trans, Jtsr);
+        for (int j = 0; j < _dof_robot; j++) {
+            Jtrans_robot(0, j) = Jrobot[0 * _dof_robot + j];
+            Jtrans_robot(1, j) = Jrobot[1 * _dof_robot + j];
+            Jtrans_robot(2, j) = Jrobot[2 * _dof_robot + j];
+        }
+        for (int j = 0; j < _dof_tsrs[i]; j++) {
+            Jtrans_tsr(0, j) = -Jtsr[0 * _dof_tsrs[i] + j];
+            Jtrans_tsr(1, j) = -Jtsr[1 * _dof_tsrs[i] + j];
+            Jtrans_tsr(2, j) = -Jtsr[2 * _dof_tsrs[i] + j];
         }
     }
 }
 
-void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector& Tpairs) const {
+void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector &Tpairs) const {
     std::vector<double> q;
     Tpairs.clear();
     int offset = 0;
