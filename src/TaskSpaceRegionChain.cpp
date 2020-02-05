@@ -443,7 +443,27 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dRea
     return true;
 }
 
+bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal> TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
+    if (_mimicbody == nullptr)
+        return false;
+
+    mimicbodyvals.resize(_mimicbody->GetDOF());
+    _mimicbody->GetDOFValues(mimicbodyvals);
+    for (unsigned int i = 0; i < _mimic_inds.size(); i++) {
+        mimicbodyvals[_mimic_inds[i]] = _mimicjointoffsets[_mimic_inds[i]] + TSRJointVals[i];
+    }
+    return true;
+}
+
 bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals) {
+    if (_mimicbody == nullptr)
+        return false;
+    MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);
+    _mimicbody->SetJointValues(_mimicjointvals_temp, true);
+    return true;
+}
+
+bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal> TSRJointVals) {
     if (_mimicbody == nullptr)
         return false;
     MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);

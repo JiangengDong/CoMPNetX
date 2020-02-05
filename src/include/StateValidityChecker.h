@@ -53,8 +53,8 @@ namespace AtlasMPNet {
     class StateValidityChecker : public ompl::base::StateValidityChecker {
     public:
         typedef std::shared_ptr<StateValidityChecker> Ptr;
-        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, OpenRAVE::RobotBasePtr robot,
-                             AtlasMPNet::TaskSpaceRegionChain::Ptr tsr_chain);
+        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr &robot,
+                             const std::vector<TaskSpaceRegionChain::Ptr>& tsr_chains);
 
         bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
 
@@ -62,15 +62,12 @@ namespace AtlasMPNet {
 
     private:
         ompl::base::StateSpacePtr _state_space;
-        OpenRAVE::RobotBasePtr _robot;
-        OpenRAVE::RobotBasePtr _tsr_robot;
-        AtlasMPNet::TaskSpaceRegionChain::Ptr _tsr_chain;
         OpenRAVE::EnvironmentBasePtr _env;
+        OpenRAVE::RobotBasePtr _robot;
         const std::size_t _robot_dof;
-        const std::size_t _tsr_dof;
-        // temporary variables
-        std::vector<double> _robot_values;
-        std::vector<double> _tsr_values;
+        std::vector<TaskSpaceRegionChain::Ptr> _tsr_chains;
+        std::vector<int> _tsr_dofs;
+        int _num_tsr_chains;
     };
 
 } // namespace AtlasMPNet

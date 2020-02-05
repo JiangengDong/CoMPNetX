@@ -44,49 +44,49 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace AtlasMPNet;
 
 StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr &si,
-                                           OpenRAVE::RobotBasePtr robot,
-                                           AtlasMPNet::TaskSpaceRegionChain::Ptr tsr_chain) :
+                                           const OpenRAVE::RobotBasePtr &robot,
+                                           const std::vector<TaskSpaceRegionChain::Ptr>& tsr_chains) :
         ompl::base::StateValidityChecker(si),
         _state_space(si->getStateSpace()),
-        _robot(std::move(robot)),
-        _tsr_robot(tsr_chain->GetRobot()),
-        _tsr_chain(std::move(tsr_chain)),
-        _env(_robot->GetEnv()),
-        _robot_dof(_robot->GetActiveDOF()),
-        _tsr_dof(_tsr_robot->GetActiveDOF()),
-        _robot_values(_robot_dof, 0),
-        _tsr_values(_tsr_dof, 0) {
+        _env(robot->GetEnv()),
+        _robot(robot),
+        _robot_dof(robot->GetActiveDOF()),
+        _tsr_chains(tsr_chains),
+        _num_tsr_chains(tsr_chains.size()) {
+    for (const auto &tsr_chain: _tsr_chains) {
+        _tsr_dofs.emplace_back(tsr_chain->GetNumDOF());
+    }
 }
 
 bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t checklimits) const {
     std::vector<double> values;
     _state_space->copyToReals(values, state);
-
-    std::vector<double> robot_values(values.begin(), values.begin() + _robot_dof);
-    std::vector<double> tsr_values(values.begin() + _robot_dof, values.begin() + _robot_dof + _tsr_dof);
-
-    for (double v: robot_values) {
+    // check state value
+    for (double v: values) {
         if (std::isnan(v)) {
                     RAVELOG_WARN("Invalid value in state.\n");
             return false;
         }
     }
-    for (double v: tsr_values) {
-        if (std::isnan(v)) {
-                    RAVELOG_WARN("Invalid value in state.\n");
-            return false;
-        }
-    }
+    // apply robot joint values
+    int offset = 0;
+    std::vector<double> robot_values(values.begin()+offset, values.begin() + offset + _robot_dof);
     _robot->SetActiveDOFValues(robot_values, checklimits);
-    _tsr_robot->SetActiveDOFValues(tsr_values, checklimits);
-    _tsr_chain->ApplyMimicValuesToMimicBody(tsr_values.data());
+    offset += _robot_dof;
+    // apply tsr joint values
+    for (int i=0;i<_num_tsr_chains;i++) {
+        std::vector<double> tsr_values(values.begin() + offset, values.begin() + offset + _tsr_dofs[i]);
+        _tsr_chains[i]->SetActiveDOFValues(tsr_values);
+        _tsr_chains[i]->ApplyMimicValuesToMimicBody(tsr_values);
+        offset += _tsr_dofs[i];
+    }
     return true;
 }
 
 bool StateValidityChecker::isValid(const ompl::base::State *state) const {
     bool valid = _state_space->satisfiesBounds(state)
-           && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
-           && !_env->CheckCollision(_robot)
-           && !_robot->CheckSelfCollision();
+            && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
+            && !_env->CheckCollision(_robot)
+            && !_robot->CheckSelfCollision();
     return valid;
 }

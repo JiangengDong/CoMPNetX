@@ -463,7 +463,7 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
 }
 
 bool AtlasMPNet::Problem::setStateValidityChecker() {
-    state_validity_checker_ = std::make_shared<AtlasMPNet::StateValidityChecker>(constrained_space_info_, robot_, tsrchains_[0]);
+    state_validity_checker_ = std::make_shared<AtlasMPNet::StateValidityChecker>(constrained_space_info_, robot_, tsrchains_);
     // print result
     if (state_validity_checker_ != nullptr) {
         OMPL_INFORM("Constructed state validity checker successfully.");
