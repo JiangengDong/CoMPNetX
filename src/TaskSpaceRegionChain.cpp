@@ -331,12 +331,11 @@ OpenRAVE::Transform TaskSpaceRegionChain::ForwardKinematics(std::vector<OpenRAVE
     }
     // forward kinematic to check if reached
     robot->SetActiveDOFValues(TSRJointVals, 0);
-    return robot->GetActiveManipulator()->GetEndEffectorTransform();
+    return manipulator->GetEndEffectorTransform();
 }
 
 void TaskSpaceRegionChain::GetJacobian(const OpenRAVE::Transform &T0_s, const OpenRAVE::Transform &T0_closest, Eigen::Ref<Eigen::MatrixXd> J) const {
     std::vector<OpenRAVE::dReal> Jtrans, Jrot;
-    int eeIndex = robot->GetActiveManipulator()->GetEndEffector()->GetIndex();
 
     robot->CalculateActiveJacobian(eeIndex, T0_closest.trans, Jtrans);
     robot->CalculateActiveRotationJacobian(eeIndex, T0_closest.rot, Jrot);
@@ -362,44 +361,53 @@ void TaskSpaceRegionChain::GetJacobian(const OpenRAVE::Transform &T0_s, const Op
 
 OpenRAVE::dReal
 TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closest) const {
-    Eigen::MatrixXd J(6, numdof);
-    Eigen::VectorXd p(6), q(numdof);
-    std::vector<OpenRAVE::dReal> Jtrans, Jrot;
-    OpenRAVE::Transform Tdiff;
-    double squaredNorm = 1000;
+    if(_bPointTSR) {
+        TSRJointVals.clear();
+        TSRJointVals.resize(numdof);
 
-    TSRJointVals.clear();
-    TSRJointVals.resize(numdof);
-    T0_closest = ForwardKinematics(TSRJointVals);
-    squaredNorm = TransformDifference(T0_s, T0_closest, Tdiff);
-    for (int it = 0; it < 50; it++) {
-        if (squaredNorm < 1e-16)
-            break;
+        T0_closest = GetEndEffectorTransform();
+        OpenRAVE::Transform Tdiff;
+        return TransformDifference(T0_s, T0_closest, Tdiff);
+    } else {
+        Eigen::MatrixXd J(6, numdof);
+        Eigen::VectorXd p(6), q(numdof);
+        std::vector<OpenRAVE::dReal> Jtrans, Jrot;
+        OpenRAVE::Transform Tdiff;
+        double squaredNorm = 1000;
 
-        // copy to Eigen
-        p[0] = T0_closest.trans.x - T0_s.trans.x;
-        p[1] = T0_closest.trans.y - T0_s.trans.y;
-        p[2] = T0_closest.trans.z - T0_s.trans.z;
-        p[3] = Tdiff.rot.y;
-        p[4] = Tdiff.rot.z;
-        p[5] = Tdiff.rot.w;
-        GetJacobian(T0_s, T0_closest, J);
-
-        q = J.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(p);
-        double probe_norm = 0;
-        std::vector<OpenRAVE::dReal> probe(TSRJointVals);
-        for(double stepsize=1; stepsize>1e-4; stepsize/=2) {
-            for (int i = 0; i < numdof; i++)
-                probe[i] = TSRJointVals[i] - stepsize*q[i];
-            T0_closest = ForwardKinematics(probe);
-            probe_norm = TransformDifference(T0_s, T0_closest, Tdiff);
-            if (probe_norm < squaredNorm || probe_norm < 1e-16)
+        TSRJointVals.clear();
+        TSRJointVals.resize(numdof);
+        T0_closest = ForwardKinematics(TSRJointVals);
+        squaredNorm = TransformDifference(T0_s, T0_closest, Tdiff);
+        for (int it = 0; it < 50; it++) {
+            if (squaredNorm < 1e-16)
                 break;
+
+            // copy to Eigen
+            p[0] = T0_closest.trans.x - T0_s.trans.x;
+            p[1] = T0_closest.trans.y - T0_s.trans.y;
+            p[2] = T0_closest.trans.z - T0_s.trans.z;
+            p[3] = Tdiff.rot.y;
+            p[4] = Tdiff.rot.z;
+            p[5] = Tdiff.rot.w;
+            GetJacobian(T0_s, T0_closest, J);
+
+            q = J.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(p);
+            double probe_norm = 0;
+            std::vector<OpenRAVE::dReal> probe(TSRJointVals);
+            for (double stepsize = 1; stepsize > 1e-4; stepsize /= 2) {
+                for (int i = 0; i < numdof; i++)
+                    probe[i] = TSRJointVals[i] - stepsize * q[i];
+                T0_closest = ForwardKinematics(probe);
+                probe_norm = TransformDifference(T0_s, T0_closest, Tdiff);
+                if (probe_norm < squaredNorm || probe_norm < 1e-16)
+                    break;
+            }
+            squaredNorm = probe_norm;
+            TSRJointVals = probe;
         }
-        squaredNorm = probe_norm;
-        TSRJointVals = probe;
+        return sqrt(squaredNorm);
     }
-    return sqrt(squaredNorm);
 }
 
 bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, OpenRAVE::dReal *upperlimits) const {
@@ -443,7 +451,7 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dRea
     return true;
 }
 
-bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal> TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
+bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal>& TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
     if (_mimicbody == nullptr)
         return false;
 
@@ -463,7 +471,7 @@ bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TS
     return true;
 }
 
-bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal> TSRJointVals) {
+bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal>& TSRJointVals) {
     if (_mimicbody == nullptr)
         return false;
     MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);

@@ -414,7 +414,7 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     robot_->SetActiveDOFValues(qtemp);
     for (const auto &tsrchain:tsrchains_) {
         tsrchain->GetClosestTransform(manips[tsrchain->GetManipInd()]->GetEndEffectorTransform(), qtemp, Ttemp);
-        start_.insert(start_.end(), qtemp.begin(), qtemp.end());
+        goal_.insert(goal_.end(), qtemp.begin(), qtemp.end());
     }
 
     // print result
@@ -456,6 +456,7 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
         ss << std::endl;
         offset += dof_tsr;
     }
+
     Eigen::VectorXd goal_temp = Eigen::VectorXd::Map(goal_.data(), goal_.size());
     ss << "\t\tDistance: " << constraint_->distance(goal_temp);
     OMPL_DEBUG(ss.str().c_str());

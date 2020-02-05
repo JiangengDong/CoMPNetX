@@ -138,11 +138,10 @@ robot.SetActiveManipulator(1)
 
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
-ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
+ompl_planner = OMPLInterface(orEnv, robot, loglevel=0)
 planner_parameter = PlannerParameter()
 
 planner_parameter.solver_parameter.time = 120
-planner_parameter.constraint_parameter.type = "tangent_bundle"
 
 stat = DatasetStat(19, 10)
 for e in range(0, 19):

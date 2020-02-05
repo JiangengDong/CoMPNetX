@@ -62,21 +62,21 @@ class LiftingBoxProblem:
             self.robot.SetActiveDOFValues(righthand_q)
 
     def display(self):
-        self.robot.SetActiveDOFs(self.manipulator_right.GetArmIndices())
-        self.robot.SetActiveManipulator(self.manipulator_right)
-
-        self.robot.SetActiveDOFValues(self._start_config)
-        self.robot.Grab(self.box)
-
         self.robot.GetController().SetPath(self.traj)
         self.robot.WaitForController(0)
 
         self.robot.ReleaseAllGrabbed()
         self.robot.WaitForController(0)
 
-    def solve(self, arm_start_pose, arm_goal_pose, planner_parameter):
-        self._start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
-        self._goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
+    def solve(self, left_start_pose, left_goal_pose, right_start_pose, right_goal_pose, planner_parameter):
+        self._start_config = np.concatenate((self.inverseKinematic(self.manipulator_right, right_start_pose),
+                                             self.inverseKinematic(self.manipulator_left, left_start_pose)))
+        self._goal_config = np.concatenate((self.inverseKinematic(self.manipulator_right, right_goal_pose),
+                                            self.inverseKinematic(self.manipulator_left, left_goal_pose)))
+        with self.env:
+            self.robot.SetActiveDOFs(np.concatenate((self.manipulator_right.GetArmIndices(), self.manipulator_left.GetArmIndices())))
+            self.robot.SetActiveDOFValues(self._start_config)
+            self.robot.Grab(self.box)
         status, time, self.traj = self.planner.solve(self._start_config, self._goal_config, planner_parameter)
         return self.traj
 
@@ -102,8 +102,10 @@ def main():
                               [0, 1, 0, 0],
                               [0, 0, 0, 1]])
 
-    hand_initial_pose = box_initial_pose * righthand_offset
-    hand_goal_pose = box_goal_pose * righthand_offset
+    righthand_initial_pose = box_initial_pose * righthand_offset
+    righthand_goal_pose = box_goal_pose * righthand_offset
+    lefthand_initial_pose = box_initial_pose*lefthand_offset
+    lefthand_goal_pose = box_goal_pose*lefthand_offset
 
     bound = np.mat([[-1000, 1000],
                     [-1000, 1000],
@@ -118,7 +120,7 @@ def main():
         .addTSRChain(TSRChain(manipulator_index=1, relative_body_name="box", relative_link_name="body")
                      .addTSR(np.eye(4), lefthand_offset, np.zeros((6, 2))))
     problem = LiftingBoxProblem(arm_initial_config, box_initial_pose)
-    problem.solve(hand_initial_pose, hand_goal_pose, planner_parameter)
+    problem.solve(lefthand_initial_pose, lefthand_goal_pose, righthand_initial_pose, righthand_goal_pose, planner_parameter)
     problem.display()
     pause()
 

@@ -88,12 +88,12 @@ namespace AtlasMPNet {
         // turn the list of mimic joint values into a list of full joint values
         bool MimicValuesToFullMimicBodyValues(const OpenRAVE::dReal *TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
 
-        bool MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal> TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
+        bool MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal>& TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
 
         // apply mimiced joint values to a certain set of joints
         bool ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals);
 
-        bool ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal> TSRJointVals);
+        bool ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal>& TSRJointVals);
 
         // return the manipulator index of the first TSR
         int GetManipInd() const {
@@ -136,18 +136,26 @@ namespace AtlasMPNet {
         }
 
         OpenRAVE::Transform GetEndEffectorTransform() const {
-            if (!_bPointTSR)
-                return manipulator->GetEndEffectorTransform();
-            else
+            if (_bPointTSR)
                 return prelativetolink->GetTransform() * param.TSRs[0].T0_w * param.TSRs[0].Tw_e;
+            else
+                return manipulator->GetEndEffectorTransform();
         }
 
         void CalculateActiveRotationJacobian(const OpenRAVE::Vector &qInitialRot, std::vector<OpenRAVE::dReal> &jacobian) const {
-            robot->CalculateActiveRotationJacobian(eeIndex, qInitialRot, jacobian);
+            if(_bPointTSR) {
+                jacobian.clear();
+                jacobian.resize(numdof);
+            } else
+                robot->CalculateActiveRotationJacobian(eeIndex, qInitialRot, jacobian);
         }
 
         void CalculateActiveJacobian(const OpenRAVE::Vector &offset, std::vector<OpenRAVE::dReal> &jacobian) {
-            robot->CalculateActiveJacobian(eeIndex, offset, jacobian);
+            if(_bPointTSR) {
+                jacobian.clear();
+                jacobian.resize(numdof);
+            } else
+                robot->CalculateActiveJacobian(eeIndex, offset, jacobian);
         }
 
     private:

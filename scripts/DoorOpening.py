@@ -85,7 +85,8 @@ class DoorOpeningProblem:
         start_config = self.inverseKinematic(self.manipulator_right, arm_start_pose)
         goal_config = self.inverseKinematic(self.manipulator_right, arm_goal_pose)
         planner_parameter = PlannerParameter().addTSRChain(TSRChain(mimic_body_name="kitchen",
-                                                                    mimic_body_index=(6,)).addTSR(T0_w, Tw_e, Bw))
+                                                                    mimic_body_index=(6,),
+                                                                    manipulator_index=0).addTSR(T0_w, Tw_e, Bw))
         planner_parameter.constraint_parameter.tolerance = 1e-3
         status, time, self.traj = self.planner.solve(start_config, goal_config, planner_parameter)
         return self.traj

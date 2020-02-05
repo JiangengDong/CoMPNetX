@@ -12,10 +12,10 @@ using namespace AtlasMPNet;
 
 TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains) :
         Constraint([&robot, &tsr_chains] {
-            unsigned int dof_tsrs = robot->GetActiveDOF();
+            unsigned int dof = robot->GetActiveDOF();
             for (const auto &tsr_chain:tsr_chains)
-                dof_tsrs += tsr_chain->GetNumDOF();
-            return dof_tsrs;
+                dof += tsr_chain->GetNumDOF();
+            return dof;
         }(), 6 * tsr_chains.size()),
         _robot(robot),
         _dof_robot(robot->GetActiveDOF()),
@@ -121,10 +121,6 @@ void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, Tra
     offset += _dof_robot;
     // joint values of virtual tsr robot
     for (int i = 0; i < _num_tsr_chains; i++) {
-        if (_dof_tsrs[i] == 0)   // Point TSR
-        {
-            continue;
-        }
         q.resize(_dof_tsrs[i]);
         for (int j = 0; j < _dof_tsrs[i]; ++j) {
             q[j] = x[j + offset];
