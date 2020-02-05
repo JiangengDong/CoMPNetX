@@ -381,6 +381,8 @@ bool Parameters::getStartState(ompl::base::ScopedState<> &start) const {
 
 bool Parameters::getStartState(std::vector<double> &start) const {
     const int dof = GetDOF();
+    start.clear();
+    start.resize(dof);
     for (int i = 0; i < dof; i++) {
         start[i] = vinitialconfig[i];
     }
@@ -405,6 +407,8 @@ bool Parameters::getGoalState(ompl::base::ScopedState<> &goal) const {
 
 bool Parameters::getGoalState(std::vector<double> &goal) const {
     const int dof = GetDOF();
+    goal.clear();
+    goal.resize(dof);
     for (int i = 0; i < dof; i++) {
         goal[i] = vgoalconfig[i];
     }

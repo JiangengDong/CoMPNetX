@@ -52,17 +52,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Constraint.h"
 #include "StateValidityChecker.h"
 
-AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) :
-        OpenRAVE::PlannerBase(std::move(penv)) {
-    RegisterCommand("GetParameters",
-                    boost::bind(&AtlasMPNet::Problem::GetParametersCommand, this, _1, _2),
-                    "returns the values of all the parameters");
-    RegisterCommand("GetPlanningTime",
-                    boost::bind(&AtlasMPNet::Problem::GetPlanningTimeCommand, this, _1, _2),
+AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(std::move(penv)) {
+    RegisterCommand("GetParameters", boost::bind(&AtlasMPNet::Problem::GetParametersCommand, this, _1, _2), "returns the values of all the parameters");
+    RegisterCommand("GetPlanningTime", boost::bind(&AtlasMPNet::Problem::GetPlanningTimeCommand, this, _1, _2),
                     "returns the amount of time (in seconds) spent during the last planning step");
-    RegisterCommand("SetLogLevel",
-                    boost::bind(&AtlasMPNet::Problem::SetLogLevelCommand, this, _1, _2),
-                    "set the log level");
+    RegisterCommand("SetLogLevel", boost::bind(&AtlasMPNet::Problem::SetLogLevelCommand, this, _1, _2), "set the log level");
 }
 
 AtlasMPNet::Problem::~Problem() = default;
@@ -99,13 +93,8 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
     parameters_->copy(params);
 
-    initialized_ = setTSRChainRobot() &&
-                   setAmbientStateSpace() &&
-                   setConstrainedStateSpace() &&
-                   setStartAndGoalStates() &&
-                   setStateValidityChecker() &&
-                   setPlanner() &&
-                   simpleSetup();
+    initialized_ = setTSRChainRobot() && setAmbientStateSpace() && setConstrainedStateSpace() && setStartAndGoalStates() && setStateValidityChecker() &&
+                   setPlanner() && simpleSetup();
     return initialized_;
 }
 
@@ -113,7 +102,7 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
     // Initialize ptraj
     size_t dof = robot_->GetActiveDOF();
     OpenRAVE::ConfigurationSpecification planningspec = robot_->GetActiveConfigurationSpecification("linear");
-    for(const auto& tsrchain:tsrchains_) {
+    for (const auto &tsrchain:tsrchains_) {
         auto mimic_body = tsrchain->GetMimicBody();
         if (mimic_body != nullptr) {
             dof = dof + tsrchain->GetNumMimicDOF();
@@ -201,9 +190,7 @@ OpenRAVE::PlannerBase::PlannerParametersConstPtr AtlasMPNet::Problem::GetParamet
 }
 
 bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream &sin) const {
-    sout << parameters_->solver_parameter_ << std::endl
-         << parameters_->constraint_parameter_ << std::endl
-         << parameters_->atlas_parameter_ << std::endl;
+    sout << parameters_->solver_parameter_ << std::endl << parameters_->constraint_parameter_ << std::endl << parameters_->atlas_parameter_ << std::endl;
     for (const auto &tsrchain: parameters_->tsrchains_) {
         sout << tsrchain << std::endl;
     }
@@ -241,7 +228,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
     OMPL_INFORM("Constructed virtual TSR robot successfully.");
     std::stringstream ss;
     ss << std::endl;
-    for(unsigned int i=0; i<tsrchains_.size();i++){
+    for (unsigned int i = 0; i < tsrchains_.size(); i++) {
         ss << "\tTSR Chain " << i << "    DOF: " << tsrchains_[i]->GetNumDOF() << std::endl;
     }
     OMPL_DEBUG(ss.str().c_str());
@@ -260,7 +247,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
 bool AtlasMPNet::Problem::setAmbientStateSpace() {
     const unsigned int dof = robot_->GetActiveDOF();
     unsigned int dof_tsrs = 0;
-    for(const auto& tsrchain:tsrchains_) {
+    for (const auto &tsrchain:tsrchains_) {
         dof_tsrs += tsrchain->GetNumDOF();
     }
     ambient_state_space_ = std::make_shared<ompl::base::RealVectorStateSpace>(dof + dof_tsrs);
@@ -283,7 +270,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     }
     offset += dof;
     // get bounds for virtual robot
-    for(const auto& tsrchain:tsrchains_) {
+    for (const auto &tsrchain:tsrchains_) {
         unsigned int dof_tsr = tsrchain->GetNumDOF();
         tsrchain->GetChainJointLimits(lower_limits, upper_limits);
         for (unsigned int i = 0; i < dof_tsr; ++i) {
@@ -327,7 +314,7 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
 }
 
 bool AtlasMPNet::Problem::setConstrainedStateSpace() {
-    constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsrchains_[0]); // TODO: cannot support multi TSRchains now
+    constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsrchains_);
     // create the constrained configuration space
     switch (parameters_->constraint_parameter_.type_) {
         case ConstraintParameter::PROJECTION:
@@ -408,55 +395,67 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
 }
 
 bool AtlasMPNet::Problem::setStartAndGoalStates() {
-    int dof_robot = robot_->GetActiveDOF();
-    int dof_tsr = tsrchains_[0]->GetNumDOF();
-
-    std::vector<double> robot_start(dof_robot), tsr_start(dof_tsr), robot_goal(dof_robot), tsr_goal(dof_tsr);
+    std::vector<double> qtemp;
     OpenRAVE::Transform Ttemp;
+    std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manips = robot_->GetManipulators();
 
     // start config
-    parameters_->getStartState(robot_start);   // get the joint values of real robot
-    robot_->SetActiveDOFValues(robot_start);
-    tsrchains_[0]->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_start, Ttemp);    // get the joint values of virtual robot
-    // goal config
-    parameters_->getGoalState(robot_goal);
-    robot_->SetActiveDOFValues(robot_goal);
-    tsrchains_[0]->GetClosestTransform(robot_->GetActiveManipulator()->GetEndEffectorTransform(), tsr_goal, Ttemp);
+    parameters_->getStartState(qtemp);   // get the joint values of real robot
+    start_.insert(start_.end(), qtemp.begin(), qtemp.end());
+    robot_->SetActiveDOFValues(qtemp);
+    for (const auto &tsrchain:tsrchains_) {
+        tsrchain->GetClosestTransform(manips[tsrchain->GetManipInd()]->GetEndEffectorTransform(), qtemp, Ttemp);
+        start_.insert(start_.end(), qtemp.begin(), qtemp.end());
+    }
 
-    // concatenate config of robot and tsr
-    start_.insert(start_.end(), robot_start.begin(), robot_start.end());
-    start_.insert(start_.end(), tsr_start.begin(), tsr_start.end());
-    goal_.insert(goal_.end(), robot_goal.begin(), robot_goal.end());
-    goal_.insert(goal_.end(), tsr_goal.begin(), tsr_goal.end());
+    // goal config
+    parameters_->getGoalState(qtemp);
+    goal_.insert(goal_.end(), qtemp.begin(), qtemp.end());
+    robot_->SetActiveDOFValues(qtemp);
+    for (const auto &tsrchain:tsrchains_) {
+        tsrchain->GetClosestTransform(manips[tsrchain->GetManipInd()]->GetEndEffectorTransform(), qtemp, Ttemp);
+        start_.insert(start_.end(), qtemp.begin(), qtemp.end());
+    }
 
     // print result
     OMPL_INFORM("Set start and goal successfully.");
     std::stringstream ss;
+    int offset;
+    int dof_robot = robot_->GetActiveDOF();
     ss << std::endl;
     ss << "\tStart:" << std::endl;
+    offset = 0;
     ss << "\t\tRobot:";
-    for (int i = 0; i < dof_robot; i++) {
-        ss << "\t" << start_[i];
-    }
+    for (int i = 0; i < dof_robot; i++)
+        ss << "\t" << start_[i + offset];
     ss << std::endl;
-    ss << "\t\tTSR:";
-    for (int i = dof_robot; i < dof_robot + dof_tsr; i++) {
-        ss << "\t" << start_[i];
+    offset += dof_robot;
+    for (const auto &tsrchain:tsrchains_) {
+        int dof_tsr = tsrchain->GetNumDOF();
+        ss << "\t\tTSR:";
+        for (int i = 0; i < dof_tsr; i++)
+            ss << "\t" << start_[i + offset];
+        ss << std::endl;
+        offset += dof_tsr;
     }
-    ss << std::endl;
     Eigen::VectorXd start_temp = Eigen::VectorXd::Map(start_.data(), start_.size());
     ss << "\t\tDistance: " << constraint_->distance(start_temp) << std::endl;
+
     ss << "\tGoal:" << std::endl;
+    offset = 0;
     ss << "\t\tRobot:";
-    for (int i = 0; i < dof_robot; i++) {
-        ss << "\t" << goal_[i];
-    }
+    for (int i = 0; i < dof_robot; i++)
+        ss << "\t" << goal_[i + offset];
     ss << std::endl;
-    ss << "\t\tTSR:";
-    for (int i = dof_robot; i < dof_robot + dof_tsr; i++) {
-        ss << "\t" << goal_[i];
+    offset += dof_robot;
+    for (const auto &tsrchain:tsrchains_) {
+        int dof_tsr = tsrchain->GetNumDOF();
+        ss << "\t\tTSR:";
+        for (int i = 0; i < dof_tsr; i++)
+            ss << "\t" << goal_[i + offset];
+        ss << std::endl;
+        offset += dof_tsr;
     }
-    ss << std::endl;
     Eigen::VectorXd goal_temp = Eigen::VectorXd::Map(goal_.data(), goal_.size());
     ss << "\t\tDistance: " << constraint_->distance(goal_temp);
     OMPL_DEBUG(ss.str().c_str());
@@ -557,18 +556,18 @@ bool AtlasMPNet::Problem::simpleSetup() {
     if (!state_validity_checker_->isValid(start.get())) {
         OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
         OMPL_WARN("Start is not valid!");
-        if(env_->CheckCollision(robot_, report)) {
-            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName()
-                      << "----" << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        if (env_->CheckCollision(robot_, report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
+                      << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
         }
         return false;
     }
     if (!state_validity_checker_->isValid(goal.get())) {
         OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
         OMPL_WARN("Goal is not valid!");
-        if(env_->CheckCollision(robot_, report)) {
-            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName()
-                      << "----" << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        if (env_->CheckCollision(robot_, report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
+                      << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
         }
         return false;
     }
