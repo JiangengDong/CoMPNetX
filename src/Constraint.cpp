@@ -48,6 +48,7 @@ void TSRChainConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
 void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const {
     TransformPairVector Tpairs;
     robotFK(x, Tpairs);
+    out.setZero();
     int offset = _dof_robot;
     for (int i = 0; i < _num_tsr_chains; i++) {
         OpenRAVE::Transform &Trobot = Tpairs[i].first;
@@ -55,8 +56,8 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
         std::vector<OpenRAVE::dReal> Jrobot, Jtsr;
 
         auto Jrot_robot = out.block(6 * i, 0, 3, _dof_robot);
-        auto Jrot_tsr = out.block(6 * i, offset, 3, _dof_tsrs[i]);
         auto Jtrans_robot = out.block(6 * i + 3, 0, 3, _dof_robot);
+        auto Jrot_tsr = out.block(6 * i, offset, 3, _dof_tsrs[i]);
         auto Jtrans_tsr = out.block(6 * i + 3, offset, 3, _dof_tsrs[i]);
         offset += _dof_tsrs[i];
 
@@ -77,6 +78,7 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
                                + Jrobot[2 * _dof_robot + j] * Ttsr.rot[1]
                                - Jrobot[3 * _dof_robot + j] * Ttsr.rot[0];
         }
+
         for (int j = 0; j < _dof_tsrs[i]; j++) {
             Jrot_tsr(0, j) = Trobot.rot[0] * Jtsr[1 * _dof_tsrs[i] + j]
                              - Trobot.rot[1] * Jtsr[0 * _dof_tsrs[i] + j]
@@ -91,7 +93,6 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
                              + Trobot.rot[2] * Jtsr[1 * _dof_tsrs[i] + j]
                              - Trobot.rot[3] * Jtsr[0 * _dof_tsrs[i] + j];
         }
-
         // Translation Jacobian
         _robot->CalculateActiveJacobian(_robot_eeindices[i], Trobot.trans, Jrobot);
         _tsr_chains[i]->CalculateActiveJacobian(Ttsr.trans, Jtsr);
@@ -110,7 +111,6 @@ void TSRChainConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Ei
 
 void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector &Tpairs) const {
     std::vector<double> q;
-    Tpairs.clear();
     int offset = 0;
     // joint values of real robot
     q.resize(_dof_robot);
@@ -126,7 +126,9 @@ void TSRChainConstraint::robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, Tra
             q[j] = x[j + offset];
         }
         _tsr_chains[i]->SetActiveDOFValues(q);
-        Tpairs.emplace_back(_robot_manipulators[i]->GetEndEffectorTransform(), _tsr_chains[i]->GetEndEffectorTransform());
         offset += _dof_tsrs[i];
     }
+    Tpairs.clear();
+    for (int i = 0; i < _num_tsr_chains; i++)
+        Tpairs.emplace_back(_robot_manipulators[i]->GetEndEffectorTransform(), _tsr_chains[i]->GetEndEffectorTransform());
 }

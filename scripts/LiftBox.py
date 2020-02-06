@@ -62,6 +62,10 @@ class LiftingBoxProblem:
             self.robot.SetActiveDOFValues(righthand_q)
 
     def display(self):
+        self.robot.SetActiveDOFs(np.concatenate((self.manipulator_right.GetArmIndices(), self.manipulator_left.GetArmIndices())))
+        self.robot.SetActiveDOFValues(self._start_config)
+        self.robot.Grab(self.box)
+
         self.robot.GetController().SetPath(self.traj)
         self.robot.WaitForController(0)
 
@@ -78,6 +82,7 @@ class LiftingBoxProblem:
             self.robot.SetActiveDOFValues(self._start_config)
             self.robot.Grab(self.box)
         status, time, self.traj = self.planner.solve(self._start_config, self._goal_config, planner_parameter)
+        self.robot.ReleaseAllGrabbed()
         return self.traj
 
 
