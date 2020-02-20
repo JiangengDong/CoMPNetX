@@ -6,11 +6,16 @@ It implements AtlasRRTConnect algorithm. The target file is a plugin for OpenRAV
 The project mainly depends on two libraries: OMPL and OpenRAVE. The OMPL library provides an framework of sample-based motion planning problem.
 The OpenRAVE is used as a simulation environment for rigid body calculation. 
 
-## Version of libraries
+## Dependencies
 
-- OpenRAVE: 0.9
+- OpenRAVE: 0.9.0
 - OMPL: 1.4.2
 - Boost: 1.58
+- ROS Kinetic
+- ROS package
+  - or_urdf
+  - baxter_description
+- CoMPS: using their openrave models
 
 ## How to run
 
