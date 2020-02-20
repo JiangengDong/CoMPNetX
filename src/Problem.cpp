@@ -561,12 +561,20 @@ bool AtlasMPNet::Problem::simpleSetup() {
             std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
                       << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
         }
+        if (robot_->CheckSelfCollision(report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
+                      << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        }
         return false;
     }
     if (!state_validity_checker_->isValid(goal.get())) {
         OpenRAVE::CollisionReportPtr report = boost::make_shared<OpenRAVE::CollisionReport>();
         OMPL_WARN("Goal is not valid!");
         if (env_->CheckCollision(robot_, report)) {
+            std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
+                      << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
+        }
+        if (robot_->CheckSelfCollision(report)) {
             std::cout << "Collision between " << report->plink1->GetParent()->GetName() << "/" << report->plink1->GetName() << "----"
                       << report->plink2->GetParent()->GetName() << "/" << report->plink2->GetName() << std::endl;
         }

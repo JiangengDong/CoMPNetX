@@ -421,13 +421,12 @@ class PlannerParameter(object):
 
 
 class OMPLInterface:
-    def __init__(self, env, robot, loglevel=2, visualize_sample=False):
+    def __init__(self, env, robot, loglevel=2):
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
         assert self.planner != None
         self.planner.SendCommand("SetLogLevel %d" % loglevel)
-        self.visualize_sample = visualize_sample
 
     def solve(self, start_config, goal_config, planner_params):
         assert isinstance(planner_params, PlannerParameter)
@@ -443,17 +442,16 @@ class OMPLInterface:
         params.SetExtraParameters(str(planner_params))
 
         with self.env, self.robot:
-            if (self.planner.InitPlan(self.robot, params)):
-                traj = orpy.RaveCreateTrajectory(self.env, '')
-                status = self.planner.PlanPath(traj)
-                if status == orpy.PlannerStatus.HasSolution:
-                    resp = True
-                    time = float(self.planner.SendCommand("GetPlanningTime"))
-                    orpy.planningutils.RetimeTrajectory(traj)
-                else:
-                    resp = False
-                    time = -1
-            else:
+            if not self.planner.InitPlan(self.robot, params):
                 return None, None, None
+            traj = orpy.RaveCreateTrajectory(self.env, '')
+            status = self.planner.PlanPath(traj)
+            if status == orpy.PlannerStatus.HasSolution:
+                resp = True
+                time = float(self.planner.SendCommand("GetPlanningTime"))
+                orpy.planningutils.RetimeTrajectory(traj)
+            else:
+                resp = False
+                time = -1
 
         return resp, time, traj

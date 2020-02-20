@@ -120,25 +120,35 @@ handdof = np.ones([2])
 robot.SetActiveDOFs([1, 9])
 robot.SetActiveDOFValues(handdof)
 
-e_no = 10
-sc_no = 30
-
-with open("../data/esc_dict_door9_30_test4.p", "rb") as f:
+with open("../data/esc_dict_door100_30.p", "rb") as f:
     esc_dict = pickle.load(f)
 param = PlannerParameter()
 param.solver_parameter.time = 180
-planner = OMPLInterface(orEnv, robot, loglevel=0)
-for i in range(0, 9):
-    for j in range(0, 30):
-        env_no = "env_" + str(i)
+param.constraint_parameter.type="tangent_bundle"
+param.atlas_parameter.rho = 1.5
+param.atlas_parameter.exploration = 0.9
+param.atlas_parameter.epsilon = 0.02
+
+planner = OMPLInterface(orEnv, robot, loglevel=2)
+for i in range(0, 66):
+    env_no = "env_" + str(i)
+    if env_no not in esc_dict.keys():
+        continue
+    for j in range(27, 31):
         sc_no = "s_" + str(j)
+        if sc_no not in esc_dict[env_no].keys():
+            continue
         rgconf = esc_dict[env_no][sc_no]["mugblack"]["rgconf"]
         esc_dict[env_no][sc_no]["initial"]["plasticmug"]["riconf"] = rgconf
 ### when loading files
-for e in range(0, 9):
-    for s in range(0, 30):
-        env_no = "env_" + str(e)
+for e in range(0, 66):
+    env_no = "env_" + str(e)
+    if env_no not in esc_dict.keys():
+        continue
+    for s in range(27, 31):
         s_no = "s_" + str(s)
+        if s_no not in esc_dict[env_no].keys():
+            continue
         robot.SetActiveDOFs(arm1dofs)
         robot.SetActiveDOFValues(arm1initvals)
         numTSRChainMimicDOF = 1
@@ -198,9 +208,11 @@ for e in range(0, 9):
                 startik = goalik = initdofvals = None
 
             robot.SetActiveDOFValues(startik)
-            time.sleep(0.02)
             if obj_order[i] == "door":
-                resp, t_time, traj = planner.solve(startik, goalik, param)
+                # resp, t_time, traj = planner.solve(startik, goalik, param)
+                resp = None
+                t_time = -1
+                traj = None
             else:
                 robot.Grab(targobject[obj_names.index(obj_order[i])])
                 resp, t_time, traj = planner.solve(startik, goalik, param)
@@ -208,22 +220,27 @@ for e in range(0, 9):
             if resp is True:
                 print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
                 if obj_order[i] != "door":
-                    robot.GetController().SetPath(traj)
+                    # robot.GetController().SetPath(traj)
                     robot.WaitForController(0)
+                    pass
                 else:
-                    robot.GetController().SetPath(traj)
-                    cabinets.GetController().SetPath(traj)
+                    # robot.GetController().SetPath(traj)
+                    # cabinets.GetController().SetPath(traj)
                     robot.WaitForController(0)
-                    cabinets.WaitForController(0)
+                    # cabinets.WaitForController(0)
+                    pass
             elif resp is False:
                 print("Failed to find a solution.")
+                robot.WaitForController(0)
                 t_time = 1e3
             elif resp is None:
                 print("Start or goal is invalid!")
+                robot.WaitForController(0)
                 t_time = -1
             if obj_order[i] != "door":
                 esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
+            time.sleep(0.02)
             robot.ReleaseAllGrabbed()
             robot.WaitForController(0)
             robot.SetActiveDOFs(arm1dofs)
@@ -243,8 +260,8 @@ for e in range(0, 9):
                 orEnv.Remove(targobject[idx])
                 print("----------remove " + obj_order[i])
                 idx = None
-            time.sleep(0.02)
         print("\n")
-        with open("../data/esc_dict_door_test4_atlasrrt.p", "wb") as f:
-            pickle.dump(esc_dict, f)
-        time.sleep(0.02)
+    output_name = "../data/result2/esp_dict_door100_30_tbrrt_env%d.p" % e
+    esc_dict_temp = {env_no:esc_dict[env_no]}
+    with open(output_name, "wb") as f:
+        pickle.dump(esc_dict_temp, f)
