@@ -1,0 +1,22 @@
+{
+    "name": "test", 
+    "image": "openravedocker",
+    "containerEnv": {
+        "DISPLAY": "${localEnv:DISPLAY}", 
+        "QT_X11_NO_MITSHM": "1",
+    }, 
+    "mounts": [
+        "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix", 
+    ], 
+    "runArgs": [
+        "--gpus=all",
+    ],
+    "extensions": [
+        "ms-vscode.cpptools", 
+        "ms-vscode.cmake-tools", 
+        "ms-python.python",
+    ], 
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+    }
+}

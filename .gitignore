@@ -1,8 +1,10 @@
 cmake-build-debug/
 cmake-build-release/
+build/
 .idea/
 /src/deprecated/
 /doc/
 *.pyc
 /models/
 /data/
+/plugins/
