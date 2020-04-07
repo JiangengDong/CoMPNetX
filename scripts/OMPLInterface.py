@@ -45,7 +45,7 @@ def pause():
 
 
 class SolverParameter(object):
-    types = ("rrt", "rrtstar", "rrtconnect")
+    types = ("rrt", "rrtstar", "rrtconnect", "mpnet")
     Template_str = """<solver_parameters type="%d" time="%d" range="%f"/>\n"""
 
     def __init__(self, type="rrtconnect", time=120, range=0.05):
@@ -385,6 +385,11 @@ class TSRChain(object):
     def clearTSRs(self):
         self.TSRs = []
         return self
+
+
+class MPNetParameter(object):
+    def __init__(self, model_path="", voxel=(), ohot=()):
+        pass
 
 
 class PlannerParameter(object):

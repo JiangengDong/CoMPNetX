@@ -349,6 +349,75 @@ bool TSRChainParameter::reset(){
     TSRs.clear();
 }
 
+OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    if (name == _tag_name) {
+        if (_tag_open)
+            return PE_Ignore;
+        else {
+            std::istringstream value;
+            for (const auto &att:atts) {
+                auto key = att.first;
+                value.clear();
+                value.str(att.second);
+                if (key == "model_path")
+                    value >> model_path;
+                else if (key == "voxel") {
+                    voxel.clear();
+                    double temp;
+                    while (value.eof()){
+                        value >> temp;
+                        voxel.emplace_back(temp);
+                    }
+                }
+                else if (key == "ohot") {
+                    ohot.clear();
+                    double temp;
+                    while (value.eof()){
+                        value >> temp;
+                        ohot.emplace_back(temp);
+                    }
+                }
+                else
+                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+            }
+            _tag_open = true;
+            return PE_Support;
+        }
+    } else
+        return PE_Pass;
+}
+
+bool MPNetParameter::endElement(std::string const &name) {
+    if (name == _tag_name) {
+        _tag_open = false;
+        return true;
+    } else
+        return false;
+}
+
+bool MPNetParameter::serialize(std::ostream &O) const {
+    O << "<" << _tag_name
+      << " model_path=\"" << model_path << "\"";
+    O << " voxel=\"";
+    for(unsigned int i=0;i<voxel.size();i++){
+        O<< voxel[i];
+        if (i != voxel.size()-1) {
+            O << " ";
+        }
+    }
+    O << "\"";
+    O << " ohot=\"";
+    for(unsigned int i=0;i<ohot.size();i++){
+        O<< ohot[i];
+        if (i != ohot.size()-1) {
+            O << " ";
+        }
+    }
+    O << "\"";
+    O << "/>";
+    return true;
+}
+
 /*
  * implementation of PlannnerParameters
  */
@@ -357,6 +426,7 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back(constraint_parameter_.getTagName());
     _vXMLParameters.emplace_back(atlas_parameter_.getTagName());
     _vXMLParameters.emplace_back(_tsrchain_temp.getTagName());
+    _vXMLParameters.emplace_back(mpnet_parameter_.getTagName());
     _vXMLParameters.emplace_back("tsr");    // Avoid hard code the tag names. Improve this part later
     _vXMLParameters.emplace_back("tsr_chains");    // Avoid hard code the tag names. Improve this part later
 }
@@ -440,6 +510,8 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
         return status;
     if ((status = _tsrchain_temp.startElement(name, atts)) != PE_Pass)
         return status;
+    if ((status = mpnet_parameter_.startElement(name, atts)) != PE_Pass)
+        return status;
     if (name=="tsr_chains")
         return PE_Support;
     return PE_Pass;
@@ -457,6 +529,8 @@ bool Parameters::endElement(std::string const &name) {
         return !atlas_parameter_.endElement(name) &&
                !constraint_parameter_.endElement(name) &&
                !solver_parameter_.endElement(name) &&
+               !mpnet_parameter_.endElement(name) &&
                PlannerParameters::endElement(name);
 }
+
 

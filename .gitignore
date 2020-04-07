@@ -8,3 +8,5 @@ build/
 /models/
 /data/
 /plugins/
+/libtorch*/
+/temp/
