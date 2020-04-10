@@ -7,7 +7,9 @@ add_library(AtlasMPNet SHARED
         Constraint.cpp
         StateValidityChecker.cpp
         TaskSpaceRegionChain.cpp
-        planner/RRTConnect.cpp
+        RRTConnect.cpp
+        MPNetSampler.cpp
+        MPNetPlanner.cpp
         )
 set_target_properties(AtlasMPNet PROPERTIES
         COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}"
@@ -16,4 +18,5 @@ set_target_properties(AtlasMPNet PROPERTIES
 target_link_libraries(AtlasMPNet
         ${OpenRAVE_LIBRARIES}
         ${Boost_LIBRARIES}
-        ${OMPL_LIBRARIES})
+        ${OMPL_LIBRARIES}
+        ${TORCH_LIBRARIES})

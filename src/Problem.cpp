@@ -51,6 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TaskSpaceRegionChain.h"
 #include "Constraint.h"
 #include "StateValidityChecker.h"
+#include "MPNetPlanner.h"
 
 AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(std::move(penv)) {
     RegisterCommand("GetParameters", boost::bind(&AtlasMPNet::Problem::GetParametersCommand, this, _1, _2), "returns the values of all the parameters");
@@ -488,6 +489,7 @@ bool AtlasMPNet::Problem::setPlanner() {
             planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
             break;
         case SolverParameter::MPNet:
+            planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_);
             break;
     }
     if (planner_ == nullptr) {

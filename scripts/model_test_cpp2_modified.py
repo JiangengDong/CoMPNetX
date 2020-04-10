@@ -140,7 +140,7 @@ robot.SetActiveManipulator(1)
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
 ompl_planner = OMPLInterface(orEnv, robot, loglevel=0)
 planner_parameter = PlannerParameter()
-
+planner_parameter.solver_parameter.type = "mpnet"
 planner_parameter.solver_parameter.time = 120
 
 stat = DatasetStat(19, 10)

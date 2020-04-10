@@ -152,6 +152,21 @@ namespace AtlasMPNet {
         TSRParameter temp_tsr;
     };
 
+    class MPNetParameter : public SimpleXMLReader {
+    public:
+        std::string model_path;
+        std::vector<double> voxel;
+        std::vector<double> ohot;
+
+        MPNetParameter() : SimpleXMLReader("mpnet") {}
+
+        ProcessElement startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) override;
+
+        bool endElement(std::string const &name) override;
+
+        bool serialize(std::ostream &O) const override;
+    };
+
     /*! \brief The parameters consisting of SolverParameters, ConstraintParameters and AtlasParameters.
      *
      * This is a complete class that is able to read from and write to a XML format string.
@@ -190,6 +205,7 @@ namespace AtlasMPNet {
         ConstraintParameter constraint_parameter_;
         AtlasParameter atlas_parameter_;
         std::vector<TSRChainParameter> tsrchains_;
+        MPNetParameter mpnet_parameter_;
 
     private:
         TSRChainParameter _tsrchain_temp;
