@@ -123,7 +123,7 @@ robot.SetActiveDOFValues(handdof)
 with open("../data/esc_dict_door100_30.p", "rb") as f:
     esc_dict = pickle.load(f)
 param = PlannerParameter()
-param.solver_parameter.type = "mpnet"
+# param.solver_parameter.type = "mpnet"
 param.solver_parameter.time = 180
 param.constraint_parameter.type="atlas"
 param.atlas_parameter.rho = 1.5

@@ -21,17 +21,17 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     }
     _scale_factor.resize(dim_, 1.0);
 
-    std::string pnet_filename="/home/jiangeng/Workspace/AtlasMPNet/temp/ctpnet_annotated_gpu4.pt";  // TODO: turn into arguments
+    std::string pnet_filename="/workspaces/AtlasMPNet/temp/ctpnet_annotated_gpu4.pt";  // TODO: turn into arguments
     pnet_ = torch::jit::load(pnet_filename);
     pnet_.to(at::kCUDA);
     OMPL_INFORM("Load PNet successfully.");
 
-    std::string ohot_filename;  // TODO: turn into arguments
+    std::string ohot_filename="/workspaces/AtlasMPNet/temp/seen_reps_txt4/e_0_s_110_coke_can_pp_ohot.csv";  // TODO: turn into arguments
     std::vector<double> ohot_vec = loadData(ohot_filename, 128);
     ohot_ = torch::from_blob(ohot_vec.data(), {1, 128});
     OMPL_INFORM("Load ohot successfully.");
 
-    std::string voxel_filename; // TODO: turn into arguments
+    std::string voxel_filename="/workspaces/AtlasMPNet/temp/seen_reps_txt4/e_0_s_110_coke_can_voxel.csv"; // TODO: turn into arguments
     std::vector<double> voxel_vec = loadData(voxel_filename, 256);
     voxel_ = torch::from_blob(voxel_vec.data(), {1, 256});
     OMPL_INFORM("Load voxel successfully.");
