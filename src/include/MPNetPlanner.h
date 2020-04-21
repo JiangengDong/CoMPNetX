@@ -41,6 +41,7 @@
 #include <ompl/geometric/planners/PlannerIncludes.h>
 #include "MPNetSampler.h"
 #include "TaskSpaceRegionChain.h"
+#include "Parameters.h"
 
 namespace ompl {
     namespace geometric {
@@ -48,7 +49,7 @@ namespace ompl {
         class MPNetPlanner : public base::Planner {
         public:
             /** \brief Constructor */
-            MPNetPlanner(const base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr& robot, const std::vector<AtlasMPNet::TaskSpaceRegionChain::Ptr>& tsrchains);
+            MPNetPlanner(const base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr& robot, const std::vector<AtlasMPNet::TaskSpaceRegionChain::Ptr>& tsrchains, AtlasMPNet::MPNetParameter param);
 
             ~MPNetPlanner() override;
 
@@ -130,7 +131,7 @@ namespace ompl {
             }
 
             /** \brief Grow a tree towards a random state */
-            ompl::geometric::MPNetPlanner::GrowState growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *nmotion, Motion *rmotion);
+            ompl::geometric::MPNetPlanner::GrowState growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion);
 
             /** \brief State sampler */
             AtlasMPNet::MPNetSampler::Ptr sampler_;

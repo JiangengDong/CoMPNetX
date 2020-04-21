@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "TaskSpaceRegionChain.h"
+#include "Parameters.h"
 
 namespace AtlasMPNet {
     class MPNetSampler : public ompl::base::StateSampler {
@@ -20,7 +21,8 @@ namespace AtlasMPNet {
         typedef std::shared_ptr<MPNetSampler> Ptr;
         MPNetSampler(const ompl::base::StateSpace *space,
                      OpenRAVE::RobotBasePtr robot,
-                     std::vector<TaskSpaceRegionChain::Ptr> tsrchains);
+                     std::vector<TaskSpaceRegionChain::Ptr> tsrchains, 
+                     MPNetParameter param);
 
         bool sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample);
 
@@ -50,7 +52,7 @@ namespace AtlasMPNet {
 
         std::vector<double> toVector(const torch::Tensor &tensor);
 
-        static std::vector<double> loadData(const std::string &filename, unsigned int n);
+        static std::vector<float> loadData(const std::string &filename, unsigned int n);
     };
 }
 

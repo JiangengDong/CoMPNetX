@@ -1,6 +1,6 @@
 {
     "name": "test", 
-    "image": "jiangengdong/openrave",
+    "image": "jiangengdong/openrave:cudagl",
     "containerEnv": {
         "DISPLAY": "${localEnv:DISPLAY}", 
         "QT_X11_NO_MITSHM": "1",
