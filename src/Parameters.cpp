@@ -361,21 +361,11 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                 value.str(att.second);
                 if (key == "model_path")
                     value >> model_path;
-                else if (key == "voxel") {
-                    voxel.clear();
-                    double temp;
-                    while (value.eof()){
-                        value >> temp;
-                        voxel.emplace_back(temp);
-                    }
+                else if (key == "voxel_path") {
+                    value >> voxel_path;
                 }
-                else if (key == "ohot") {
-                    ohot.clear();
-                    double temp;
-                    while (value.eof()){
-                        value >> temp;
-                        ohot.emplace_back(temp);
-                    }
+                else if (key == "ohot_path") {
+                    value >> ohot_path;
                 }
                 else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
@@ -397,24 +387,10 @@ bool MPNetParameter::endElement(std::string const &name) {
 
 bool MPNetParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name
-      << " model_path=\"" << model_path << "\"";
-    O << " voxel=\"";
-    for(unsigned int i=0;i<voxel.size();i++){
-        O<< voxel[i];
-        if (i != voxel.size()-1) {
-            O << " ";
-        }
-    }
-    O << "\"";
-    O << " ohot=\"";
-    for(unsigned int i=0;i<ohot.size();i++){
-        O<< ohot[i];
-        if (i != ohot.size()-1) {
-            O << " ";
-        }
-    }
-    O << "\"";
-    O << "/>";
+      << " model_path=\"" << model_path << "\"" 
+      << " voxel_path=\"" << voxel_path << "\""
+      << " ohot_path=\"" << ohot_path << "\""
+      << "/>";
     return true;
 }
 

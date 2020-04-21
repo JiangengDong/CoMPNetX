@@ -489,7 +489,7 @@ bool AtlasMPNet::Problem::setPlanner() {
             planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
             break;
         case SolverParameter::MPNet:
-            planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_);
+            planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
             break;
     }
     if (planner_ == nullptr) {
