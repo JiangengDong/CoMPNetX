@@ -14,6 +14,7 @@
 
 #include "TaskSpaceRegionChain.h"
 #include "Parameters.h"
+#include "RobotHelper.h"
 
 namespace AtlasMPNet {
     class MPNetSampler : public ompl::base::StateSampler {
@@ -40,12 +41,13 @@ namespace AtlasMPNet {
         torch::jit::script::Module pnet_;
         torch::Tensor ohot_;
         torch::Tensor voxel_;
-        torch::Tensor goal_;
         unsigned int dim_;  // dimension of config
-        std::vector<double> _scale_factor;
+        std::vector<double> _scale_factor, _lower_limits, _upper_limits;
         OpenRAVE::RobotBasePtr robot_;
         unsigned int dof_robot_;
+        std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manips_;
         std::vector<TaskSpaceRegionChain::Ptr> tsrchains_;
+        std::vector<RobotHelper> robot_helpers_;
         std::vector<unsigned int> dof_tsrchains_;
 
         torch::Tensor toTensor(const std::vector<double> &src);

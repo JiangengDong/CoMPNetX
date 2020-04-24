@@ -379,7 +379,7 @@ TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::
         TSRJointVals.resize(numdof);
         T0_closest = ForwardKinematics(TSRJointVals);
         squaredNorm = TransformDifference(T0_s, T0_closest, Tdiff);
-        for (int it = 0; it < 50; it++) {
+        for (int it = 0; it < 10; it++) {
             if (squaredNorm < 1e-16)
                 break;
 

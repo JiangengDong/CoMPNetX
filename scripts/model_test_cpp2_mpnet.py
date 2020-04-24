@@ -138,10 +138,10 @@ robot.SetActiveManipulator(1)
 
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
-ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
+ompl_planner = OMPLInterface(orEnv, robot, loglevel=0)
 planner_parameter = PlannerParameter()
 planner_parameter.solver_parameter.type = "mpnet"
-planner_parameter.solver_parameter.time = 50
+planner_parameter.solver_parameter.time = 20
 
 stat = DatasetStat(19, 10)
 for e in range(0, 19):
@@ -162,6 +162,8 @@ for e in range(0, 19):
         print("Object order: %s" % str(obj_order))
 
         for i in range(0, len(obj_order)):
+            if obj_order[i] not in ["teakettle"]:
+                continue
             print("Planning for %s ..." % obj_order[i])
             T0_w = esc_dict[env_no][s_no][obj_order[i]]["T0_w"]
             T0_w2 = esc_dict[env_no]["targets"][obj_order[i]]["T0_w2"]
@@ -178,7 +180,7 @@ for e in range(0, 19):
             robot.Grab(targobject[obj_names.index(obj_order[i])])
             time.sleep(0.05)  # draw the scene
 
-            planner_parameter.clearTSRChains().addTSRChain(TSRChain().addTSR(T0_w2, Tw_e, Bw2))
+            planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
             try:
                 planner_parameter.mpnet_parameter.model_path = "../temp/ctpnet_annotated_gpu4.pt"
                 planner_parameter.mpnet_parameter.voxel_path = "../temp/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
