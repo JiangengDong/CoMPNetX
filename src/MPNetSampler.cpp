@@ -3,6 +3,7 @@
 //
 
 #include "MPNetSampler.h"
+#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
 
 AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
@@ -10,22 +11,24 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
                                        std::vector<TaskSpaceRegionChain::Ptr> tsrchains, 
                                        MPNetParameter param) :
         ompl::base::StateSampler(space),
-        robot_(std::move(robot)),
+        robot_(robot),
         tsrchains_(std::move(tsrchains)) {
     dim_ = 0;
-    dof_robot_ = robot_->GetActiveDOF();
+    dof_robot_ = robot->GetActiveDOF();
     dim_ += dof_robot_;
+
     dof_tsrchains_.clear();
+    manips_ = robot->GetManipulators();
     for (auto &tsrchain : tsrchains_) {
         dof_tsrchains_.emplace_back(tsrchain->GetNumDOF());
         dim_ += dof_tsrchains_.back();
+        robot_helpers_.emplace_back(RobotHelper(robot, manips_[tsrchain->GetManipInd()]));
     }
 
     _scale_factor.resize(dof_robot_, 1.0);
-    std::vector<OpenRAVE::dReal> lower_limits, upper_limits;
-    robot_->GetActiveDOFLimits(lower_limits, upper_limits);
+    robot->GetActiveDOFLimits(_lower_limits, _upper_limits);
     for(unsigned int i=0; i<dof_robot_; i++) {
-        _scale_factor[i] = upper_limits[i] - lower_limits[i];
+        _scale_factor[i] = _upper_limits[i] - _lower_limits[i];
     }
 
     std::string pnet_filename=param.model_path;
@@ -42,9 +45,6 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     std::vector<float> voxel_vec = loadData(voxel_filename, 256);
     voxel_ = torch::from_blob(voxel_vec.data(), {1, 256}).clone();
     OMPL_DEBUG("Load %s successfully.", voxel_filename.c_str());
-
-    std::vector<float> goal;
-    goal_ = torch::from_blob(goal.data(), {1, dim_}); // TODO: delete this
 }
 
 bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
@@ -53,26 +53,29 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     space_->copyToReals(goal_config, goal);
 
     // sample a robot config with MPNet
-    unsigned int offset = 0;
-    std::vector<double> robot_start(start_config.begin() + offset, start_config.begin() + offset + dof_robot_),
-            robot_goal(goal_config.begin() + offset, goal_config.begin() + offset + dof_robot_);
-    auto input = torch::cat({voxel_, ohot_, toTensor(robot_start), toTensor(robot_goal)}, 1).to(at::kCUDA);
-    auto output = pnet_.forward({input}).toTensor().to(at::kCPU);
+    std::vector<double> robot_start(start_config.begin(), start_config.begin() + dof_robot_);
+    std::vector<double> robot_goal(goal_config.begin(), goal_config.begin() + dof_robot_);
+    auto input = torch::cat({voxel_, ohot_, toTensor(robot_start), toTensor(robot_goal)}, 1);
+    std::vector<torch::jit::IValue> inputs;
+    inputs.emplace_back(input.to(at::kCUDA));
+    auto output = pnet_.forward(inputs).toTensor().to(at::kCPU);
     auto robot_sample = toVector(output);
-    std::copy(robot_sample.begin(), robot_sample.end(), sample_config.begin() + offset);
-    offset += dof_robot_;
-
-    // get the corresponding tsrchain config
-    std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manips = robot_->GetManipulators();
-    robot_->SetActiveDOFValues(robot_sample);
-    OpenRAVE::Transform Ttemp;
-    for (unsigned int i = 0; i < tsrchains_.size(); i++) {
+    robot_helpers_[0].EnforceBound(robot_sample);
+    
+    robot_->SetActiveDOFValues(robot_sample, 0);
+    OpenRAVE::Transform Ttsr, Trobot;
+    double dist = 0;
+    unsigned int offset = dof_robot_;
+    for(unsigned int i=0; i<tsrchains_.size(); i++){
         auto tsrchain = tsrchains_[i];
         std::vector<double> tsrchain_config(start_config.begin() + offset, start_config.begin() + offset + dof_tsrchains_[i]);
-        tsrchain->GetClosestTransform(manips[tsrchain->GetManipInd()]->GetEndEffectorTransform(), tsrchain_config, Ttemp);
+        Trobot = robot_helpers_[i].GetEndEffectorTransform();
+        tsrchain->GetClosestTransform(Trobot, tsrchain_config, Ttsr);
+        dist = robot_helpers_[i].GetClosestTransform(Ttsr, robot_sample, Trobot);
         std::copy(tsrchain_config.begin(), tsrchain_config.end(), sample_config.begin() + offset);
         offset += dof_tsrchains_[i];
     }
+    std::copy(robot_sample.begin(), robot_sample.end(), sample_config.begin());
 
     space_->copyFromReals(sample, sample_config);
     return true;
@@ -102,7 +105,7 @@ std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filenam
     for (unsigned int i = 0; i < n; i++) {
         if (!getline(file, line))
             break;
-        vec[i] = std::stod(line);
+        vec[i] = std::stof(line);
     }
     file.close();
     return vec;

@@ -10,6 +10,7 @@ add_library(AtlasMPNet SHARED
         RRTConnect.cpp
         MPNetSampler.cpp
         MPNetPlanner.cpp
+        RobotHelper.cpp
         )
 set_target_properties(AtlasMPNet PROPERTIES
         COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}"
