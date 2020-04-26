@@ -49,7 +49,8 @@ double RobotHelper::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::ve
         q = J.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(p);
         double probe_norm = 0;
         std::vector<OpenRAVE::dReal> probe(TSRJointVals);
-        for (double stepsize = 1; stepsize > 1e-4; stepsize /= 2)
+        double stepsize;
+        for (stepsize = 1; stepsize > 1e-4; stepsize /= 2)
         {
             for (int i = 0; i < numdof; i++)
                 probe[i] = TSRJointVals[i] - stepsize * q[i];
@@ -61,6 +62,8 @@ double RobotHelper::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::ve
         }
         squaredNorm = probe_norm;
         TSRJointVals = probe;
+        if (stepsize <= 1e-4)
+            break;
     }
     return sqrt(squaredNorm);
 }

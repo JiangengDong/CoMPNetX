@@ -138,7 +138,7 @@ robot.SetActiveManipulator(1)
 
 ### when loading files
 esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
-ompl_planner = OMPLInterface(orEnv, robot, loglevel=0)
+ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
 planner_parameter.solver_parameter.type = "mpnet"
 planner_parameter.solver_parameter.time = 20
@@ -162,8 +162,8 @@ for e in range(0, 19):
         print("Object order: %s" % str(obj_order))
 
         for i in range(0, len(obj_order)):
-            if obj_order[i] not in ["teakettle"]:
-                continue
+            # if obj_order[i] not in ["teakettle"]:
+            #     continue
             print("Planning for %s ..." % obj_order[i])
             T0_w = esc_dict[env_no][s_no][obj_order[i]]["T0_w"]
             T0_w2 = esc_dict[env_no]["targets"][obj_order[i]]["T0_w2"]
@@ -180,45 +180,46 @@ for e in range(0, 19):
             robot.Grab(targobject[obj_names.index(obj_order[i])])
             time.sleep(0.05)  # draw the scene
 
-            planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
             try:
+                planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
                 planner_parameter.mpnet_parameter.model_path = "../temp/ctpnet_annotated_gpu4.pt"
                 planner_parameter.mpnet_parameter.voxel_path = "../temp/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
                 planner_parameter.mpnet_parameter.ohot_path = "../temp/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
+
+                resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
+                stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
+                if resp is True:
+                    print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
+                    robot.GetController().SetPath(traj)
+                    robot.WaitForController(0)
+                elif resp is False:
+                    print("Failed to find a solution.")
+                    t_time = 1e3
+                elif resp is None:
+                    print("Start or goal is invalid!")
+                    t_time = -1
+                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
+
             except IOError:
-                continue
-            resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
-            stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
-            if resp is True:
-                print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
-                robot.GetController().SetPath(traj)
+                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": -1})
+
+            finally:
+                robot.SetActiveDOFs(arm1dofs)
+                robot.SetActiveDOFValues(goalik)
+                robot.ReleaseAllGrabbed()
                 robot.WaitForController(0)
-            elif resp is False:
-                print("Failed to find a solution.")
-                t_time = 1e3
-            elif resp is None:
-                print("Start or goal is invalid!")
-                t_time = -1
-            esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
-            with open("../data/result5/esc_dict_atlasmpnet.csv", "a") as f:
-                f.write("%f\n" % t_time)
+                time.sleep(0.05)
 
-            robot.SetActiveDOFs(arm1dofs)
-            robot.SetActiveDOFValues(goalik)
-            robot.ReleaseAllGrabbed()
-            robot.WaitForController(0)
-            time.sleep(0.05)
-
-            # clean up
-            idx = obj_names.index(obj_order[i])
-            if obj_order[i] == "teakettle" or obj_order[i] == "plasticmug":
-                T0_object = T0_w2
-                targobject[idx].SetTransform(np.array(T0_object[0:3][:, 0:4]))
-                print("----------move " + obj_order[i])
-            else:
-                orEnv.Remove(targobject[idx])
-                print("----------remove " + obj_order[i])
-            time.sleep(0.05)
+                # clean up
+                idx = obj_names.index(obj_order[i])
+                if obj_order[i] == "teakettle" or obj_order[i] == "plasticmug":
+                    T0_object = T0_w2
+                    targobject[idx].SetTransform(np.array(T0_object[0:3][:, 0:4]))
+                    print("----------move " + obj_order[i])
+                else:
+                    orEnv.Remove(targobject[idx])
+                    print("----------remove " + obj_order[i])
+                time.sleep(0.05)
         print("")
         stat.printStat()
         with open("../data/result5/esc_dict_atlasmpnet.p", "wb") as f:
