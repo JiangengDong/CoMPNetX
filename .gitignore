@@ -7,7 +7,7 @@ build/
 /src/deprecated/
 /data/
 /plugins/
-/temp/
+/models/
 
 ##### C++ #####
 # Prerequisites

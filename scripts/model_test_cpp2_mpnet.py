@@ -182,9 +182,9 @@ for e in range(0, 19):
 
             try:
                 planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
-                planner_parameter.mpnet_parameter.model_path = "../temp/ctpnet_annotated_gpu4.pt"
-                planner_parameter.mpnet_parameter.voxel_path = "../temp/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
-                planner_parameter.mpnet_parameter.ohot_path = "../temp/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
+                planner_parameter.mpnet_parameter.model_path = "../models/ctpnet_annotated_gpu4.pt"
+                planner_parameter.mpnet_parameter.voxel_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
+                planner_parameter.mpnet_parameter.ohot_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
 
                 resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
                 stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
