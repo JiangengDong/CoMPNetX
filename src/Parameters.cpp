@@ -359,13 +359,16 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
-                if (key == "model_path")
-                    value >> model_path;
+                if (key == "pnet_path")
+                    value >> pnet_path;
                 else if (key == "voxel_path") {
                     value >> voxel_path;
                 }
                 else if (key == "ohot_path") {
                     value >> ohot_path;
+                }
+                else if (key == "dnet_path") {
+                    value >> dnet_path;
                 }
                 else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
@@ -387,9 +390,10 @@ bool MPNetParameter::endElement(std::string const &name) {
 
 bool MPNetParameter::serialize(std::ostream &O) const {
     O << "<" << _tag_name
-      << " model_path=\"" << model_path << "\"" 
+      << " pnet_path=\"" << pnet_path << "\""
       << " voxel_path=\"" << voxel_path << "\""
       << " ohot_path=\"" << ohot_path << "\""
+      << " dnet_path=\"" << dnet_path << "\""
       << "/>";
     return true;
 }
@@ -508,5 +512,3 @@ bool Parameters::endElement(std::string const &name) {
                !mpnet_parameter_.endElement(name) &&
                PlannerParameters::endElement(name);
 }
-
-

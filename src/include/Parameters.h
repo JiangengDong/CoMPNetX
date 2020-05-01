@@ -154,9 +154,10 @@ namespace AtlasMPNet {
 
     class MPNetParameter : public SimpleXMLReader {
     public:
-        std::string model_path;
+        std::string pnet_path;
         std::string voxel_path;
         std::string ohot_path;
+        std::string dnet_path;
 
         MPNetParameter() : SimpleXMLReader("mpnet") {}
 

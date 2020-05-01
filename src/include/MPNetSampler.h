@@ -22,7 +22,7 @@ namespace AtlasMPNet {
         typedef std::shared_ptr<MPNetSampler> Ptr;
         MPNetSampler(const ompl::base::StateSpace *space,
                      OpenRAVE::RobotBasePtr robot,
-                     std::vector<TaskSpaceRegionChain::Ptr> tsrchains, 
+                     std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
                      MPNetParameter param);
 
         bool sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample);
@@ -39,8 +39,10 @@ namespace AtlasMPNet {
 
     private:
         torch::jit::script::Module pnet_;
+        torch::jit::script::Module dnet_;
         torch::Tensor ohot_;
         torch::Tensor voxel_;
+
         unsigned int dim_;  // dimension of config
         std::vector<double> _scale_factor, _lower_limits, _upper_limits;
         OpenRAVE::RobotBasePtr robot_;

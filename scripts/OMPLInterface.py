@@ -389,31 +389,44 @@ class TSRChain(object):
 
 
 class MPNetParameter(object):
-    Template_str = """<mpnet model_path="%s" voxel_path="%s" ohot_path="%s"/>\n"""
+    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s"/>\n"""
 
-    def __init__(self, model_path="", voxel_path="", ohot_path=""):
-        self._model_path = ""
+    def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path=""):
+        self._pnet_path = ""
+        self._dnet_path = ""
         self._voxel_path = ""
         self._ohot_path = ""
 
-        self.model_path = model_path
-        self.voxel_path = voxel_path 
+        self.pnet_path = pnet_path
+        self.dnet_path = dnet_path
+        self.voxel_path = voxel_path
         self.ohot_path = ohot_path
 
     def __str__(self):
-        return MPNetParameter.Template_str % (self._model_path, self._voxel_path, self._ohot_path)
-    
-    @property
-    def model_path(self):
-        return self._model_path
+        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path)
 
-    @model_path.setter
-    def model_path(self, value):
-        model_path = os.path.abspath(value)
-        if not os.path.exists(model_path):
+    @property
+    def pnet_path(self):
+        return self._pnet_path
+
+    @pnet_path.setter
+    def pnet_path(self, value):
+        pnet_path = os.path.abspath(value)
+        if not os.path.exists(pnet_path):
             raise IOError("%s not found" % value)
-        self._model_path = model_path
-    
+        self._pnet_path = pnet_path
+
+    @property
+    def dnet_path(self):
+        return self._dnet_path
+
+    @dnet_path.setter
+    def dnet_path(self, value):
+        dnet_path = os.path.abspath(value)
+        if not os.path.exists(dnet_path):
+            raise IOError("%s not found" % value)
+        self._dnet_path = dnet_path
+
     @property
     def voxel_path(self):
         return self._voxel_path
@@ -424,7 +437,7 @@ class MPNetParameter(object):
         if not os.path.exists(voxel_path):
             raise IOError("%s not found" % value)
         self._voxel_path = voxel_path
-    
+
     @property
     def ohot_path(self):
         return self._ohot_path
@@ -469,7 +482,7 @@ class PlannerParameter(object):
     def clearTSRChains(self):
         self.TSRChains = []
         return self
-    
+
     @property
     def mpnet_parameter(self):
         return self._mpnet_parameter

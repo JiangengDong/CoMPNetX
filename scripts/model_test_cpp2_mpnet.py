@@ -141,10 +141,11 @@ esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
 ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
 planner_parameter.solver_parameter.type = "mpnet"
+planner_parameter.constraint_parameter.type = "tangent_bundle"
 planner_parameter.solver_parameter.time = 20
 
 stat = DatasetStat(19, 10)
-for e in range(0, 19):
+for e in range(17, 19):
     for s in range(110, 120):  # 30
         env_no = "env_" + str(e)
         s_no = "s_" + str(s)
@@ -182,7 +183,8 @@ for e in range(0, 19):
 
             try:
                 planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
-                planner_parameter.mpnet_parameter.model_path = "../models/ctpnet_annotated_gpu4.pt"
+                planner_parameter.mpnet_parameter.pnet_path= "../models/ctpnet_annotated_gpu4.pt"
+                planner_parameter.mpnet_parameter.dnet_path= "../models/dnet_annotated_gpu.pt"
                 planner_parameter.mpnet_parameter.voxel_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
                 planner_parameter.mpnet_parameter.ohot_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
 
@@ -190,14 +192,14 @@ for e in range(0, 19):
                 stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
                 if resp is True:
                     print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
-                    robot.GetController().SetPath(traj)
-                    robot.WaitForController(0)
+                    # robot.GetController().SetPath(traj)
                 elif resp is False:
                     print("Failed to find a solution.")
                     t_time = 1e3
                 elif resp is None:
                     print("Start or goal is invalid!")
                     t_time = -1
+                robot.WaitForController(0)
                 esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
             except IOError:
@@ -222,6 +224,6 @@ for e in range(0, 19):
                 time.sleep(0.05)
         print("")
         stat.printStat()
-        with open("../data/result5/esc_dict_atlasmpnet.p", "wb") as f:
-            pickle.dump(esc_dict, f)
+        with open("../data/result7/esc_dict_tbmpnet_env%d.p"%e, "wb") as f:
+            pickle.dump({env_no:esc_dict[env_no]}, f)
     stat.export()
