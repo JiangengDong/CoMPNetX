@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import sys
+import time
 from collections import Iterable
 
 import openravepy as orpy
@@ -511,15 +512,16 @@ class OMPLInterface:
 
         with self.env, self.robot:
             if not self.planner.InitPlan(self.robot, params):
-                return None, None, None
+                print("Start or goal is invalid!")
+                return None, np.nan, None
+
             traj = orpy.RaveCreateTrajectory(self.env, '')
             status = self.planner.PlanPath(traj)
             if status == orpy.PlannerStatus.HasSolution:
-                resp = True
-                time = float(self.planner.SendCommand("GetPlanningTime"))
+                t_time = float(self.planner.SendCommand("GetPlanningTime"))
                 orpy.planningutils.RetimeTrajectory(traj)
+                print("Found a solution after %f seconds." % t_time)
+                return True, t_time, traj
             else:
-                resp = False
-                time = -1
-
-        return resp, time, traj
+                print("Failed to find a solution. ")
+                return False, np.inf, None

@@ -63,20 +63,19 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     auto pnet_input = torch::cat({voxel_, ohot_, toTensor(robot_start), toTensor(robot_goal)}, 1).to(at::kCUDA);
     auto pnet_output = pnet_.forward({pnet_input}).toTensor().to(at::kCPU);
 
-    auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
-    auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
-    auto dnet_output = dnet_.forward({dnet_input}).toTensor();
-    dnet_output.backward();
-    auto grad = pnet_output_temp.grad();
-    torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-    if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
-        pnet_output -= 0.4 * grad;
-    }
+    // auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
+    // auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
+    // auto dnet_output = dnet_.forward({dnet_input}).toTensor();
+    // dnet_output.backward();
+    // auto grad = pnet_output_temp.grad();
+    // torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
+    // if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
+    //     pnet_output -= 0.4 * grad;
+    // }
 
     auto robot_sample = toVector(pnet_output);
-    robot_helpers_[0].EnforceBound(robot_sample);
-
-    robot_->SetActiveDOFValues(robot_sample, 0);
+    EnforceBound(robot_sample);
+    robot_->SetActiveDOFValues(robot_sample);
     OpenRAVE::Transform Ttsr, Trobot;
     unsigned int offset = dof_robot_;
     for(unsigned int i=0; i<tsrchains_.size(); i++){
@@ -122,4 +121,13 @@ std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filenam
     }
     file.close();
     return vec;
+}
+
+bool AtlasMPNet::MPNetSampler::EnforceBound(std::vector<double> &val) {
+    for (unsigned int i=0; i< dof_robot_; i++) {
+        if (val[i]<_lower_limits[i])
+            val[i] = _lower_limits[i];
+        else if (val[i] > _upper_limits[i])
+            val[i] = _upper_limits[i];
+    }
 }

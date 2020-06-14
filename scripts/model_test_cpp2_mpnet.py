@@ -11,57 +11,6 @@ import openravepy as orpy
 from OMPLInterface import OMPLInterface, TSRChain, PlannerParameter, RPY2Transform
 
 
-class DatasetStat:
-    objName2Index = {"juice": 0, "fuze_bottle": 1, "coke_can": 2, "plasticmug": 3, "teakettle": 4}
-
-    def __init__(self, N_e, N_s):
-        self.time = np.zeros(shape=(N_e, N_s, 5), dtype=np.float64)
-        self.time_square = np.zeros(shape=(N_e, N_s, 5), dtype=np.float64)
-        self.success_count = np.zeros(shape=(5,), dtype=np.float)
-        self.total_count = np.zeros(shape=(5,), dtype=np.float)
-        self.invalid_count = np.zeros(shape=(5,), dtype=np.float)
-
-    def recordOnce(self, e, s, obj_name, status, time):
-        i = DatasetStat.objName2Index.get(obj_name, None)
-        if i is not None:
-            self.success_count[i] += 1 if status is True else 0
-            self.total_count[i] += 1 if status is not None else 0
-            self.invalid_count[i] += 1 if status is None else 0
-            self.time[e, s, i] = time if status is True else 0
-            self.time_square[e, s, i] = time ** 2 if status is True else 0
-
-    def stat(self, obj_name=" "):
-        obj_index = DatasetStat.objName2Index.get(obj_name, None)
-        if obj_index is None:
-            n = np.sum(self.total_count)
-            n_success = np.sum(self.success_count)
-            total_time = np.sum(self.time.flat)
-            total_time_square = np.sum(self.time_square.flat)
-        else:
-            n = self.total_count[obj_index]
-            n_success = self.success_count[obj_index]
-            total_time = np.sum(self.time[:, :, obj_index].flat)
-            total_time_square = np.sum(self.time_square[:, :, obj_index].flat)
-        success_rate = float(n_success / n)
-        mu = float(total_time / n_success)
-        sigma = float(np.sqrt(total_time_square / n_success - mu ** 2))
-        return success_rate, mu, sigma
-
-    def printStat(self):
-        r, mu, sigma = self.stat()
-        print "Success rate: %f" % r
-        print "Average planning time: %f" % mu
-        print "Standard deviation: %f" % sigma
-        for obj in DatasetStat.objName2Index.keys():
-            r, mu, sigma = self.stat(obj)
-            print "\tSuccess rate for %s: %f" % (obj, r)
-            print "\tAverage planning time for %s: %f" % (obj, mu)
-            print "\tStandard deviation for %s: %f" % (obj, sigma)
-
-    def export(self):
-        np.savez("../data/ompl_statistics.npz", time=self.time, success=self.success_count, invalid=self.invalid_count, total=self.total_count)
-
-
 def setup_esc(orEnv, targObj, obj_names, e_no, s_no, esc_dict):
     env_no = "env_" + str(e_no)
     sc_no = "s_" + str(s_no)
@@ -142,10 +91,10 @@ ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
 planner_parameter.solver_parameter.type = "mpnet"
 planner_parameter.constraint_parameter.type = "tangent_bundle"
-planner_parameter.solver_parameter.time = 20
+planner_parameter.solver_parameter.time = 25
 
-stat = DatasetStat(19, 10)
-for e in range(17, 19):
+e_start = int(input("Start from env: "))
+for e in range(e_start, 19):
     for s in range(110, 120):  # 30
         env_no = "env_" + str(e)
         s_no = "s_" + str(s)
@@ -163,8 +112,6 @@ for e in range(17, 19):
         print("Object order: %s" % str(obj_order))
 
         for i in range(0, len(obj_order)):
-            # if obj_order[i] not in ["teakettle"]:
-            #     continue
             print("Planning for %s ..." % obj_order[i])
             T0_w = esc_dict[env_no][s_no][obj_order[i]]["T0_w"]
             T0_w2 = esc_dict[env_no]["targets"][obj_order[i]]["T0_w2"]
@@ -189,21 +136,12 @@ for e in range(17, 19):
                 planner_parameter.mpnet_parameter.ohot_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
 
                 resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
-                stat.recordOnce(e, s - 110, obj_order[i], resp, t_time)
-                if resp is True:
-                    print("Found a solution for %s after %f seconds." % (obj_order[i], t_time))
-                    # robot.GetController().SetPath(traj)
-                elif resp is False:
-                    print("Failed to find a solution.")
-                    t_time = 1e3
-                elif resp is None:
-                    print("Start or goal is invalid!")
-                    t_time = -1
+                time.sleep(0.1)
                 robot.WaitForController(0)
-                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
             except IOError:
-                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": -1})
+                time.sleep(0.1)
+                t_time = np.nan
 
             finally:
                 robot.SetActiveDOFs(arm1dofs)
@@ -211,6 +149,8 @@ for e in range(17, 19):
                 robot.ReleaseAllGrabbed()
                 robot.WaitForController(0)
                 time.sleep(0.05)
+
+                esc_dict[env_no][s_no][obj_order[i]].update({"time_pick_place": t_time})
 
                 # clean up
                 idx = obj_names.index(obj_order[i])
@@ -220,10 +160,8 @@ for e in range(17, 19):
                     print("----------move " + obj_order[i])
                 else:
                     orEnv.Remove(targobject[idx])
-                    print("----------remove " + obj_order[i])
+                    print("--------remove " + obj_order[i])
                 time.sleep(0.05)
         print("")
-        stat.printStat()
-        with open("../data/result7/esc_dict_tbmpnet_env%d.p"%e, "wb") as f:
-            pickle.dump({env_no:esc_dict[env_no]}, f)
-    stat.export()
+    with open("../data/result8-CoMPNet-TB-bartender/env%d.p"%e, "wb") as f:
+        pickle.dump({env_no:esc_dict[env_no]}, f)

@@ -37,16 +37,16 @@
 #include "MPNetPlanner.h"
 
 #include <ompl/base/goals/GoalSampleableRegion.h>
+#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
+#include <ompl/base/spaces/constraint/ProjectedStateSpace.h>
 #include <ompl/tools/config/SelfConfig.h>
 #include <ompl/util/String.h>
-#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
 
 ompl::geometric::MPNetPlanner::MPNetPlanner(const base::SpaceInformationPtr &si,
                                             const OpenRAVE::RobotBasePtr &robot,
-                                            const std::vector<AtlasMPNet::TaskSpaceRegionChain::Ptr> &tsrchains, 
+                                            const std::vector<AtlasMPNet::TaskSpaceRegionChain::Ptr> &tsrchains,
                                             AtlasMPNet::MPNetParameter param)
-    : base::Planner(si, "MPNetPlanner")
-{
+    : base::Planner(si, "MPNetPlanner") {
     specs_.recognizedGoal = base::GOAL_SAMPLEABLE_REGION;
     specs_.directed = true;
 
@@ -57,13 +57,11 @@ ompl::geometric::MPNetPlanner::MPNetPlanner(const base::SpaceInformationPtr &si,
     sampler_ = std::make_shared<AtlasMPNet::MPNetSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
 }
 
-ompl::geometric::MPNetPlanner::~MPNetPlanner()
-{
+ompl::geometric::MPNetPlanner::~MPNetPlanner() {
     freeMemory();
 }
 
-void ompl::geometric::MPNetPlanner::setup()
-{
+void ompl::geometric::MPNetPlanner::setup() {
     Planner::setup();
     tools::SelfConfig sc(si_, getName());
     sc.configurePlannerRange(maxDistance_);
@@ -76,26 +74,21 @@ void ompl::geometric::MPNetPlanner::setup()
     tGoal_->setDistanceFunction([this](const Motion *a, const Motion *b) { return distanceFunction(a, b); });
 }
 
-void ompl::geometric::MPNetPlanner::freeMemory()
-{
+void ompl::geometric::MPNetPlanner::freeMemory() {
     std::vector<Motion *> motions;
 
-    if (tStart_)
-    {
+    if (tStart_) {
         tStart_->list(motions);
-        for (auto &motion : motions)
-        {
+        for (auto &motion : motions) {
             if (motion->state != nullptr)
                 si_->freeState(motion->state);
             delete motion;
         }
     }
 
-    if (tGoal_)
-    {
+    if (tGoal_) {
         tGoal_->list(motions);
-        for (auto &motion : motions)
-        {
+        for (auto &motion : motions) {
             if (motion->state != nullptr)
                 si_->freeState(motion->state);
             delete motion;
@@ -103,8 +96,7 @@ void ompl::geometric::MPNetPlanner::freeMemory()
     }
 }
 
-void ompl::geometric::MPNetPlanner::clear()
-{
+void ompl::geometric::MPNetPlanner::clear() {
     Planner::clear();
     freeMemory();
     if (tStart_)
@@ -115,21 +107,18 @@ void ompl::geometric::MPNetPlanner::clear()
     distanceBetweenTrees_ = std::numeric_limits<double>::infinity();
 }
 
-ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion)
-{
+ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion) {
     Motion *nmotion = tree->nearest(rmotion);
     // this is designed for AtlasStateSpace only.
     std::vector<ompl::base::State *> stateList;
-    bool reach = si_->getStateSpace()->as<ompl::base::AtlasStateSpace>()->discreteGeodesic(nmotion->state, rmotion->state, false, &stateList);
+    bool reach = si_->getStateSpace()->as<ompl::base::ConstrainedStateSpace>()->discreteGeodesic(nmotion->state, rmotion->state, false, &stateList);
 
-    if (stateList.empty() // did not traverse at all
-        || si_->equalStates(nmotion->state, stateList.back()))
-    { // did not make a progress
+    if (stateList.empty()                                        // did not traverse at all
+        || si_->equalStates(nmotion->state, stateList.back())) { // did not make a progress
         return TRAPPED;
     }
     Motion *motion = nullptr;
-    for (auto dstate : stateList)
-    {
+    for (auto dstate : stateList) {
         if (!si_->satisfiesBounds(dstate))
             break;
         motion = new Motion(si_);
@@ -144,44 +133,39 @@ ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree
     return reach ? REACHED : ADVANCED;
 }
 
-ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::PlannerTerminationCondition &ptc)
-{
+ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::PlannerTerminationCondition &ptc) {
     checkValidity();
 
     Motion *start_motion, *goal_motion;
     auto *goal = dynamic_cast<base::GoalSampleableRegion *>(pdef_->getGoal().get());
 
-    if (goal == nullptr)
-    {
+    if (goal == nullptr) {
         OMPL_ERROR("%s: Unknown type of goal", getName().c_str());
         return base::PlannerStatus::UNRECOGNIZED_GOAL_TYPE;
     }
 
-    while (const base::State *st = pis_.nextStart())
-    {
-        start_motion = new Motion(si_);
-        si_->copyState(start_motion->state, st);
-        start_motion->root = start_motion->state;
-        tStart_->add(start_motion);
+    while (const base::State *st = pis_.nextStart()) {
+        Motion *motion = new Motion(si_);
+        si_->copyState(motion->state, st);
+        motion->root = motion->state;
+        tStart_->add(motion);
+        // save the start motion for Pnet
+        start_motion = motion;
     }
 
-    if (tStart_->size() == 0)
-    {
+    if (tStart_->size() == 0) {
         OMPL_ERROR("%s: Motion planning start tree could not be initialized!", getName().c_str());
         return base::PlannerStatus::INVALID_START;
     }
 
-    if (!goal->couldSample())
-    {
+    if (!goal->couldSample()) {
         OMPL_ERROR("%s: Insufficient states in sampleable goal region", getName().c_str());
         return base::PlannerStatus::INVALID_GOAL;
     }
 
-    OMPL_INFORM("%s: Starting planning with %d states already in datastructure", getName().c_str(),
-                (int)(tStart_->size() + tGoal_->size()));
+    OMPL_INFORM("%s: Starting planning with %d states already in datastructure", getName().c_str(), (int)(tStart_->size() + tGoal_->size()));
 
     TreeGrowingInfo tgi{};
-    tgi.xstate = si_->allocState();
 
     Motion *approxsol = nullptr;
     double approxdif = std::numeric_limits<double>::infinity();
@@ -190,77 +174,52 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
     bool startTree = true;
     bool solved = false;
 
-    while (!ptc)
-    {
-        TreeData &tree = startTree ? tStart_ : tGoal_;
-        TreeData &otherTree = startTree ? tGoal_ : tStart_;
+    while (!ptc) {
+        TreeData &treeA = startTree ? tStart_ : tGoal_;
+        TreeData &treeB = startTree ? tGoal_ : tStart_;
+        Motion *&motionA = startTree ? start_motion : goal_motion;
+        Motion *&motionB = startTree ? goal_motion : start_motion;
         tgi.start = startTree;
         startTree = !startTree;
 
-        if (tGoal_->size() == 0 || pis_.getSampledGoalsCount() < tGoal_->size() / 2)
-        {
+        if (tGoal_->size() == 0 || pis_.getSampledGoalsCount() < tGoal_->size() / 2) {
             const base::State *st = tGoal_->size() == 0 ? pis_.nextGoal(ptc) : pis_.nextGoal();
-            if (st != nullptr)
-            {
-                goal_motion = new Motion(si_);
-                si_->copyState(goal_motion->state, st);
-                goal_motion->root = goal_motion->state;
-                tGoal_->add(goal_motion);
+            if (st != nullptr) {
+                Motion *motion = new Motion(si_);
+                si_->copyState(motion->state, st);
+                motion->root = motion->state;
+                tGoal_->add(motion);
+                // save the goal motion for Pnet
+                goal_motion = motion;
             }
 
-            if (tGoal_->size() == 0)
-            {
+            if (tGoal_->size() == 0) {
                 OMPL_ERROR("%s: Unable to sample any valid states for goal tree", getName().c_str());
                 break;
             }
         }
 
         /* sample random state */
-        GrowState gs;
-        if (!startTree)
-        {
-            sampler_->sample(start_motion->state, goal_motion->state, rstate);
-            gs = growTree(tree, tgi, rmotion);
-            if(gs != TRAPPED) 
-                start_motion = tgi.xmotion;
-        }
-        else
-        {
-            sampler_->sample(goal_motion->state, start_motion->state, rstate);
-            gs = growTree(tree, tgi, rmotion);
-            if(gs != TRAPPED) 
-                goal_motion = tgi.xmotion;
-        }
+        sampler_->sample(motionA->state, motionB->state, rstate);
+        GrowState gs = growTree(treeA, tgi, rmotion);
 
-        if (gs != TRAPPED)
-        {
-
+        if (gs != TRAPPED) {
+            motionA = tgi.xmotion;
             /* attempt to connect trees */
-
-            /* if reached, it means we used rstate directly, no need top copy again */
-            if (gs != REACHED)
-                si_->copyState(rstate, tgi.xstate);
-
             tgi.start = startTree;
-            GrowState gsc = growTree(otherTree, tgi, rmotion);
+            GrowState gsc = growTree(treeB, tgi, motionA);
             if (gsc != TRAPPED) {
-                if (!startTree) {
-                    start_motion = tgi.xmotion;
-                } else {
-                    goal_motion = tgi.xmotion;
-                }
+                motionB = tgi.xmotion;
             }
 
             /* update distance between trees */
-            const double newDist = tree->getDistanceFunction()(start_motion, goal_motion);
-            if (newDist < distanceBetweenTrees_)
-            {
+            const double newDist = treeA->getDistanceFunction()(start_motion, goal_motion);
+            if (newDist < distanceBetweenTrees_) {
                 distanceBetweenTrees_ = newDist;
                 // OMPL_INFORM("Estimated distance to go: %f", distanceBetweenTrees_);
             }
             /* if we connected the trees in a valid way (start and goal pair is valid)*/
-            if (gsc == REACHED && goal->isStartGoalPairValid(start_motion->root, goal_motion->root))
-            {
+            if (gsc == REACHED && goal->isStartGoalPairValid(start_motion->root, goal_motion->root)) {
                 // it must be the case that either the start tree or the goal tree has made some progress
                 // so one of the parents is not nullptr. We go one step 'back' to avoid having a duplicate state
                 // on the solution path
@@ -274,16 +233,14 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
                 /* construct the solution path */
                 Motion *solution = start_motion;
                 std::vector<Motion *> mpath1;
-                while (solution != nullptr)
-                {
+                while (solution != nullptr) {
                     mpath1.push_back(solution);
                     solution = solution->parent;
                 }
 
                 solution = goal_motion;
                 std::vector<Motion *> mpath2;
-                while (solution != nullptr)
-                {
+                while (solution != nullptr) {
                     mpath2.push_back(solution);
                     solution = solution->parent;
                 }
@@ -298,18 +255,14 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
                 pdef_->addSolutionPath(path, false, 0.0, getName());
                 solved = true;
                 break;
-            }
-            else
-            {
+            } else {
                 // We didn't reach the goal, but if we were extending the start
                 // tree, then we can mark/improve the approximate path so far.
-                if (!startTree)
-                {
+                if (!startTree) {
                     // We were working from the startTree.
                     double dist = 0.0;
                     goal->isSatisfied(tgi.xmotion->state, &dist);
-                    if (dist < approxdif)
-                    {
+                    if (dist < approxdif) {
                         approxdif = dist;
                         approxsol = tgi.xmotion;
                     }
@@ -318,19 +271,16 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
         }
     }
 
-    si_->freeState(tgi.xstate);
     si_->freeState(rstate);
     delete rmotion;
 
     OMPL_INFORM("%s: Created %u states (%u start + %u goal)", getName().c_str(), tStart_->size() + tGoal_->size(),
                 tStart_->size(), tGoal_->size());
 
-    if (approxsol && !solved)
-    {
+    if (approxsol && !solved) {
         /* construct the solution path */
         std::vector<Motion *> mpath;
-        while (approxsol != nullptr)
-        {
+        while (approxsol != nullptr) {
             mpath.push_back(approxsol);
             approxsol = approxsol->parent;
         }
@@ -345,20 +295,17 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
     return solved ? base::PlannerStatus::EXACT_SOLUTION : base::PlannerStatus::TIMEOUT;
 }
 
-void ompl::geometric::MPNetPlanner::getPlannerData(base::PlannerData &data) const
-{
+void ompl::geometric::MPNetPlanner::getPlannerData(base::PlannerData &data) const {
     Planner::getPlannerData(data);
 
     std::vector<Motion *> motions;
     if (tStart_)
         tStart_->list(motions);
 
-    for (auto &motion : motions)
-    {
+    for (auto &motion : motions) {
         if (motion->parent == nullptr)
             data.addStartVertex(base::PlannerDataVertex(motion->state, 1));
-        else
-        {
+        else {
             data.addEdge(base::PlannerDataVertex(motion->parent->state, 1), base::PlannerDataVertex(motion->state, 1));
         }
     }
@@ -367,12 +314,10 @@ void ompl::geometric::MPNetPlanner::getPlannerData(base::PlannerData &data) cons
     if (tGoal_)
         tGoal_->list(motions);
 
-    for (auto &motion : motions)
-    {
+    for (auto &motion : motions) {
         if (motion->parent == nullptr)
             data.addGoalVertex(base::PlannerDataVertex(motion->state, 2));
-        else
-        {
+        else {
             // The edges in the goal tree are reversed to be consistent with start tree
             data.addEdge(base::PlannerDataVertex(motion->state, 2), base::PlannerDataVertex(motion->parent->state, 2));
         }
