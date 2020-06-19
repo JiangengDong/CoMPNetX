@@ -5,7 +5,7 @@ build/
 .vscode/
 .devcontainer/
 
-/src/deprecated/
+deprecated/
 /data/
 /plugins/
 /models/

@@ -34,10 +34,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "StateValidityChecker.h"
 
-#include <utility>
-#include <openrave/openrave.h>
-#include <ompl/base/StateValidityChecker.h>
 #include <boost/make_shared.hpp>
+#include <ompl/base/StateValidityChecker.h>
+#include <openrave/openrave.h>
+#include <utility>
 
 #include "TaskSpaceRegionChain.h"
 
@@ -45,15 +45,14 @@ using namespace AtlasMPNet;
 
 StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr &si,
                                            const OpenRAVE::RobotBasePtr &robot,
-                                           const std::vector<TaskSpaceRegionChain::Ptr>& tsr_chains) :
-        ompl::base::StateValidityChecker(si),
-        _state_space(si->getStateSpace()),
-        _env(robot->GetEnv()),
-        _robot(robot),
-        _robot_dof(robot->GetActiveDOF()),
-        _tsr_chains(tsr_chains),
-        _num_tsr_chains(tsr_chains.size()) {
-    for (const auto &tsr_chain: _tsr_chains) {
+                                           const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains) : ompl::base::StateValidityChecker(si),
+                                                                                                       _state_space(si->getStateSpace()),
+                                                                                                       _env(robot->GetEnv()),
+                                                                                                       _robot(robot),
+                                                                                                       _robot_dof(robot->GetActiveDOF()),
+                                                                                                       _tsr_chains(tsr_chains),
+                                                                                                       _num_tsr_chains(tsr_chains.size()) {
+    for (const auto &tsr_chain : _tsr_chains) {
         _tsr_dofs.emplace_back(tsr_chain->GetNumDOF());
     }
 }
@@ -62,19 +61,19 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
     std::vector<double> values;
     _state_space->copyToReals(values, state);
     // check state value
-    for (double v: values) {
+    for (double v : values) {
         if (std::isnan(v)) {
-                    RAVELOG_WARN("Invalid value in state.\n");
+            RAVELOG_WARN("Invalid value in state.\n");
             return false;
         }
     }
     // apply robot joint values
     int offset = 0;
-    std::vector<double> robot_values(values.begin()+offset, values.begin() + offset + _robot_dof);
+    std::vector<double> robot_values(values.begin() + offset, values.begin() + offset + _robot_dof);
     _robot->SetActiveDOFValues(robot_values, checklimits);
     offset += _robot_dof;
     // apply tsr joint values
-    for (int i=0;i<_num_tsr_chains;i++) {
+    for (int i = 0; i < _num_tsr_chains; i++) {
         std::vector<double> tsr_values(values.begin() + offset, values.begin() + offset + _tsr_dofs[i]);
         _tsr_chains[i]->SetActiveDOFValues(tsr_values);
         _tsr_chains[i]->ApplyMimicValuesToMimicBody(tsr_values);
@@ -84,9 +83,6 @@ bool StateValidityChecker::computeFk(const ompl::base::State *state, uint32_t ch
 }
 
 bool StateValidityChecker::isValid(const ompl::base::State *state) const {
-    bool valid = _state_space->satisfiesBounds(state)
-            && computeFk(state, OpenRAVE::KinBody::CLA_Nothing)
-            && !_env->CheckCollision(_robot)
-            && !_robot->CheckSelfCollision();
+    bool valid = _state_space->satisfiesBounds(state) && computeFk(state, OpenRAVE::KinBody::CLA_Nothing) && !_env->CheckCollision(_robot) && !_robot->CheckSelfCollision();
     return valid;
 }

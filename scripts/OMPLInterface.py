@@ -489,6 +489,17 @@ class PlannerParameter(object):
         return self._mpnet_parameter
 
 
+class EmptyContext(object):
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, trace):
+        pass
+
+
 class OMPLInterface:
     def __init__(self, env, robot, loglevel=2):
         self.env = env
@@ -511,6 +522,7 @@ class OMPLInterface:
         params.SetExtraParameters(str(planner_params))
 
         with self.env, self.robot:
+        # with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None, np.nan, None

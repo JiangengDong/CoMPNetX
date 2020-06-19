@@ -51,13 +51,13 @@ def main(folder, task):
         scene_range = list(range(110, 120))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle")
     elif task == "kitchen":
-        env_range = list(range(0, 66))
-        scene_range = list(range(27, 31))
-        obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
-    elif task == "new kitchen":
-        env_range = list(range(0, 10))
+        env_range = list(range(0, 5))
         scene_range = list(range(0, 5))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
+    elif task == "kitchen-v2":
+        env_range = list(range(0, 5))
+        scene_range = list(range(0, 5))
+        obj_order = ("juice", "fuze_bottle", "coke_can", "mugblack2", "pitcher", "mugblack")
     else:
         raise NotImplementedError
 
@@ -68,6 +68,6 @@ def main(folder, task):
 
 
 if __name__ == "__main__":
-    folder = "data/result13"
-    task = "new kitchen"
+    folder = "data/result/result15"
+    task = "kitchen"
     main(folder, task)
