@@ -386,15 +386,15 @@ def main():
     visible = False
     coll_checker = "ode"
     task = "kitchen"
-    output_folder = "data/result/result24"
+    output_folder = "data/result/result25"
     message = "Shrink pitcher."
 
     # env_range = list(range(0, 5))
     # scene_range = list(range(0, 5))
     # setup_file = "data/experiment_setup/esc_dict_door5_5_p0.9.p"
-    env_range = list(range(23, 70))
+    env_range = list(range(45, 70))
     scene_range = list(range(27, 30))
-    setup_file = "data/experiment_setup/esc_dict_door70_30.p"
+    setup_file = "data/experiment_setup/esp_dict_rkitchen_70_30.p"
 
     param = PlannerParameter()
     param.solver_parameter.type = "rrtconnect"
@@ -464,23 +464,31 @@ def main():
 
                 isObjectValid = all([element is not None for element in [T0_w, Tw_e, Bw, startik, goalik]])
                 if isObjectValid:
+                    path_pick_place = scene_setup[obj_name]["path_pick_place"]
+                    path_reach = scene_setup[obj_name]["path_reach"]
                     robot.SetActiveDOFValues(startik)
                     robot.Grab(obj)
                     robot.WaitForController(0)
                     if visible:
-                        robot.SetActiveDOFValues(startik)
+                        robot.SetActiveDOFValues(path_pick_place[0])
                         robot.WaitForController(0)
                         time.sleep(2)
-                        robot.SetActiveDOFValues(goalik)
+                        robot.SetActiveDOFValues(path_pick_place[-1])
                         robot.WaitForController(0)
                         time.sleep(2)
-                        robot.SetActiveDOFValues(startik)
+                        robot.SetActiveDOFValues(path_reach[0])
+                        robot.WaitForController(0)
+                        time.sleep(0.1)
+                        robot.SetActiveDOFValues(path_reach[-1])
                         robot.WaitForController(0)
                         time.sleep(0.1)
                     # plan
                     param.clearTSRChains()
                     param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
-                    resp, t_time, traj = planner.solve(startik, goalik, param)
+                    # resp, t_time, traj = planner.solve(startik, goalik, param)
+                    resp, t_time, traj = False, np.nan, None
+                    dist_pick_place = planner.distanceToManifold(path_pick_place, param, startik, goalik)
+                    dist_reach = planner.distanceToManifold(path_reach, param, startik, goalik)
                     time.sleep(1)
                     robot.WaitForController(0)
 
@@ -491,7 +499,7 @@ def main():
                     robot.WaitForController(0)
                     robot.SetActiveDOFValues(goalik)
 
-                    time_dict[scene_key][obj_name] = {"time_pick_place": t_time}
+                    time_dict[scene_key][obj_name] = {"dist_pick_place": dist_pick_place, "dist_reach": dist_reach}
 
                 cleanupObject(orEnv, obj_name, obj, obj_setup)
         with open(os.path.join(output_folder, "env%d.p" % e), "wb") as f:

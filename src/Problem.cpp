@@ -58,6 +58,7 @@ AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss
     RegisterCommand("GetPlanningTime", boost::bind(&AtlasMPNet::Problem::GetPlanningTimeCommand, this, _1, _2),
                     "returns the amount of time (in seconds) spent during the last planning step");
     RegisterCommand("SetLogLevel", boost::bind(&AtlasMPNet::Problem::SetLogLevelCommand, this, _1, _2), "set the log level");
+    RegisterCommand("GetDistanceToManifold", boost::bind(&AtlasMPNet::Problem::GetDistanceToManifoldCommand, this, _1, _2), "calculate the distance from a config to the manifold");
 }
 
 AtlasMPNet::Problem::~Problem() = default;
@@ -212,6 +213,31 @@ bool AtlasMPNet::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &s
     level = static_cast<ompl::msg::LogLevel>(leveli);
     ompl::msg::setLogLevel(level);
     sout << "1";
+    return true;
+}
+
+bool AtlasMPNet::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const {
+    auto dof = robot_->GetActiveDOF();
+    std::vector<double> joint_vals(dof);
+    double temp;
+    for (unsigned int i=0; i< dof; i++) {
+        sin >> temp;
+        joint_vals[i] = temp;
+    }
+
+    robot_->SetActiveDOFValues(joint_vals);
+    auto manips = robot_->GetManipulators();
+    double dist2 = 0;
+    for (const auto &tsrchain: tsrchains_) {
+        auto Trobot = manips[tsrchain->GetManipInd()]->GetEndEffectorTransform();
+        OpenRAVE::Transform Ttsr;
+        std::vector<double> tsr_joint_vals(tsrchain->GetNumDOF(), 0);
+        double dist = tsrchain->GetClosestTransform(Trobot, tsr_joint_vals, Ttsr);
+        dist2 += dist*dist;
+    }
+
+    sout << std::sqrt(dist2);
+
     return true;
 }
 

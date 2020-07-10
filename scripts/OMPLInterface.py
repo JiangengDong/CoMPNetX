@@ -537,3 +537,31 @@ class OMPLInterface:
             else:
                 print("Failed to find a solution. ")
                 return False, np.inf, None
+
+    def distanceToManifold(self, configs, planner_params, startik, goalik):
+        assert isinstance(planner_params, PlannerParameter)
+        dof = self.robot.GetActiveDOF()
+
+        params = orpy.Planner.PlannerParameters()
+
+        params.SetRobotActiveJoints(self.robot)
+        params.SetInitialConfig(startik)
+        params.SetGoalConfig(goalik)
+        params.SetExtraParameters(str(planner_params))
+
+        # with self.env, self.robot:
+        with EmptyContext():
+            if not self.planner.InitPlan(self.robot, params):
+                print("Start or goal is invalid!")
+                return None
+
+            commandStr = " ".join(["GetDistanceToManifold"] + ["%f"]*dof)
+
+            def singleDistance(config):
+                return float(self.planner.SendCommand(commandStr % tuple(config)))
+
+            dist_list = [singleDistance(config) for config in configs]
+
+        return dist_list
+
+

@@ -51,8 +51,8 @@ def main(folder, task):
         scene_range = list(range(110, 120))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle")
     elif task == "kitchen":
-        env_range = list(range(0, 5))
-        scene_range = list(range(0, 5))
+        env_range = list(range(0, 70))
+        scene_range = list(range(27, 30))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
     elif task == "kitchen-v2":
         env_range = list(range(0, 5))
@@ -68,6 +68,6 @@ def main(folder, task):
 
 
 if __name__ == "__main__":
-    folder = "data/result/result15"
+    folder = "data/result/result25"
     task = "kitchen"
     main(folder, task)
