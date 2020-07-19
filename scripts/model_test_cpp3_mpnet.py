@@ -129,7 +129,7 @@ param.solver_parameter.time = 25
 # param.atlas_parameter.rho = 1.5
 # param.atlas_parameter.exploration = 0.9
 # param.atlas_parameter.epsilon = 0.02
-output_dir = "data/result/result30"
+output_dir = "data/result/result31"
 if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 with open(os.path.join(output_dir, "settings.xml"), "w") as f:
@@ -139,6 +139,7 @@ with open(os.path.join(output_dir, "settings.xml"), "w") as f:
     f.write("<parameter>\n")
     f.write(str(param))
     f.write("</parameter>\n")
+    f.write("<dnet threshold=\"0.001\" coefficient=\"0.4\"/>")
 
 planner = OMPLInterface(orEnv, robot, loglevel=2)
 names1 = ("juice", "fuze_bottle", "coke_can", "pitcher")

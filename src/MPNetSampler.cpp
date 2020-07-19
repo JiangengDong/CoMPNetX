@@ -69,7 +69,7 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     dnet_output.backward();
     auto grad = pnet_output_temp.grad();
     torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-    if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
+    if (dnet_output_temp.accessor<float, 2>()[0][0]>0.001) {
         pnet_output -= 0.4 * grad;
     }
 

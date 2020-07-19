@@ -67,6 +67,6 @@ def main(folder, task):
 
 
 if __name__ == "__main__":
-    folder = "data/result/result30"
+    folder = "data/result/result25"
     task = "new kitchen"
     main(folder, task)
