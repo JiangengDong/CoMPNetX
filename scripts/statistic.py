@@ -51,23 +51,22 @@ def main(folder, task):
         scene_range = list(range(110, 120))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle")
     elif task == "kitchen":
-        env_range = list(range(0, 66))
+        env_range = list(range(0, 70))
         scene_range = list(range(27, 31))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
     elif task == "new kitchen":
-        env_range = list(range(0, 10))
-        scene_range = list(range(0, 5))
+        env_range = list(range(0, 70))
+        scene_range = list(range(27, 31))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
     else:
         raise NotImplementedError
 
-    if not os.path.exists(os.path.join(folder, "esc_dict.p")):
-        merge_pickle(folder, env_range, scene_range)
+    merge_pickle(folder, env_range, scene_range)
 
     generate_csv(folder, env_range, scene_range, obj_order)
 
 
 if __name__ == "__main__":
-    folder = "data/result13"
+    folder = "data/result/result30"
     task = "new kitchen"
     main(folder, task)

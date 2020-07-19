@@ -86,7 +86,7 @@ robot.SetActiveDOFValues(handdof)
 robot.SetActiveManipulator(1)
 
 ### when loading files
-esc_dict = pickle.load(open("../data/esc_dict20_120.p", "rb"))
+esc_dict = pickle.load(open("data/experiment_setup/esc_dict20_120.p", "rb"))
 ompl_planner = OMPLInterface(orEnv, robot, loglevel=2)
 planner_parameter = PlannerParameter()
 planner_parameter.solver_parameter.type = "mpnet"
@@ -130,16 +130,17 @@ for e in range(e_start, 19):
 
             try:
                 planner_parameter.clearTSRChains().addTSRChain(TSRChain(manipulator_index=1).addTSR(T0_w2, Tw_e, Bw2))
-                planner_parameter.mpnet_parameter.pnet_path= "../models/ctpnet_annotated_gpu4.pt"
-                planner_parameter.mpnet_parameter.dnet_path= "../models/dnet_annotated_gpu.pt"
-                planner_parameter.mpnet_parameter.voxel_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
-                planner_parameter.mpnet_parameter.ohot_path = "../models/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
+                planner_parameter.mpnet_parameter.pnet_path= "data/pytorch_model/ctpnet_annotated_gpu4.pt"
+                planner_parameter.mpnet_parameter.dnet_path= "data/pytorch_model/dnet_annotated_gpu.pt"
+                planner_parameter.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_order[i])
+                planner_parameter.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_order[i])
 
                 resp, t_time, traj = ompl_planner.solve(startik, goalik, planner_parameter)
                 time.sleep(0.1)
                 robot.WaitForController(0)
 
-            except IOError:
+            except Exception as e2:
+                print(e2)
                 time.sleep(0.1)
                 t_time = np.nan
 
@@ -163,5 +164,5 @@ for e in range(e_start, 19):
                     print("--------remove " + obj_order[i])
                 time.sleep(0.05)
         print("")
-    with open("../data/result8-CoMPNet-TB-bartender/env%d.p"%e, "wb") as f:
+    with open("../data/result29/env%d.p"%e, "wb") as f:
         pickle.dump({env_no:esc_dict[env_no]}, f)

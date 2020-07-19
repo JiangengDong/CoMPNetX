@@ -56,7 +56,7 @@ def setup_init_sc(orEnv, targObj, obj_names, e_no, s_no, esc_dict, cabinets):
 ####################
 
 orEnv = orpy.Environment()
-orEnv.SetViewer('qtcoin')
+# orEnv.SetViewer('qtcoin')
 orEnv.Reset()
 orEnv.SetDebugLevel(orpy.DebugLevel.Info)
 # colchecker = orpy.RaveCreateCollisionChecker(orEnv, 'ode')
@@ -76,7 +76,7 @@ table2.InitFromBoxes(np.array([[0.3777, -0.7303, 0.5256, 0.9017, 0.2794, 0.5256]
 orEnv.Add(table2, True)
 tables.append(table2)
 
-cabinets = orEnv.ReadRobotURI('objects/furniture/my_cabinets.robot.xml')
+cabinets = orEnv.ReadRobotURI('data/openrave_model/cabinets.robot.xml')
 orEnv.Add(cabinets, True)
 cab_rot = [[0, 1, 0], [-1, 0, 0], [0, 0, 1]]
 T0_cab = RPY2Transform(0, 0, -np.pi / 2, 0.85, 1.28, 0)
@@ -85,14 +85,14 @@ cabinets.SetActiveDOFs([3])
 
 obj_names = ["tray", "recyclingbin", "juice", "fuze_bottle", "coke_can", "mugblack", "plasticmug", "pitcher"]
 targobject = []
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/tray.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/recyclingbin.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/juice_bottle.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/fuze_bottle.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/coke_can.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/mugblack.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/mug2.kinbody.xml'))
-targobject.append(orEnv.ReadKinBodyXMLFile('objects/household/pitcher3.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/tray.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/recyclingbin.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/juice_bottle.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/fuze_bottle.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/coke_can.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/mugblack.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/mugred.kinbody.xml'))
+targobject.append(orEnv.ReadKinBodyXMLFile('data/openrave_model/pitcher.kinbody.xml'))
 
 ########## load robot and place ###
 baxter_path = rospkg.RosPack().get_path("baxter_description")
@@ -120,7 +120,7 @@ handdof = np.ones([2])
 robot.SetActiveDOFs([1, 9])
 robot.SetActiveDOFValues(handdof)
 
-with open("../data/esc_dict_door100_30.p", "rb") as f:
+with open("data/experiment_setup/esc_dict_door70_30.p", "rb") as f:
     esc_dict = pickle.load(f)
 param = PlannerParameter()
 param.solver_parameter.type = "mpnet"
@@ -129,12 +129,22 @@ param.solver_parameter.time = 25
 # param.atlas_parameter.rho = 1.5
 # param.atlas_parameter.exploration = 0.9
 # param.atlas_parameter.epsilon = 0.02
+output_dir = "data/result/result30"
+if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+with open(os.path.join(output_dir, "settings.xml"), "w") as f:
+    f.write("<task>new kitchen</task>\n")
+    f.write("<collision_checker>ode</collision_checker>\n")
+    f.write("<message>finally...</message>\n")
+    f.write("<parameter>\n")
+    f.write(str(param))
+    f.write("</parameter>\n")
 
 planner = OMPLInterface(orEnv, robot, loglevel=2)
 names1 = ("juice", "fuze_bottle", "coke_can", "pitcher")
 names2 = ("mugblack", "plasticmug")
 e_start = int(input("Start from env: "))
-for i in range(0, 66):
+for i in range(0, 71):
     env_no = "env_" + str(i)
     if env_no not in esc_dict.keys():
         continue
@@ -145,17 +155,19 @@ for i in range(0, 66):
         rgconf = esc_dict[env_no][sc_no]["mugblack"]["rgconf"]
         esc_dict[env_no][sc_no]["initial"]["plasticmug"]["riconf"] = rgconf
 ### when loading files
-for e in range(e_start, 66):
+for e in range(e_start, 71):
     env_no = "env_" + str(e)
     if env_no not in esc_dict.keys():
         continue
     env_data = esc_dict[env_no]
+    time_dict = {}
 
     for s in range(27, 31):
         s_no = "s_" + str(s)
         if s_no not in env_data.keys():
             continue
         scene_data = env_data[s_no]
+        time_dict[s_no] = {}
 
         robot.SetActiveDOFs(arm1dofs)
         robot.SetActiveDOFValues(arm1initvals)
@@ -212,12 +224,12 @@ for e in range(e_start, 66):
 
             try:
                 param.addTSRChain(TSRChain().addTSR(T0_w2, Tw_e, Bw2))
-                param.mpnet_parameter.pnet_path = "../models/ctpnet_annotated_gpu_door_rpp7.pt"
-                param.mpnet_parameter.dnet_path = "../models/dnet_annotated_gpu_door4.pt"
-                param.mpnet_parameter.ohot_path = "../models/seen_reps_txt_door_rpp7/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
-                param.mpnet_parameter.voxel_path = "../models/seen_reps_txt_door_rpp7/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
+                param.mpnet_parameter.pnet_path = "data/pytorch_model/cmpnet_annotated_gpu_rpp_newdoor4.pt"
+                param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet_annotated_gpu_newdoor4.pt"
+                param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
                 resp, t_time, traj = planner.solve(startik, goalik, param)
-                time.sleep(0.1)
+                time.sleep(0.5)
                 robot.WaitForController(0)
             except IOError:
                 resp = None
@@ -227,7 +239,7 @@ for e in range(e_start, 66):
                 # if resp is True:
                 #     robot.GetController().SetPath(traj)
                 #     robot.WaitForController(0)
-                scene_data[obj_name].update({"time_pick_place": t_time})
+                time_dict[s_no][obj_name] = {"time_pick_place": t_time}
 
                 robot.ReleaseAllGrabbed()
                 robot.WaitForController(0)
@@ -245,7 +257,7 @@ for e in range(e_start, 66):
                     idx = None
                 time.sleep(0.1)
         print("\n")
-    output_name = "../data/result10-CoMPNet-Atlas-kitchen/env%d.p" % e
-    esc_dict_temp = {env_no:esc_dict[env_no]}
+    output_name = os.path.join(output_dir, "env%d.p" % e)
+    esc_dict_temp = {env_no:time_dict}
     with open(output_name, "wb") as f:
         pickle.dump(esc_dict_temp, f)
