@@ -10,8 +10,10 @@ def merge_pickle(folder, env_range, scene_range):
     esc_dict = {}
     for e in env_range:
         env_no = "env_" + str(e)
-        with open(os.path.join(folder, "env%d.p" % e), "rb") as f:
-            esc_dict[env_no] = pickle.load(f)[env_no]
+        env_filename = os.path.join(folder, "env%d.p" % e)
+        if os.path.exists(env_filename):
+            with open(env_filename, "rb") as f:
+                esc_dict[env_no] = pickle.load(f)[env_no]
 
     with open(os.path.join(folder, "esc_dict.p"), "wb") as f:
         pickle.dump(esc_dict, f)
@@ -52,21 +54,19 @@ def main(folder, task):
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle")
     elif task == "kitchen":
         env_range = list(range(0, 70))
-        scene_range = list(range(27, 31))
-        obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
-    elif task == "new kitchen":
-        env_range = list(range(0, 70))
-        scene_range = list(range(27, 31))
+        scene_range = list(range(0, 30))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "pitcher", "mugblack")
     else:
         raise NotImplementedError
 
-    merge_pickle(folder, env_range, scene_range)
+    if not os.path.exists(os.path.join(folder, "esc_dict.p")):
+        pass
 
+    merge_pickle(folder, env_range, scene_range)
     generate_csv(folder, env_range, scene_range, obj_order)
 
 
 if __name__ == "__main__":
-    folder = "data/result/result25"
-    task = "new kitchen"
+    folder = "data/result/result37"
+    task = "kitchen"
     main(folder, task)

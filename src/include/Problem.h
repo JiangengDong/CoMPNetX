@@ -43,6 +43,7 @@ namespace AtlasMPNet {
         bool GetParametersCommand(std::ostream &sout, std::istream &sin) const;
         bool GetPlanningTimeCommand(std::ostream &sout, std::istream &sin) const;
         bool SetLogLevelCommand(std::ostream &sout, std::istream &sin) const;
+        bool GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const;
 
     private:
         bool setTSRChainRobot();
