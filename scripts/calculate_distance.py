@@ -392,8 +392,8 @@ def main():
     # env_range = list(range(0, 5))
     # scene_range = list(range(0, 5))
     # setup_file = "data/experiment_setup/esc_dict_door5_5_p0.9.p"
-    env_range = list(range(45, 70))
-    scene_range = list(range(27, 30))
+    env_range = list(range(25, 70))
+    scene_range = list(range(0, 30))
     setup_file = "data/experiment_setup/esp_dict_rkitchen_70_30.p"
 
     param = PlannerParameter()
@@ -488,8 +488,9 @@ def main():
                     # resp, t_time, traj = planner.solve(startik, goalik, param)
                     resp, t_time, traj = False, np.nan, None
                     dist_pick_place = planner.distanceToManifold(path_pick_place, param, startik, goalik)
+                    time.sleep(0.1)
                     dist_reach = planner.distanceToManifold(path_reach, param, startik, goalik)
-                    time.sleep(1)
+                    time.sleep(0.1)
                     robot.WaitForController(0)
 
                     if visible and resp is True:

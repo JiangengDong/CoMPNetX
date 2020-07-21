@@ -370,6 +370,12 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                 else if (key == "dnet_path") {
                     value >> dnet_path;
                 }
+                else if (key == "dnet_threshold") {
+
+                }
+                else if (key == "dnet_coeff") {
+
+                }
                 else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
             }

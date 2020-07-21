@@ -390,21 +390,25 @@ class TSRChain(object):
 
 
 class MPNetParameter(object):
-    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s"/>\n"""
+    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%s" dnet_coeff="%s"/>\n"""
 
-    def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path=""):
+    def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path="", dnet_threshold=0.3, dnet_coeff=0.4):
         self._pnet_path = ""
         self._dnet_path = ""
         self._voxel_path = ""
         self._ohot_path = ""
+        self._dnet_threshold = 0.3
+        self._dnet_coeff = 0.4
 
         self.pnet_path = pnet_path
         self.dnet_path = dnet_path
         self.voxel_path = voxel_path
         self.ohot_path = ohot_path
+        self.dnet_threshold = dnet_threshold
+        self.dnet_coeff = dnet_coeff
 
     def __str__(self):
-        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path)
+        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path, self._dnet_threshold, self._dnet_coeff)
 
     @property
     def pnet_path(self):
@@ -412,10 +416,11 @@ class MPNetParameter(object):
 
     @pnet_path.setter
     def pnet_path(self, value):
-        pnet_path = os.path.abspath(value)
-        if not os.path.exists(pnet_path):
-            raise IOError("%s not found" % value)
-        self._pnet_path = pnet_path
+        if value:
+            pnet_path = os.path.abspath(value)
+            if not os.path.exists(pnet_path):
+                raise IOError("%s not found" % value)
+            self._pnet_path = pnet_path
 
     @property
     def dnet_path(self):
@@ -423,10 +428,11 @@ class MPNetParameter(object):
 
     @dnet_path.setter
     def dnet_path(self, value):
-        dnet_path = os.path.abspath(value)
-        if not os.path.exists(dnet_path):
-            raise IOError("%s not found" % value)
-        self._dnet_path = dnet_path
+        if value:
+            dnet_path = os.path.abspath(value)
+            if not os.path.exists(dnet_path):
+                raise IOError("%s not found" % value)
+            self._dnet_path = dnet_path
 
     @property
     def voxel_path(self):
@@ -434,10 +440,11 @@ class MPNetParameter(object):
 
     @voxel_path.setter
     def voxel_path(self, value):
-        voxel_path = os.path.abspath(value)
-        if not os.path.exists(voxel_path):
-            raise IOError("%s not found" % value)
-        self._voxel_path = voxel_path
+        if value:
+            voxel_path = os.path.abspath(value)
+            if not os.path.exists(voxel_path):
+                raise IOError("%s not found" % value)
+            self._voxel_path = voxel_path
 
     @property
     def ohot_path(self):
@@ -445,10 +452,29 @@ class MPNetParameter(object):
 
     @ohot_path.setter
     def ohot_path(self, value):
-        ohot_path = os.path.abspath(value)
-        if not os.path.exists(ohot_path):
-            raise IOError("%s not found" % value)
-        self._ohot_path = ohot_path
+        if value:
+            ohot_path = os.path.abspath(value)
+            if not os.path.exists(ohot_path):
+                raise IOError("%s not found" % value)
+            self._ohot_path = ohot_path
+
+    @property
+    def dnet_threshold(self):
+        return self._dnet_threshold
+
+    @dnet_threshold.setter
+    def dnet_threshold(self, value):
+        assert value > 0
+        self._dnet_threshold = value
+
+    @property
+    def dnet_coeff(self):
+        return self._dnet_coeff
+
+    @dnet_coeff.setter
+    def dnet_coeff(self, value):
+        assert value > 0
+        self._dnet_coeff = value
 
 
 class PlannerParameter(object):
@@ -549,8 +575,8 @@ class OMPLInterface:
         params.SetGoalConfig(goalik)
         params.SetExtraParameters(str(planner_params))
 
-        # with self.env, self.robot:
-        with EmptyContext():
+        with self.env, self.robot:
+        # with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None

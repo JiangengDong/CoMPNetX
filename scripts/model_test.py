@@ -22,7 +22,7 @@ def setOpenRAVE(visible=False, coll_checker="fcl"):
         orEnv.SetViewer('qtcoin')
     orEnv.Reset()
     orEnv.SetDebugLevel(orpy.DebugLevel.Info)
-    colchecker = orpy.RaveCreateCollisionChecker(orEnv, 'fcl') if coll_checker == "fcl" else orpy.RaveCreateCollisionChecker(orEnv, 'ode')
+    colchecker = orpy.RaveCreateCollisionChecker(orEnv, 'fcl_') if coll_checker == "fcl" else orpy.RaveCreateCollisionChecker(orEnv, 'ode')
     orEnv.SetCollisionChecker(colchecker)
     return orEnv
 
@@ -54,7 +54,7 @@ def setCabinet(cabinet, joint_value):
     cabinet.SetActiveDOFValues([joint_value])
 
 
-def loadObjects(orEnv):
+def loadObjects(orEnv, task):
     model_folder = os.path.abspath("./data/openrave_model")
 
     def loadFromFolder(name):
@@ -67,12 +67,18 @@ def loadObjects(orEnv):
         "fuze_bottle": loadFromFolder('fuze_bottle.kinbody.xml'),
         "coke_can": loadFromFolder('coke_can.kinbody.xml'),
         "mugblack": loadFromFolder('mugblack.kinbody.xml'),
-        "mugred": loadFromFolder('mugred.kinbody.xml'),
+        "plasticmug": loadFromFolder('mugred.kinbody.xml'),
         "pitcher": loadFromFolder('pitcher.kinbody.xml'),
         "teakettle": loadFromFolder('teakettle.kinbody.xml')
     }
-    obj_dict["plasticmug"] = obj_dict["mugred"]
-    obj_dict["mugblack2"] = obj_dict["mugred"]
+
+    if task == "kitchen":
+        obj_dict["plasticmug"] = loadFromFolder('mugred.kinbody.xml')
+    elif task == "bartender":
+        obj_dict["plasticmug"] = loadFromFolder('plasticmug.kinbody.xml')
+    else:
+        pass
+
     return obj_dict
 
 
@@ -114,10 +120,83 @@ def resetBaxter(robot):
 
 def getObjectSetupsFactory(task):
     # The most dirty function in this file. Hardcoded branch-_-
-    def getObjectSetupsBartender(scene_setup):
-        raise NotImplementedError
+    def getObjectSetupsBartender(scene_setup, env_setup):
+        scene_setup_target = env_setup["targets"]
+        obj_setups = {
+            "recyclingbin": {
+                "start": {
+                    "transform": scene_setup_target["recyclingbin"]["T0_w2"]
+                }
+            },
+            "tray": {
+                "start": {
+                    "transform": scene_setup_target["tray"]["T0_w2"]
+                }
+            },
+            "juice": {
+                "start": {
+                    "transform": scene_setup["juice"]["T0_w"],
+                    "ik": scene_setup["juice"]["rsconf"]
+                },
+                "goal": {
+                    "transform": scene_setup_target["juice"]["T0_w2"],
+                    "ik": scene_setup_target["juice"]["rgconf"]
+                },
+                "offset": scene_setup["juice"]["Tw_e"],
+                "bound": scene_setup_target["juice"]["Bw2"]
+            },
+            "fuze_bottle": {
+                "start": {
+                    "transform": scene_setup["fuze_bottle"]["T0_w"],
+                    "ik": scene_setup["fuze_bottle"]["rsconf"]
+                },
+                "goal": {
+                    "transform": scene_setup_target["fuze_bottle"]["T0_w2"],
+                    "ik": scene_setup_target["fuze_bottle"]["rgconf"]
+                },
+                "offset": scene_setup["fuze_bottle"]["Tw_e"],
+                "bound": scene_setup_target["fuze_bottle"]["Bw2"]
+            },
+            "coke_can": {
+                "start": {
+                    "transform": scene_setup["coke_can"]["T0_w"],
+                    "ik": scene_setup["coke_can"]["rsconf"]
+                },
+                "goal": {
+                    "transform": scene_setup_target["coke_can"]["T0_w2"],
+                    "ik": scene_setup_target["coke_can"]["rgconf"]
+                },
+                "offset": scene_setup["coke_can"]["Tw_e"],
+                "bound": scene_setup_target["coke_can"]["Bw2"]
+            },
+            "plasticmug": {
+                "start": {
+                    "transform": scene_setup["plasticmug"]["T0_w"],
+                    "ik": scene_setup["plasticmug"]["rsconf"]
+                },
+                "goal": {
+                    "transform": scene_setup_target["plasticmug"]["T0_w2"],
+                    "ik": scene_setup_target["plasticmug"]["rgconf"]
+                },
+                "offset": scene_setup["plasticmug"]["Tw_e"],
+                "bound": scene_setup_target["plasticmug"]["Bw2"]
+            },
+            "teakettle": {
+                "start": {
+                    "transform": scene_setup["teakettle"]["T0_w"],
+                    "ik": scene_setup["teakettle"]["rsconf"]
+                },
+                "goal": {
+                    "transform": scene_setup_target["teakettle"]["T0_w2"],
+                    "ik": scene_setup_target["teakettle"]["rgconf"]
+                },
+                "offset": scene_setup["teakettle"]["Tw_e"],
+                "bound": scene_setup_target["teakettle"]["Bw2"]
+            }
+        }
+        return obj_setups
 
-    def getObjectSetupsKitchen(scene_setup):
+    def getObjectSetupsKitchen(scene_setup, env_setup):
         scene_setup_initial = scene_setup["initial"]
         obj_setups = {
             "recyclingbin": {
@@ -158,12 +237,10 @@ def getObjectSetupsFactory(task):
                 "start": {
                     "transform": scene_setup_initial["plasticmug"]["T0_w0"],
                     "ik": scene_setup_initial["plasticmug"]["rsconf"]
-                    # "ik": np.array([1.44845044, 0.70520101, 0.26510866, -0.48933351, -1.77352356, 0.39498159, 0.09028754])
                 },
                 "goal": {
                     "transform": scene_setup["plasticmug"]["T0_w2"],
                     "ik": scene_setup["plasticmug"]["rgconf"]
-                    # "ik": np.array([1.4753715, 0.61263517, 1.30811848, 0.14469196, -0.04560525, -1.15197346, -1.89523285])
                 },
                 "offset": scene_setup["plasticmug"]["Tw_e"],
                 "bound": scene_setup["plasticmug"]["Bw2"]
@@ -224,117 +301,10 @@ def getObjectSetupsFactory(task):
         obj_setups["mugblack2"] = obj_setups["mugred"]
         return obj_setups
 
-    def getObjectSetupsKitchenv2(scene_setup):
-        scene_setup_initial = scene_setup["initial"]
-        obj_setups = {
-            "recyclingbin": {
-                "start": {
-                    "transform": scene_setup_initial["recyclingbin"]["T0_w2"]
-                }
-            },
-            "tray": {
-                "start": {
-                    "transform": scene_setup["tray"]["T0_w2"]
-                }
-            },
-            "door": {
-                "start": {
-                    "value": scene_setup_initial["door"]["door_start"],
-                    "ik": None  # TODO: This field is not used now, so it is ignored here. Change it to the exact value.
-                },
-                "goal": {
-                    "value": scene_setup_initial["door"]["door_end"],
-                    "ik": None  # TODO: This field is not used now, so it is ignored here. Change it to the exact value.
-                },
-                "offset": None,   # TODO: This field is not used now, so it is ignored here. Change it to the exact value.
-                "bound": None    # TODO: This field is not used now, so it is ignored here. Change it to the exact value.
-            },
-            "mugblack": {
-                "start": {
-                    "transform": scene_setup_initial["mugblack"]["T0_w0"],
-                    "ik": scene_setup_initial["mugblack"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup["mugblack"]["T0_w2"],
-                    "ik": scene_setup["mugblack"]["rgconf"]
-                },
-                "offset": scene_setup["mugblack"]["Tw_e"],
-                "bound": scene_setup["mugblack"]["Bw2"]
-            },
-            "mugred": {
-                "start": {
-                    "transform": scene_setup["mugblack2"]["T0_w0"],
-                    "ik": scene_setup["mugblack2"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup_initial["mugblack2"]["T0_w2"],
-                    "ik": scene_setup_initial["mugblack2"]["rgconf"]
-                },
-                "offset": scene_setup["mugblack2"]["Tw_e"],
-                "bound": scene_setup_initial["mugblack2"]["Bw2"]
-            },
-            "pitcher": {
-                "start": {
-                    "transform": scene_setup["pitcher"]["T0_w"],
-                    "ik": scene_setup["pitcher"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup["pitcher_target"]["T0_w2"],
-                    "ik": scene_setup["pitcher_target"]["rgconf"]
-                },
-                "offset": scene_setup["pitcher_target"]["Tw_e"],
-                "bound": scene_setup["pitcher_target"]["Bw2"]
-            },
-            "juice": {
-                "start": {
-                    "transform": scene_setup["juice"]["T0_w"],
-                    "ik": scene_setup["juice"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup_initial["juice"]["T0_w2"],
-                    "ik": scene_setup_initial["juice"]["rgconf"]
-                },
-                "offset": scene_setup["juice"]["Tw_e"],
-                "bound": np.mat([-1000., 1000., -1000., 1000., -1000, 1000,
-                                 -np.pi, np.pi, -np.pi, np.pi, -np.pi, np.pi])
-            },
-            "fuze_bottle": {
-                "start": {
-                    "transform": scene_setup["fuze_bottle"]["T0_w"],
-                    "ik": scene_setup["fuze_bottle"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup_initial["fuze_bottle"]["T0_w2"],
-                    "ik": scene_setup_initial["fuze_bottle"]["rgconf"]
-                },
-                "offset": scene_setup["fuze_bottle"]["Tw_e"],
-                "bound": np.mat([-1000., 1000., -1000., 1000., -1000, 1000,
-                                 -np.pi, np.pi, -np.pi, np.pi, -np.pi, np.pi])
-            },
-            "coke_can": {
-                "start": {
-                    "transform": scene_setup["coke_can"]["T0_w"],
-                    "ik": scene_setup["coke_can"]["rsconf"]
-                },
-                "goal": {
-                    "transform": scene_setup_initial["coke_can"]["T0_w2"],
-                    "ik": scene_setup_initial["coke_can"]["rgconf"]
-                },
-                "offset": scene_setup["coke_can"]["Tw_e"],
-                "bound": np.mat([-1000., 1000., -1000., 1000., -1000, 1000,
-                                 -np.pi, np.pi, -np.pi, np.pi, -np.pi, np.pi])
-            },
-        }
-        obj_setups["plasticmug"] = obj_setups["mugred"]
-        obj_setups["mugblack2"] = obj_setups["mugred"]
-        return obj_setups
-
     if task == "bartender":
         return getObjectSetupsBartender
     elif task == "kitchen":
         return getObjectSetupsKitchen
-    elif task == "kitchen-v2":
-        return getObjectSetupsKitchenv2
     else:
         raise NotImplementedError
 
@@ -342,12 +312,18 @@ def getObjectSetupsFactory(task):
 
 def initSceneFactory(task):
     def initSceneBartender(orEnv, robot, cabinet, obj_dict, obj_setups):
-        pass
+        resetBaxter(robot)
+        for obj_name in ("recyclingbin", "tray", "juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle"):
+            obj = obj_dict[obj_name]
+            obj_transform = obj_setups[obj_name]["start"]["transform"]
+            orEnv.Add(obj)
+            obj.SetTransform(np.array(obj_transform[0:3][:, 0:4]))
+        time.sleep(0.1)
 
     def initSceneKitchen(orEnv, robot, cabinet, obj_dict, obj_setups):
         resetBaxter(robot)
         setCabinet(cabinet, obj_setups["door"]["start"]["value"])
-        for obj_name in ("recyclingbin", "tray", "juice", "fuze_bottle", "coke_can", "mugblack", "mugred", "pitcher"):
+        for obj_name in ("recyclingbin", "tray", "juice", "fuze_bottle", "coke_can", "mugblack", "plasticmug", "pitcher"):
             obj = obj_dict[obj_name]
             obj_transform = obj_setups[obj_name]["start"]["transform"]
             orEnv.Add(obj)
@@ -357,8 +333,6 @@ def initSceneFactory(task):
     if task == "bartender":
         return initSceneBartender
     elif task == "kitchen":
-        return initSceneKitchen
-    elif task == "kitchen-v2":
         return initSceneKitchen
     else:
         raise NotImplementedError
@@ -372,7 +346,7 @@ def cleanupObject(orEnv, obj_name, obj, obj_setup):
     elif obj_name in ("juice", "fuze_bottle", "coke_can"):
         orEnv.Remove(obj)
         print("--------remove " + obj_name)
-    elif obj_name in ("mugblack", "mugblack2", "mugred", "plasticmug", "pitcher"):
+    elif obj_name in ("mugblack", "mugblack2", "mugred", "plasticmug", "pitcher", "teakettle"):
         goal_transform = obj_setup["goal"]["transform"]
         obj.SetTransform(np.array(goal_transform[0:3][:, 0:4]))
         print("----------move " + obj_name)
@@ -384,17 +358,21 @@ def cleanupObject(orEnv, obj_name, obj, obj_setup):
 def main():
     # settings
     visible = False
-    coll_checker = "ode"
+    coll_checker = "fcl"
     task = "kitchen"
-    output_folder = "data/result/result24"
-    message = "Shrink pitcher."
+    output_folder = "data/result/result38"
+    message = "Test mpnet"
 
-    # env_range = list(range(0, 5))
-    # scene_range = list(range(0, 5))
-    # setup_file = "data/experiment_setup/esc_dict_door5_5_p0.9.p"
-    env_range = list(range(23, 70))
-    scene_range = list(range(27, 30))
-    setup_file = "data/experiment_setup/esc_dict_door70_30.p"
+    if task == "kitchen":
+        env_range = list(range(0, 70))
+        scene_range = list(range(27, 30))
+        setup_file = "data/experiment_setup/esc_dict_door70_30.p"
+    elif task == "bartender":
+        env_range = list(range(0, 19))
+        scene_range = list(range(110, 120))
+        setup_file = "data/experiment_setup/esc_dict20_120.p"
+    else:
+        env_range = scene_range = setup_file = None
 
     param = PlannerParameter()
     param.solver_parameter.type = "rrtconnect"
@@ -402,9 +380,16 @@ def main():
     param.constraint_parameter.type = "atlas"
     param.constraint_parameter.tolerance = 1e-3
     param.constraint_parameter.delta = 0.05
-    param.atlas_parameter.rho = 2.0
-    param.atlas_parameter.exploration = 0.9
+    param.atlas_parameter.rho = 1.5
+    param.atlas_parameter.exploration = 0.5
     param.atlas_parameter.epsilon = 0.01
+    if param.solver_parameter.type == "mpnet":
+        if task == "kitchen":
+            param.mpnet_parameter.pnet_path = "data/pytorch_model/cmpnet_annotated_gpu_rpp_newdoor4.pt"
+            param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet4_annotated_gpu_newdoor.pt"
+        elif task == "bartender":
+            param.mpnet_parameter.pnet_path = "data/pytorch_model/ctpnet_annotated_gpu4.pt"
+            param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet_annotated_gpu.pt"
     # write settings to a file
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -420,7 +405,7 @@ def main():
     orEnv = setOpenRAVE(visible, coll_checker)
     loadTable(orEnv)
     cabinet = None if task == "bartender" else loadCabinet(orEnv)
-    obj_dict = loadObjects(orEnv)
+    obj_dict = loadObjects(orEnv, task)
     robot = loadBaxter(orEnv)
     planner = OMPLInterface(orEnv, robot, loglevel=2)
     initScene = initSceneFactory(task)
@@ -441,12 +426,11 @@ def main():
             if scene_key not in env_setup.keys():
                 continue
             scene_setup = env_setup[scene_key]
-            scene_initial = scene_setup["initial"]
             time_dict[scene_key] = {}
 
             # initialize scene. Put all the objects to their start position.
             print("\n==========env_no: %d====s_no: %d==========" % (e, s))
-            obj_setups = getObjectSetups(scene_setup)
+            obj_setups = getObjectSetups(scene_setup, env_setup)
             initScene(orEnv, robot, cabinet, obj_dict, obj_setups)
 
             obj_names = scene_setup["obj_order"]
@@ -480,6 +464,13 @@ def main():
                     # plan
                     param.clearTSRChains()
                     param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
+                    if param.solver_parameter.type == "mpnet":
+                        if task == "kitchen":
+                            param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                            param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
+                        elif task == "bartender":
+                            param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                            param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
                     resp, t_time, traj = planner.solve(startik, goalik, param)
                     time.sleep(1)
                     robot.WaitForController(0)

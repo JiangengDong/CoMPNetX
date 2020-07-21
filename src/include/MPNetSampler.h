@@ -52,6 +52,8 @@ namespace AtlasMPNet {
         std::vector<RobotHelper> robot_helpers_;
         std::vector<unsigned int> dof_tsrchains_;
 
+        bool dnet_is_loaded=false; // temporary flag. Replace dnet_ with a pointer later so that we do not need this anymore.
+
         torch::Tensor toTensor(const std::vector<double> &src);
 
         std::vector<double> toVector(const torch::Tensor &tensor);

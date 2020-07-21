@@ -36,11 +36,6 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     pnet_.to(at::kCUDA);
     OMPL_DEBUG("Load %s successfully.", pnet_filename.c_str());
 
-    std::string dnet_filename = param.dnet_path;
-    dnet_ = torch::jit::load(dnet_filename);
-    dnet_.to(at::kCUDA);
-    OMPL_DEBUG("Load %s successfully.", dnet_filename.c_str());
-
     std::string ohot_filename=param.ohot_path;
     std::vector<float> ohot_vec = loadData(ohot_filename, 128);
     ohot_ = torch::from_blob(ohot_vec.data(), {1, 128}).clone();
@@ -50,6 +45,14 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     std::vector<float> voxel_vec = loadData(voxel_filename, 256);
     voxel_ = torch::from_blob(voxel_vec.data(), {1, 256}).clone();
     OMPL_DEBUG("Load %s successfully.", voxel_filename.c_str());
+
+    std::string dnet_filename = param.dnet_path;
+    if (dnet_filename != "") {
+        dnet_ = torch::jit::load(dnet_filename);
+        dnet_.to(at::kCUDA);
+        dnet_is_loaded = true;
+        OMPL_DEBUG("Load %s successfully.", dnet_filename.c_str());
+    }
 }
 
 bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
@@ -63,15 +66,17 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     auto pnet_input = torch::cat({voxel_, ohot_, toTensor(robot_start), toTensor(robot_goal)}, 1).to(at::kCUDA);
     auto pnet_output = pnet_.forward({pnet_input}).toTensor().to(at::kCPU);
 
-    // auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
-    // auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
-    // auto dnet_output = dnet_.forward({dnet_input}).toTensor();
-    // dnet_output.backward();
-    // auto grad = pnet_output_temp.grad();
-    // torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-    // if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
-    //     pnet_output -= 0.4 * grad;
-    // }
+    if(dnet_is_loaded) {
+        auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
+        auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
+        auto dnet_output = dnet_.forward({dnet_input}).toTensor();
+        dnet_output.backward();
+        auto grad = pnet_output_temp.grad();
+        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
+        if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
+            pnet_output -= 0.4 * grad;
+        }
+    }
 
     auto robot_sample = toVector(pnet_output);
     EnforceBound(robot_sample);
