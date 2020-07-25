@@ -22,7 +22,7 @@ def setOpenRAVE(visible=False, coll_checker="fcl"):
         orEnv.SetViewer('qtcoin')
     orEnv.Reset()
     orEnv.SetDebugLevel(orpy.DebugLevel.Info)
-    colchecker = orpy.RaveCreateCollisionChecker(orEnv, 'fcl_') if coll_checker == "fcl" else orpy.RaveCreateCollisionChecker(orEnv, 'ode')
+    colchecker = orpy.RaveCreateCollisionChecker(orEnv, coll_checker)
     orEnv.SetCollisionChecker(colchecker)
     return orEnv
 
@@ -358,9 +358,9 @@ def cleanupObject(orEnv, obj_name, obj, obj_setup):
 def main():
     # settings
     visible = False
-    coll_checker = "fcl"
+    coll_checker = "fcl_"
     task = "kitchen"
-    output_folder = "data/result/result38"
+    output_folder = "data/result/result46"
     message = "Test mpnet"
 
     if task == "kitchen":
@@ -376,12 +376,12 @@ def main():
 
     param = PlannerParameter()
     param.solver_parameter.type = "rrtconnect"
-    param.solver_parameter.time = 180
+    param.solver_parameter.time = 25
     param.constraint_parameter.type = "atlas"
     param.constraint_parameter.tolerance = 1e-3
     param.constraint_parameter.delta = 0.05
     param.atlas_parameter.rho = 1.5
-    param.atlas_parameter.exploration = 0.5
+    param.atlas_parameter.exploration = 0.9
     param.atlas_parameter.epsilon = 0.01
     if param.solver_parameter.type == "mpnet":
         if task == "kitchen":
@@ -462,27 +462,35 @@ def main():
                         robot.WaitForController(0)
                         time.sleep(0.1)
                     # plan
-                    param.clearTSRChains()
-                    param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
-                    if param.solver_parameter.type == "mpnet":
-                        if task == "kitchen":
-                            param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
-                            param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
-                        elif task == "bartender":
-                            param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
-                            param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
-                    resp, t_time, traj = planner.solve(startik, goalik, param)
-                    time.sleep(1)
-                    robot.WaitForController(0)
-
-                    if visible and resp is True:
-                        robot.GetController().SetPath(traj)
+                    try:
+                        param.clearTSRChains()
+                        param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
+                        if param.solver_parameter.type == "mpnet":
+                            if task == "kitchen":
+                                param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                                param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
+                            elif task == "bartender":
+                                param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                                param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
+                        resp, t_time, traj = planner.solve(startik, goalik, param)
+                        time.sleep(1)
                         robot.WaitForController(0)
-                    robot.ReleaseAllGrabbed()
-                    robot.WaitForController(0)
-                    robot.SetActiveDOFValues(goalik)
 
-                    time_dict[scene_key][obj_name] = {"time_pick_place": t_time}
+                        if visible and resp is True:
+                            robot.GetController().SetPath(traj)
+                            robot.WaitForController(0)
+                    except IOError:
+                        resp = traj = None
+                        t_time = np.nan
+                    except Exception as except_instance:
+                        print except_instance
+                        exit()
+                    finally:
+                        robot.ReleaseAllGrabbed()
+                        robot.WaitForController(0)
+                        robot.SetActiveDOFValues(goalik)
+
+                        time_dict[scene_key][obj_name] = {"time_pick_place": t_time}
 
                 cleanupObject(orEnv, obj_name, obj, obj_setup)
         with open(os.path.join(output_folder, "env%d.p" % e), "wb") as f:
