@@ -575,8 +575,8 @@ class OMPLInterface:
         params.SetGoalConfig(goalik)
         params.SetExtraParameters(str(planner_params))
 
-        with self.env, self.robot:
-        # with EmptyContext():
+        # with self.env, self.robot:
+        with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None
@@ -584,10 +584,21 @@ class OMPLInterface:
             commandStr = " ".join(["GetDistanceToManifold"] + ["%f"]*dof)
 
             def singleDistance(config):
-                return float(self.planner.SendCommand(commandStr % tuple(config)))
+                s = self.planner.SendCommand(commandStr % tuple(config))
+                s_split = [float(val) for val in s.split(" ")]
+                vals = s_split[:-1]
+                dist = s_split[-1]
+                if len(vals) == 4:
+                    vals.append(0.0)
+                    vals.append(0.0)
+                    vals[5] = vals[3]
+                    vals[3] = 0.0
+                return vals, dist
 
-            dist_list = [singleDistance(config) for config in configs]
+            all_list = [singleDistance(config) for config in configs]
+            val_list = [vals for (vals, dist) in all_list]
+            dist_list = [dist for (vals, dist) in all_list]
 
-        return dist_list
+        return val_list, dist_list
 
 

@@ -61,6 +61,9 @@ namespace AtlasMPNet {
         static std::vector<float> loadData(const std::string &filename, unsigned int n);
 
         bool EnforceBound(std::vector<double> &val);
+
+        torch::Tensor stateToTensor(const ompl::base::State *from);
+        void tensorToState(const torch::Tensor &from, ompl::base::State *to);
     };
 }
 

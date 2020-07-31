@@ -63,10 +63,10 @@ def main(folder, task):
         pass
 
     merge_pickle(folder, env_range, scene_range)
-    generate_csv(folder, env_range, scene_range, obj_order)
+    # generate_csv(folder, env_range, scene_range, obj_order)
 
 
 if __name__ == "__main__":
-    folder = "data/result/result44"
+    folder = "data/result/tsr_value_door"
     task = "kitchen"
     main(folder, task)

@@ -8,7 +8,7 @@ add_library(AtlasMPNet SHARED
         StateValidityChecker.cpp
         TaskSpaceRegionChain.cpp
         RRTConnect.cpp
-        MPNetSampler.cpp
+        MPNetSamplerX.cpp
         MPNetPlanner.cpp
         RobotHelper.cpp
         )

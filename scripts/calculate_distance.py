@@ -383,16 +383,16 @@ def cleanupObject(orEnv, obj_name, obj, obj_setup):
 
 def main():
     # settings
-    visible = False
-    coll_checker = "ode"
+    visible = True
+    coll_checker = "fcl"
     task = "kitchen"
-    output_folder = "data/result/result25"
+    output_folder = "data/result/tsr_value_door"
     message = "Shrink pitcher."
 
     # env_range = list(range(0, 5))
     # scene_range = list(range(0, 5))
     # setup_file = "data/experiment_setup/esc_dict_door5_5_p0.9.p"
-    env_range = list(range(25, 70))
+    env_range = list(range(0, 70))
     scene_range = list(range(0, 30))
     setup_file = "data/experiment_setup/esp_dict_rkitchen_70_30.p"
 
@@ -463,7 +463,7 @@ def main():
                 goalik = obj_setup["goal"]["ik"]
 
                 isObjectValid = all([element is not None for element in [T0_w, Tw_e, Bw, startik, goalik]])
-                if isObjectValid:
+                if isObjectValid and False:
                     path_pick_place = scene_setup[obj_name]["path_pick_place"]
                     path_reach = scene_setup[obj_name]["path_reach"]
                     robot.SetActiveDOFValues(startik)
@@ -487,9 +487,10 @@ def main():
                     param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
                     # resp, t_time, traj = planner.solve(startik, goalik, param)
                     resp, t_time, traj = False, np.nan, None
-                    dist_pick_place = planner.distanceToManifold(path_pick_place, param, startik, goalik)
+                    tsr_pick_place, dist_pick_place = planner.distanceToManifold(path_pick_place, param, startik, goalik)
+                    print(tsr_pick_place[0])
                     time.sleep(0.1)
-                    dist_reach = planner.distanceToManifold(path_reach, param, startik, goalik)
+                    tsr_reach = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]*len(path_reach)
                     time.sleep(0.1)
                     robot.WaitForController(0)
 
@@ -500,7 +501,35 @@ def main():
                     robot.WaitForController(0)
                     robot.SetActiveDOFValues(goalik)
 
-                    time_dict[scene_key][obj_name] = {"dist_pick_place": dist_pick_place, "dist_reach": dist_reach}
+                    time_dict[scene_key][obj_name] = {"tsr_pick_place": tsr_pick_place, "tsr_reach": tsr_reach}
+
+                elif obj_name == "door":
+                    T0_w0 = scene_setup["initial"]["door"]["T0_w0"]
+                    Tw0_e = scene_setup["initial"]["door"]["Tw0_e"]
+                    Tw1_e = scene_setup["initial"]["door"]["Tw1_e"]
+                    Bw0 = scene_setup["initial"]["door"]["Bw0"]
+                    Bw1 = scene_setup["initial"]["door"]["Bw1"]
+
+                    startik = scene_setup["initial"]["door"]["rsconf"]
+                    goalik = scene_setup["initial"]["door"]["rgconf"]
+
+                    path_pick_place = scene_setup["initial"]["door"]["path_pick_place"]
+                    path_reach = scene_setup["initial"]["door"]["path_reach"]
+
+                    param.clearTSRChains()
+                    param.addTSRChain(TSRChain(mimic_body_name="cabinets", mimic_body_index=[3])
+                                        .addTSR(T0_w0, Tw0_e, Bw0)
+                                        .addTSR(np.eye(4), Tw1_e, Bw1))
+                    if visible:
+                        robot.SetActiveDOFValues(startik)
+                        robot.WaitForController(0)
+                        time.sleep(1)
+
+                    tsr_pick_place, dist_pick_place = planner.distanceToManifold(path_pick_place, param, startik, goalik)
+                    time.sleep(0.1)
+                    tsr_reach, dist_reach = planner.distanceToManifold(path_reach, param, startik, goalik)
+                    time.sleep(0.1)
+                    time_dict[scene_key]["door"] = {"tsr_pick_place": tsr_pick_place, "tsr_reach": tsr_reach, "dist_pick_place": dist_pick_place, "dist_reach": dist_reach}
 
                 cleanupObject(orEnv, obj_name, obj, obj_setup)
         with open(os.path.join(output_folder, "env%d.p" % e), "wb") as f:

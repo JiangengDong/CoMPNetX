@@ -233,6 +233,9 @@ bool AtlasMPNet::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::
         OpenRAVE::Transform Ttsr;
         std::vector<double> tsr_joint_vals(tsrchain->GetNumDOF(), 0);
         double dist = tsrchain->GetClosestTransform(Trobot, tsr_joint_vals, Ttsr);
+        for (const auto& val: tsr_joint_vals) {
+            sout << val << " ";
+        }
         dist2 += dist*dist;
     }
 

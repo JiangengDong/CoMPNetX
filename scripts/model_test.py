@@ -360,7 +360,7 @@ def main():
     visible = False
     coll_checker = "fcl_"
     task = "kitchen"
-    output_folder = "data/result/result46"
+    output_folder = "data/result/result47"
     message = "Test mpnet"
 
     if task == "kitchen":
@@ -375,8 +375,9 @@ def main():
         env_range = scene_range = setup_file = None
 
     param = PlannerParameter()
-    param.solver_parameter.type = "rrtconnect"
+    param.solver_parameter.type = "mpnet"
     param.solver_parameter.time = 25
+    param.solver_parameter.range = 0.05
     param.constraint_parameter.type = "atlas"
     param.constraint_parameter.tolerance = 1e-3
     param.constraint_parameter.delta = 0.05
@@ -385,8 +386,9 @@ def main():
     param.atlas_parameter.epsilon = 0.01
     if param.solver_parameter.type == "mpnet":
         if task == "kitchen":
-            param.mpnet_parameter.pnet_path = "data/pytorch_model/cmpnet_annotated_gpu_rpp_newdoor4.pt"
-            param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet4_annotated_gpu_newdoor.pt"
+            # param.mpnet_parameter.pnet_path = "data/pytorch_model/cmpnet_annotated_gpu_rpp_newdoor4.pt"
+            # param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet4_annotated_gpu_newdoor.pt"
+            param.mpnet_parameter.pnet_path = "data/pytorch_model/cmpnet_annotated_gpu_rpp_doornptnvx.pt"
         elif task == "bartender":
             param.mpnet_parameter.pnet_path = "data/pytorch_model/ctpnet_annotated_gpu4.pt"
             param.mpnet_parameter.dnet_path = "data/pytorch_model/dnet_annotated_gpu.pt"
@@ -467,7 +469,8 @@ def main():
                         param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
                         if param.solver_parameter.type == "mpnet":
                             if task == "kitchen":
-                                param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                                # param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
+                                param.mpnet_parameter.ohot_path = "data/pytorch_model/doorx_reps_compnet_ntpnv/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
                                 param.mpnet_parameter.voxel_path = "data/pytorch_model/seen_reps_txt_door_new4/e_%d_s_%d_%s_voxel.csv" % (e, s, obj_name)
                             elif task == "bartender":
                                 param.mpnet_parameter.ohot_path = "data/pytorch_model/seen_reps_txt4/e_%d_s_%d_%s_pp_ohot.csv" % (e, s, obj_name)
