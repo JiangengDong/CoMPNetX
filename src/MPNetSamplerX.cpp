@@ -92,6 +92,7 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
         offset += dof_tsrchains_[i];
     }
     std::copy(robot_sample.begin(), robot_sample.end(), sample_config.begin());
+    // handshake finish
     space_->copyFromReals(sample, sample_config);
     return true;
 }

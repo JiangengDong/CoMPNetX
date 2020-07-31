@@ -25,9 +25,24 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
         robot_helpers_.emplace_back(RobotHelper(robot, manips_[tsrchain->GetManipInd()]));
     }
 
-    _scale_factor.resize(dof_robot_, 1.0);
+    _scale_factor.resize(13, 1.0);
     robot->GetActiveDOFLimits(_lower_limits, _upper_limits);
-    for(unsigned int i=0; i<dof_robot_; i++) {
+
+        _lower_limits.emplace_back(-0.524);
+    _lower_limits.emplace_back(-1.262125);
+    _lower_limits.emplace_back(0.6089);
+    _lower_limits.emplace_back(-3.142);
+    _lower_limits.emplace_back(-3.142);
+    _lower_limits.emplace_back(-3.142);
+
+    _upper_limits.emplace_back(1.4878);
+    _upper_limits.emplace_back(1.69075);
+    _upper_limits.emplace_back(2.1730);
+    _upper_limits.emplace_back(3.142);
+    _upper_limits.emplace_back(3.142);
+    _upper_limits.emplace_back(3.142);
+
+    for(unsigned int i=0; i<13; i++) {
         _scale_factor[i] = _upper_limits[i] - _lower_limits[i];
     }
 
@@ -56,36 +71,20 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
 }
 
 bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
-    std::vector<double> start_config(dim_), goal_config(dim_), sample_config(dim_);
-    space_->copyToReals(start_config, start);
-    space_->copyToReals(goal_config, goal);
-
     // sample a robot config with MPNet
-    std::vector<double> robot_start(start_config.begin(), start_config.begin() + dof_robot_);
-    std::vector<double> robot_goal(goal_config.begin(), goal_config.begin() + dof_robot_);
-    auto pnet_input = torch::cat({voxel_, ohot_, toTensor(robot_start), toTensor(robot_goal)}, 1).to(at::kCUDA);
+    auto pnet_input = torch::cat({voxel_, ohot_, stateToTensor(start), stateToTensor(goal)}, 1).to(at::kCUDA);
     auto pnet_output = pnet_.forward({pnet_input}).toTensor().to(at::kCPU);
 
-    if(dnet_is_loaded) {
-        auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
-        auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
-        auto dnet_output = dnet_.forward({dnet_input}).toTensor();
-        dnet_output.backward();
-        auto grad = pnet_output_temp.grad();
-        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-        if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
-            pnet_output -= 0.4 * grad;
-        }
-    }
-
-    auto robot_sample = toVector(pnet_output);
-    EnforceBound(robot_sample);
+    auto sample_config = toVector(pnet_output);
+    EnforceBound(sample_config);
+    // handshake
+    std::vector<double> robot_sample(sample_config.begin(), sample_config.begin()+dof_robot_);
     robot_->SetActiveDOFValues(robot_sample);
     OpenRAVE::Transform Ttsr, Trobot;
     unsigned int offset = dof_robot_;
     for(unsigned int i=0; i<tsrchains_.size(); i++){
         auto tsrchain = tsrchains_[i];
-        std::vector<double> tsrchain_config(start_config.begin() + offset, start_config.begin() + offset + dof_tsrchains_[i]);
+        std::vector<double> tsrchain_config(sample_config.begin() + offset, sample_config.begin() + offset + dof_tsrchains_[i]);
         Trobot = robot_helpers_[i].GetEndEffectorTransform();
         tsrchain->GetClosestTransform(Trobot, tsrchain_config, Ttsr);
         robot_helpers_[i].GetClosestTransform(Ttsr, robot_sample, Trobot);
@@ -93,42 +92,63 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
         offset += dof_tsrchains_[i];
     }
     std::copy(robot_sample.begin(), robot_sample.end(), sample_config.begin());
-
+    // handshake finish
     space_->copyFromReals(sample, sample_config);
     return true;
 }
 
 std::vector<double> AtlasMPNet::MPNetSampler::toVector(const torch::Tensor &tensor) {
     auto data = tensor.accessor<float, 2>()[0];
-    std::vector<double> dest(dof_robot_);
-    for (unsigned int i = 0; i < dof_robot_; i++) {
-        dest[i] = static_cast<float>(data[i]) * _scale_factor[i];
+    std::vector<double> dest(dim_);
+    if (dim_ == 7+6) {
+        for (unsigned int i = 0; i < dim_; i++) {
+            dest[i] = static_cast<float>(data[i]) * _scale_factor[i];// unnormailize here
+        }
+        return dest;
     }
-    return dest;
+    else if (dim_ == 7+4) {
+        for (unsigned int i = 0; i < 7+3; i++) {
+            dest[i] = static_cast<float>(data[i]) * _scale_factor[i];// unnormailize here
+        }
+        dest[10] = static_cast<float>(data[12]) * _scale_factor[12];
+        return dest;
+    }
 }
 
 torch::Tensor AtlasMPNet::MPNetSampler::toTensor(const std::vector<double> &vec) {
-    std::vector<float> scaled_src(dof_robot_);
-    for (unsigned int i = 0; i < dof_robot_; i++) {
+    std::vector<float> scaled_src(dim_);
+    for (unsigned int i = 0; i < dim_; i++) {
         scaled_src[i] = vec[i] / _scale_factor[i];
     }
-    return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
+    return torch::from_blob(scaled_src.data(), {1, dim_}).clone();
 }
 
 torch::Tensor AtlasMPNet::MPNetSampler::stateToTensor(const ompl::base::State *from) {
-    std::vector<float> scaled_src(dof_robot_);
-    const auto& from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
-    for (unsigned int i = 0; i < dof_robot_; i++) {
-        scaled_src[i] = from_state[i] / _scale_factor[i];
+    std::vector<float> scaled_src(13);
+    if(dim_ == 13){
+        const auto& from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+        for (unsigned int i = 0; i < dim_; i++) {
+            scaled_src[i] = from_state[i] / _scale_factor[i];
+        }
+        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
     }
-    return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
+    else if (dim_ ==  11) {
+        const auto& from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+        for (unsigned int i = 0; i < 10; i++) {
+            scaled_src[i] = from_state[i] / _scale_factor[i];
+        }
+        scaled_src[10] = 0.0;
+        scaled_src[11] = 0.0;
+        scaled_src[12] = from_state[10] / _scale_factor[12];
+        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
+    }
 }
 
 void AtlasMPNet::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::base::State *to) {
     auto data = from.accessor<float, 2>()[0];
     auto& to_state = *(to->as<ompl::base::ConstrainedStateSpace::StateType>());
     float val;
-    for (unsigned int i=0; i<dof_robot_; i++) {
+    for (unsigned int i=0; i<dim_; i++) {
         val = static_cast<float>(data[i]) * _scale_factor[i];
         if (val<_lower_limits[i])
             to_state[i] = _lower_limits[i];
@@ -153,7 +173,7 @@ std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filenam
 }
 
 bool AtlasMPNet::MPNetSampler::EnforceBound(std::vector<double> &val) {
-    for (unsigned int i=0; i< dof_robot_; i++) {
+    for (unsigned int i=0; i< dim_; i++) {// enforcing TSR as well
         if (val[i]<_lower_limits[i])
             val[i] = _lower_limits[i];
         else if (val[i] > _upper_limits[i])
