@@ -77,6 +77,8 @@ namespace AtlasMPNet {
         std::vector<double> goal_;
         ompl::geometric::SimpleSetupPtr simple_setup_;
 
+        OpenRAVE::IkSolverBasePtr ik_solver;
+
         bool initialized_ = false;
     };
 }

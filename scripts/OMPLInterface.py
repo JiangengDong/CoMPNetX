@@ -47,11 +47,11 @@ def pause():
 
 
 class SolverParameter(object):
-    types = ("rrt", "rrtstar", "rrtconnect", "mpnet")
-    Template_str = """<solver_parameters type="%d" time="%d" range="%f"/>\n"""
+    types = ("rrt", "rrtstar", "rrtconnect", "mpnet", "prm", "lazyprm", "kpiece", "bkpiece", "biest")
+    Template_str = """<solver_parameters type="%s" time="%d" range="%f"/>\n"""
 
     def __init__(self, type="rrtconnect", time=120, range=0.05):
-        self._type = 2
+        self._type = "rrtconnect"
         self._time = 120
         self._range = 0.05
 
@@ -64,12 +64,14 @@ class SolverParameter(object):
 
     @property
     def type(self):
-        return SolverParameter.types[self._type]
+        return self._type
 
     @type.setter
     def type(self, value):
-        assert value in SolverParameter.types
-        self._type = SolverParameter.types.index(value)
+        assert type(value) is str
+        lower_value = value.lower()
+        assert lower_value in SolverParameter.types
+        self._type = lower_value
 
     @property
     def time(self):
@@ -91,11 +93,11 @@ class SolverParameter(object):
 
 
 class ConstraintParameter(object):
-    types = ("projection", "atlas", "tangent_bundle")
-    Template_str = """<constraint_parameters type="%d" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>\n"""
+    types = ("projection", "atlas", "tangent_bundle", "proj", "tangent-bundle")
+    Template_str = """<constraint_parameters type="%s" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>\n"""
 
     def __init__(self, type="atlas", tolerance=1e-3, max_iter=50, delta=0.05, lambd=2.0):
-        self._type = 1
+        self._type = "atlas"
         self._tolerance = 1e-4
         self._max_iter = 50
         self._delta = 0.05
@@ -112,12 +114,18 @@ class ConstraintParameter(object):
 
     @property
     def type(self):
-        return ConstraintParameter.types[self._type]
+        return self._type
 
     @type.setter
     def type(self, value):
-        assert value in ConstraintParameter.types
-        self._type = ConstraintParameter.types.index(value)
+        assert type(value) is str
+        lower_value = value.lower()
+        assert lower_value in ConstraintParameter.types
+        if lower_value == "proj":
+            lower_value = "projection"
+        elif lower_value == "tangent-bundle":
+            lower_value = "tangent_bundle"
+        self._type = lower_value
 
     @property
     def tolerance(self):
@@ -297,7 +305,7 @@ class TSRParameter(object):
 
 class TSRChain(object):
     purposes = ("constraint",)
-    Template_str = """<tsr_chain purpose="%d" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">\n%s</tsr_chain>\n"""
+    Template_str = """<tsr_chain purpose="%s" manipulator_index="%d" relative_body_name="%s" relative_link_name="%s" mimic_body_name="%s" mimic_body_index="%s">\n%s</tsr_chain>\n"""
 
     def __init__(self,
                  purpose="constraint",
@@ -306,7 +314,7 @@ class TSRChain(object):
                  relative_link_name="NULL",
                  mimic_body_name="NULL",
                  mimic_body_index=()):
-        self._purpose = 0
+        self._purpose = "constraint"
         self._manipulator_index = 1
         self._relative_body_name = "NULL"
         self._relative_link_name = "NULL"
@@ -328,12 +336,14 @@ class TSRChain(object):
 
     @property
     def purpose(self):
-        return TSRChain.purposes[self._purpose]
+        return self._purpose
 
     @purpose.setter
     def purpose(self, value):
-        assert value in TSRChain.purposes
-        self._purpose = TSRChain.purposes.index(value)
+        assert type(value) is str
+        lower_value = value.lower()
+        assert lower_value in TSRChain.purposes
+        self._purpose = lower_value
 
     @property
     def manipulator_index(self):
@@ -390,7 +400,7 @@ class TSRChain(object):
 
 
 class MPNetParameter(object):
-    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%s" dnet_coeff="%s"/>\n"""
+    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%f" dnet_coeff="%f"/>\n"""
 
     def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path="", dnet_threshold=0.3, dnet_coeff=0.4):
         self._pnet_path = ""
@@ -575,8 +585,8 @@ class OMPLInterface:
         params.SetGoalConfig(goalik)
         params.SetExtraParameters(str(planner_params))
 
-        # with self.env, self.robot:
-        with EmptyContext():
+        with self.env, self.robot:
+        # with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None
@@ -593,6 +603,13 @@ class OMPLInterface:
                     vals.append(0.0)
                     vals[5] = vals[3]
                     vals[3] = 0.0
+                elif len(vals) == 2:
+                    vals.append(0.0)
+                    vals.append(0.0)
+                    vals.append(0.0)
+                    vals.append(0.0)
+                    vals[5] = vals[0]
+                    vals[4] = vals[1]
                 return vals, dist
 
             all_list = [singleDistance(config) for config in configs]

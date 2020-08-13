@@ -13,6 +13,16 @@ using namespace AtlasMPNet;
  * implementation of SolverParameters
  */
 SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    const static std::map<std::string, SolverType> str2type = {
+        {"rrt", RRT},
+        {"rrtstar", RRTstar},
+        {"rrtconnect", RRTConnect},
+        {"mpnet", MPNet},
+        {"prm", PRM},
+        {"lazyprm", LazyPRM},
+        {"kpiece", KPIECE},
+        {"bkpiece", BKPIECE},
+        {"biest", BIEST}};
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -27,9 +37,7 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
                 else if (key == "range")
                     value >> range_;
                 else if (key == "type") {
-                    int tmp;
-                    value >> tmp;
-                    type_ = static_cast<SolverType>(tmp);
+                    type_ = str2type.at(value.str());
                 } else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
             }
@@ -60,6 +68,12 @@ bool SolverParameter::serialize(std::ostream &O) const {
  * implementation of ConstraintParameters
  */
 SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
+    const static std::map<std::string, SpaceType> str2type = {
+        {"projection", PROJECTION},
+        {"proj", PROJECTION},
+        {"atlas", ATLAS},
+        {"tangent_bundle", TANGENT_BUNDLE},
+        {"tangent-bundle", TANGENT_BUNDLE}};
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -78,9 +92,7 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
                 else if (key == "lambda")
                     value >> lambda_;
                 else if (key == "type") {
-                    int tmp;
-                    value >> tmp;
-                    type_ = static_cast<SpaceType>(tmp);
+                    type_ = str2type.at(value.str());
                 } else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
             }
@@ -245,6 +257,10 @@ bool TSRParameter::serialize(std::ostream &O) const {
 }
 
 SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
+    const static std::map<std::string, PurposeType> str2type = {
+        {"constraint", CONSTRAINT},
+        {"sample_start", SAMPLE_START},
+        {"sample_goal", SAMPLE_GOAL}};
     if (name == _tag_name) {
         if (_tag_open) {
             return PE_Ignore;
@@ -261,9 +277,7 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
                 else if (key == "relative_link_name")
                     value >> relativelinkname;
                 else if (key == "purpose") {
-                    int temp;
-                    value >> temp;
-                    purpose = static_cast<PurposeType>(temp);
+                    purpose = str2type.at(value.str());
                 } else if (key == "mimic_body_name") {
                     value >> mimic_body_name;
                 } else if (key == "mimic_body_index") {
@@ -371,10 +385,10 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                     value >> dnet_path;
                 }
                 else if (key == "dnet_threshold") {
-
+                    value >> dnet_threshold;
                 }
                 else if (key == "dnet_coeff") {
-
+                    value >> dnet_coeff;
                 }
                 else
                             RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());

@@ -10,6 +10,7 @@ import os
 import pickle
 import rospkg
 import time
+from multiprocessing import Process
 
 import openravepy as orpy
 
@@ -355,30 +356,30 @@ def cleanupObject(orEnv, obj_name, obj, obj_setup):
     time.sleep(0.1)
 
 
-def main():
+def main(env_range=None):
     # settings
     visible = False
-    coll_checker = "fcl_"
+    coll_checker = "ode"
     task = "kitchen"
-    output_folder = "data/result/result47"
+    output_folder = "data/result/result51"
     message = "Test mpnet"
 
     if task == "kitchen":
-        env_range = list(range(0, 70))
+        env_range = env_range or list(range(0, 70))
         scene_range = list(range(27, 30))
         setup_file = "data/experiment_setup/esc_dict_door70_30.p"
     elif task == "bartender":
-        env_range = list(range(0, 19))
+        env_range = env_range or list(range(0, 19))
         scene_range = list(range(110, 120))
         setup_file = "data/experiment_setup/esc_dict20_120.p"
     else:
         env_range = scene_range = setup_file = None
 
     param = PlannerParameter()
-    param.solver_parameter.type = "mpnet"
-    param.solver_parameter.time = 25
+    param.solver_parameter.type = "PRM"
+    param.solver_parameter.time = 300
     param.solver_parameter.range = 0.05
-    param.constraint_parameter.type = "atlas"
+    param.constraint_parameter.type = "proj"
     param.constraint_parameter.tolerance = 1e-3
     param.constraint_parameter.delta = 0.05
     param.atlas_parameter.rho = 1.5
@@ -409,7 +410,7 @@ def main():
     cabinet = None if task == "bartender" else loadCabinet(orEnv)
     obj_dict = loadObjects(orEnv, task)
     robot = loadBaxter(orEnv)
-    planner = OMPLInterface(orEnv, robot, loglevel=2)
+    planner = OMPLInterface(orEnv, robot, loglevel=0)
     initScene = initSceneFactory(task)
     getObjectSetups = getObjectSetupsFactory(task)
     with open(setup_file, "rb") as f:
@@ -431,7 +432,7 @@ def main():
             time_dict[scene_key] = {}
 
             # initialize scene. Put all the objects to their start position.
-            print("\n==========env_no: %d====s_no: %d==========" % (e, s))
+            print("\n========== env_no: %d ==== s_no: %d ==========" % (e, s))
             obj_setups = getObjectSetups(scene_setup, env_setup)
             initScene(orEnv, robot, cabinet, obj_dict, obj_setups)
 
@@ -501,4 +502,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    failed_env = []
+    for e in range(0, 20):
+        for _ in range(3):
+            p = Process(target=main, args=([e, ], ))
+            p.start()
+            p.join()
+            print "Env %d exit with code %d" % (e, p.exitcode)
+            if p.exitcode==0:
+                break
+        else:
+            failed_env.append(e)
+    print "Failed envs: %s" % str(failed_env)
+    # main([0])

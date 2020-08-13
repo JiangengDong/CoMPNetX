@@ -47,9 +47,19 @@ def generate_csv(folder, env_range, scene_range, obj_order):
                 csv_writer.writerow(obj_line)
 
 
+def get_statistics(folder):
+    time_table = np.genfromtxt(os.path.join(folder, "result.csv"), delimiter=",", skip_header=1)[:, 2:]
+    total_time = np.sum(time_table, axis=1)
+    average_time = np.average(total_time[np.isfinite(total_time)])
+    success_n = np.count_nonzero(np.isfinite(time_table))
+    failure_n = np.count_nonzero(np.isinf(time_table))
+    success_rate = success_n*1.0/(success_n+failure_n)
+    return average_time, success_rate
+
+
 def main(folder, task):
     if task == "bartender":
-        env_range = list(range(0, 19))
+        env_range = list(range(0, 20))
         scene_range = list(range(110, 120))
         obj_order = ("juice", "fuze_bottle", "coke_can", "plasticmug", "teakettle")
     elif task == "kitchen":
@@ -63,10 +73,13 @@ def main(folder, task):
         pass
 
     merge_pickle(folder, env_range, scene_range)
-    # generate_csv(folder, env_range, scene_range, obj_order)
+    generate_csv(folder, env_range, scene_range, obj_order)
+    average_time, success_rate = get_statistics(folder)
+    print("average time=%f" % average_time)
+    print("success rate=%f" % success_rate)
 
 
 if __name__ == "__main__":
-    folder = "data/result/tsr_value_door"
+    folder = "data/result/result51"
     task = "kitchen"
     main(folder, task)

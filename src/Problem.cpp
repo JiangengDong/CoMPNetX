@@ -45,6 +45,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/geometric/planners/rrt/RRT.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/geometric/planners/prm/PRM.h>
+#include <ompl/geometric/planners/prm/LazyPRM.h>
+#include <ompl/geometric/planners/est/BiEST.h>
+#include <ompl/geometric/planners/kpiece/KPIECE1.h>
+#include <ompl/geometric/planners/kpiece/BKPIECE1.h>
 
 #include "Constraint.h"
 #include "MPNetPlanner.h"
@@ -97,6 +102,9 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
 
     initialized_ = setTSRChainRobot() && setAmbientStateSpace() && setConstrainedStateSpace() && setStartAndGoalStates() && setStateValidityChecker() &&
                    setPlanner() && simpleSetup();
+
+    ik_solver = OpenRAVE::RaveCreateIkSolver(env_, "GeneralIK");
+    ik_solver->Init(tsrchains_[0]->GetRobot()->GetActiveManipulator());
     return initialized_;
 }
 
@@ -224,23 +232,50 @@ bool AtlasMPNet::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::
         sin >> temp;
         joint_vals[i] = temp;
     }
-
     robot_->SetActiveDOFValues(joint_vals);
-    auto manips = robot_->GetManipulators();
-    double dist2 = 0;
-    for (const auto &tsrchain: tsrchains_) {
-        auto Trobot = manips[tsrchain->GetManipInd()]->GetEndEffectorTransform();
-        OpenRAVE::Transform Ttsr;
-        std::vector<double> tsr_joint_vals(tsrchain->GetNumDOF(), 0);
-        double dist = tsrchain->GetClosestTransform(Trobot, tsr_joint_vals, Ttsr);
-        for (const auto& val: tsr_joint_vals) {
-            sout << val << " ";
-        }
-        dist2 += dist*dist;
+    auto tsrchain = tsrchains_[0];
+    auto tsrrobot = tsrchain->GetRobot();
+    auto Ttarg = robot_->GetManipulators()[tsrchain->GetManipInd()]->GetEndEffectorTransform();
+
+    std::vector<double> ikparams;
+    ikparams.resize(12);
+    ikparams[0] = 1;
+    ikparams[1] = 0;
+    ikparams[9] = 0; //don't do any balancing
+    ikparams[10] = 0; //select the mode
+    ikparams[11] = 0;
+    ikparams[2] = Ttarg.rot.x;
+    ikparams[3] = Ttarg.rot.y;
+    ikparams[4] = Ttarg.rot.z;
+    ikparams[5] = Ttarg.rot.w;
+    ikparams[6] = Ttarg.trans.x;
+    ikparams[7] = Ttarg.trans.y;
+    ikparams[8] = Ttarg.trans.z;
+
+    auto psolution = boost::make_shared<std::vector<double>>();
+
+    std::vector<double> lower_limit(tsrchain->GetNumDOF()), upper_limit(tsrchain->GetNumDOF());
+    tsrrobot->GetActiveDOFValues(joint_vals);
+    tsrchain->GetChainJointLimits(lower_limit, upper_limit);
+    for(size_t i=0; i<tsrchain->GetNumDOF(); i++) {
+        if(joint_vals[i] <= lower_limit[i])
+            joint_vals[i] = lower_limit[i]+1e-4;
+        if(joint_vals[i] >= upper_limit[i])
+            joint_vals[i] = upper_limit[i]-1e-4;
     }
 
-    sout << std::sqrt(dist2);
+    ik_solver->Solve(OpenRAVE::IkParameterization(), joint_vals, ikparams, false, psolution);
 
+    auto &solution = *psolution;
+    tsrchain->SetActiveDOFValues(solution);
+    auto Ttsr = tsrchain->GetEndEffectorTransform();
+    OpenRAVE::Transform Tdiff;
+    auto dist = tsrchain->TransformDifference(Ttarg, Ttsr, Tdiff);
+
+    for (const auto& val: solution) {
+        sout << val << " ";
+    }
+    sout << dist;
     return true;
 }
 
@@ -512,7 +547,7 @@ bool AtlasMPNet::Problem::setPlanner() {
     case SolverParameter::RRT:
         planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
         break;
-    case SolverParameter::RRTStar:
+    case SolverParameter::RRTstar:
         planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
         break;
     case SolverParameter::RRTConnect:
@@ -520,6 +555,21 @@ bool AtlasMPNet::Problem::setPlanner() {
         break;
     case SolverParameter::MPNet:
         planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
+        break;
+    case SolverParameter::PRM:
+        planner_ = std::make_shared<ompl::geometric::PRM>(constrained_space_info_);
+        break;
+    case SolverParameter::LazyPRM:
+        planner_ = std::make_shared<ompl::geometric::LazyPRM>(constrained_space_info_);
+        break;
+    case SolverParameter::KPIECE:
+        planner_ = std::make_shared<ompl::geometric::KPIECE1>(constrained_space_info_);
+        break;
+    case SolverParameter::BKPIECE:
+        planner_ = std::make_shared<ompl::geometric::BKPIECE1>(constrained_space_info_);
+        break;
+    case SolverParameter::BIEST:
+        planner_ = std::make_shared<ompl::geometric::BiEST>(constrained_space_info_);
         break;
     }
     if (planner_ == nullptr) {
@@ -532,13 +582,19 @@ bool AtlasMPNet::Problem::setPlanner() {
     case SolverParameter::RRT:
         planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameter_.range_);
         break;
-    case SolverParameter::RRTStar:
+    case SolverParameter::RRTstar:
         planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameter_.range_);
         break;
     case SolverParameter::RRTConnect:
         planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameter_.range_);
         break;
-    case SolverParameter::MPNet:
+    case SolverParameter::BKPIECE:
+        planner_->as<ompl::geometric::BKPIECE1>()->setRange(parameters_->solver_parameter_.range_);
+        break;
+    case SolverParameter::BIEST:
+        planner_->as<ompl::geometric::BiEST>()->setRange(parameters_->solver_parameter_.range_);
+        break;
+    default:
         break;
     }
 
@@ -551,13 +607,19 @@ bool AtlasMPNet::Problem::setPlanner() {
     case SolverParameter::RRT:
         ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange();
         break;
-    case SolverParameter::RRTStar:
+    case SolverParameter::RRTstar:
         ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTstar>()->getRange();
         break;
     case SolverParameter::RRTConnect:
         ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTConnect>()->getRange();
         break;
-    case SolverParameter::MPNet:
+    case SolverParameter::BKPIECE:
+        ss << "\t\tRange: " << planner_->as<ompl::geometric::BKPIECE1>()->getRange();
+        break;
+    case SolverParameter::BIEST:
+        ss << "\t\tRange: " << planner_->as<ompl::geometric::BiEST>()->getRange();
+        break;
+    default:
         break;
     }
     OMPL_DEBUG(ss.str().c_str());

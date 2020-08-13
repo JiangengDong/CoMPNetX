@@ -42,7 +42,7 @@ namespace AtlasMPNet {
     class SolverParameter : public SimpleXMLReader {
     public:
         enum SolverType {
-            RRT = 0, RRTStar, RRTConnect, MPNet
+            RRT = 0, RRTstar, RRTConnect, MPNet, PRM, LazyPRM, KPIECE, BKPIECE, BIEST
         } type_ = RRT;
         double time_ = 5.0; // Planning time allowed.
         double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
@@ -158,6 +158,8 @@ namespace AtlasMPNet {
         std::string voxel_path;
         std::string ohot_path;
         std::string dnet_path;
+        double dnet_threshold;
+        double dnet_coeff;
 
         MPNetParameter() : SimpleXMLReader("mpnet") {}
 
