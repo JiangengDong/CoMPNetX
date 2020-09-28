@@ -37,11 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
-#include <openrave/openrave.h>
 #include <ompl/base/StateSpace.h>
-#include <ompl/base/spaces/SO2StateSpace.h>
-#include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/base/StateValidityChecker.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <openrave/openrave.h>
 
 #include "TaskSpaceRegionChain.h"
 
@@ -54,7 +53,7 @@ namespace AtlasMPNet {
     public:
         typedef std::shared_ptr<StateValidityChecker> Ptr;
         StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr &robot,
-                             const std::vector<TaskSpaceRegionChain::Ptr>& tsr_chains);
+                             const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains);
 
         bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
 
@@ -71,6 +70,5 @@ namespace AtlasMPNet {
     };
 
 } // namespace AtlasMPNet
-
 
 #endif //ATLASMPNET_STATEVALIDITYCHECKER_H

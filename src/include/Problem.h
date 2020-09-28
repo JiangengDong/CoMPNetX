@@ -5,17 +5,16 @@
 #ifndef ATLASMPNET_PROBLEM_H
 #define ATLASMPNET_PROBLEM_H
 
-#include <openrave/openrave.h>
-#include <ompl/base/spaces/RealVectorStateSpace.h>
-#include <ompl/base/spaces/constraint/AtlasStateSpace.h>
-#include <ompl/base/Constraint.h>
 #include <ompl/base/ConstrainedSpaceInformation.h>
-#include <ompl/geometric/SimpleSetup.h>
-#include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/base/Constraint.h>
 #include <ompl/base/StateValidityChecker.h>
-#include "Parameters.h"
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <openrave/openrave.h>
 
 #include "Constraint.h"
+#include "Parameters.h"
 #include "StateValidityChecker.h"
 #include "TaskSpaceRegionChain.h"
 
@@ -64,7 +63,6 @@ namespace AtlasMPNet {
 
         OpenRAVE::EnvironmentBasePtr env_;
         OpenRAVE::RobotBasePtr robot_;
-        OpenRAVE::RobotBasePtr tsr_robot_;
         std::vector<TaskSpaceRegionChain::Ptr> tsrchains_;
 
         ompl::base::StateSpacePtr ambient_state_space_;
@@ -77,10 +75,8 @@ namespace AtlasMPNet {
         std::vector<double> goal_;
         ompl::geometric::SimpleSetupPtr simple_setup_;
 
-        OpenRAVE::IkSolverBasePtr ik_solver;
-
         bool initialized_ = false;
     };
-}
+} // namespace AtlasMPNet
 
 #endif //ATLASMPNET_PROBLEM_H

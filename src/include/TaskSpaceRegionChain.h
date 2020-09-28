@@ -32,8 +32,8 @@
 
 #include <openrave/openrave.h>
 
-#include <utility>
 #include "Parameters.h"
+#include <utility>
 
 namespace AtlasMPNet {
     /// Class defining a TSR Chain: a more complex representation of pose constraints
@@ -57,7 +57,6 @@ namespace AtlasMPNet {
             Tdiff = T0_s.inverse() * T0_g;
             return Tdiff.trans.lengthsqr3() + Tdiff.rot.y * Tdiff.rot.y + Tdiff.rot.z * Tdiff.rot.z + Tdiff.rot.w * Tdiff.rot.w;
         }
-
 
         // get the closest transform in the TSR Chain to a query transform
         OpenRAVE::dReal GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closest) const;
@@ -88,12 +87,12 @@ namespace AtlasMPNet {
         // turn the list of mimic joint values into a list of full joint values
         bool MimicValuesToFullMimicBodyValues(const OpenRAVE::dReal *TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
 
-        bool MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal>& TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
+        bool MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal> &TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals);
 
         // apply mimiced joint values to a certain set of joints
         bool ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TSRJointVals);
 
-        bool ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal>& TSRJointVals);
+        bool ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal> &TSRJointVals);
 
         // return the manipulator index of the first TSR
         int GetManipInd() const {
@@ -103,7 +102,7 @@ namespace AtlasMPNet {
         // get the number of DOFs of the virtual manipulator
         int GetNumDOF() const {
             if (numdof == -1)
-                        RAVELOG_INFO ("ERROR : this chain has not been robotized yet\n");
+                RAVELOG_INFO("ERROR : this chain has not been robotized yet\n");
             return numdof;
         }
 
@@ -131,7 +130,7 @@ namespace AtlasMPNet {
                 if (q.size() == numdof)
                     robot->SetActiveDOFValues(q, 0);
                 else
-                            RAVELOG_WARN ("Incompatible dof values. ");
+                    RAVELOG_WARN("Incompatible dof values. ");
             }
         }
 
@@ -143,7 +142,7 @@ namespace AtlasMPNet {
         }
 
         void CalculateActiveRotationJacobian(const OpenRAVE::Vector &qInitialRot, std::vector<OpenRAVE::dReal> &jacobian) const {
-            if(_bPointTSR) {
+            if (_bPointTSR) {
                 jacobian.clear();
                 jacobian.resize(numdof);
             } else
@@ -151,7 +150,7 @@ namespace AtlasMPNet {
         }
 
         void CalculateActiveJacobian(const OpenRAVE::Vector &offset, std::vector<OpenRAVE::dReal> &jacobian) {
-            if(_bPointTSR) {
+            if (_bPointTSR) {
                 jacobian.clear();
                 jacobian.resize(numdof);
             } else
@@ -159,7 +158,6 @@ namespace AtlasMPNet {
         }
 
     private:
-
         void DestoryRobotizedTSRChain(); ///< delete the virtual manipulator from the environment
 
         void GetJacobian(const OpenRAVE::Transform &T0_s, const OpenRAVE::Transform &T0_closest, Eigen::Ref<Eigen::MatrixXd> J) const;
@@ -183,5 +181,5 @@ namespace AtlasMPNet {
 
         bool _bPointTSR;
     };
-}
+} // namespace AtlasMPNet
 #endif //ATLASMPNET_TASKSPACEREGIONCHAIN_H

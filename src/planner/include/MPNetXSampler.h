@@ -2,8 +2,8 @@
 // Created by jiangeng on 3/29/20.
 //
 
-#ifndef ATLASMPNET_MPNETSAMPLER_H
-#define ATLASMPNET_MPNETSAMPLER_H
+#ifndef ATLASMPNET_MPNETXSAMPLER_H
+#define ATLASMPNET_MPNETXSAMPLER_H
 
 #include <ompl/base/StateSampler.h>
 #include <ompl/base/StateSpace.h>
@@ -16,10 +16,10 @@
 #include "TaskSpaceRegionChain.h"
 
 namespace AtlasMPNet {
-    class MPNetSampler : public ompl::base::StateSampler {
+    class MPNetXSampler : public ompl::base::StateSampler {
     public:
-        typedef std::shared_ptr<MPNetSampler> Ptr;
-        MPNetSampler(const ompl::base::StateSpace *space,
+        typedef std::shared_ptr<MPNetXSampler> Ptr;
+        MPNetXSampler(const ompl::base::StateSpace *space,
                      OpenRAVE::RobotBasePtr robot,
                      std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
                      MPNetParameter param);
@@ -68,4 +68,4 @@ namespace AtlasMPNet {
     };
 } // namespace AtlasMPNet
 
-#endif //ATLASMPNET_MPNETSAMPLER_H
+#endif //ATLASMPNET_MPNETXSAMPLER_H

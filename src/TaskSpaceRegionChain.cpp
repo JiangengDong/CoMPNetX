@@ -28,10 +28,10 @@
 */
 
 #include "TaskSpaceRegionChain.h"
-#include <openrave/openrave.h>
+#include <Eigen/Dense>
 #include <boost/make_shared.hpp>
 #include <boost/math/constants/constants.hpp>
-#include <Eigen/Dense>
+#include <openrave/openrave.h>
 
 using namespace AtlasMPNet;
 
@@ -47,7 +47,7 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
     } else {
         _mimicbody = penv_in->GetRobot(param.mimic_body_name);
         if (_mimicbody.get() == nullptr) {
-                    RAVELOG_INFO("Error: could not find the specified kinbody to make a mimic\n");
+            RAVELOG_INFO("Error: could not find the specified kinbody to make a mimic\n");
         }
     }
 
@@ -58,7 +58,7 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
         OpenRAVE::KinBodyPtr pobject;
         pobject = penv_in->GetKinBody(param.relativebodyname);
         if (pobject.get() == nullptr) {
-                    RAVELOG_INFO("Error: could not find the specified object to attach frame\n");
+            RAVELOG_INFO("Error: could not find the specified object to attach frame\n");
         }
 
         //find the link
@@ -66,14 +66,14 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
         bool bGotLink = false;
         for (auto &vlink : vlinks) {
             if (strcmp(param.relativelinkname.c_str(), vlink->GetName().c_str()) == 0) {
-                        RAVELOG_INFO("frame link: %s:%s\n", vlink->GetParent()->GetName().c_str(), vlink->GetName().c_str());
+                RAVELOG_INFO("frame link: %s:%s\n", vlink->GetParent()->GetName().c_str(), vlink->GetName().c_str());
                 prelativetolink = vlink;
                 bGotLink = true;
                 break;
             }
         }
         if (!bGotLink) {
-                    RAVELOG_INFO("Error: could not find the specified link of the object to attach frame\n");
+            RAVELOG_INFO("Error: could not find the specified link of the object to attach frame\n");
         }
     }
     RobotizeTSRChain(penv_in);
@@ -82,7 +82,7 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
 bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &penv_in) {
     bool bFlipAxis;
     if (penv_in.get() == nullptr) {
-                RAVELOG_INFO("Environment pointer is null!\n");
+        RAVELOG_INFO("Environment pointer is null!\n");
         return false;
     }
 
@@ -94,12 +94,12 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
 
     char robotname[32], xmlfile[256], robottype[32];
     sprintf(robottype, "GenericRobot");
-    sprintf(xmlfile, "TSRChain%lu.robot.xml", (unsigned long int) this);
-    sprintf(robotname, "TSRChain%lu", (unsigned long int) this);//give a unique name to this robot
+    sprintf(xmlfile, "TSRChain%lu.robot.xml", (unsigned long int)this);
+    sprintf(robotname, "TSRChain%lu", (unsigned long int)this); //give a unique name to this robot
 
     robot = RaveCreateRobot(penv_in, robottype);
     if (robot.get() == nullptr) {
-                RAVELOG_INFO("Failed to create robot %s", robottype);
+        RAVELOG_INFO("Failed to create robot %s", robottype);
         return false;
     }
 
@@ -136,8 +136,8 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 continue;
 
             if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
-                        RAVELOG_FATAL(
-                        "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
+                RAVELOG_FATAL(
+                    "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
                 return false;
             }
 
@@ -171,31 +171,31 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 O << "\t\t\t<Geom type=\"cylinder\">" << std::endl;
 
             switch (j) {
-                case 0:
-                    O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
-                    break;
-                case 1:
-                    O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
-                    break;
-                case 2:
-                    O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
-                    break;
-                case 3:
-                    O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
-                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                    break;
-                case 4:
-                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                    break;
-                case 5:
-                    O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
-                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                    break;
-                default:
-                    break;
+            case 0:
+                O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
+                break;
+            case 1:
+                O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
+                break;
+            case 2:
+                O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
+                break;
+            case 3:
+                O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
+                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                break;
+            case 4:
+                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                break;
+            case 5:
+                O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
+                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                break;
+            default:
+                break;
             }
             if (j < 3)
                 O << "\t\t\t\t<diffusecolor>0.7 0.3 0.3</diffusecolor>" << std::endl;
@@ -220,35 +220,35 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
             O << "\t\t\t<limits>" << tsr.Bw[j][0] << " " << tsr.Bw[j][1] << "</limits>" << std::endl;
 
             switch (j) {
-                case 0:
+            case 0:
+                O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
+                break;
+            case 1:
+                O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
+                break;
+            case 2:
+                O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
+                break;
+            case 3:
+                if (bFlipAxis)
+                    O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
+                else
                     O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                    break;
-                case 1:
+                break;
+            case 4:
+                if (bFlipAxis)
+                    O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
+                else
                     O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                    break;
-                case 2:
+                break;
+            case 5:
+                if (bFlipAxis)
+                    O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
+                else
                     O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                    break;
-                case 3:
-                    if (bFlipAxis)
-                        O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
-                    else
-                        O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                    break;
-                case 4:
-                    if (bFlipAxis)
-                        O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
-                    else
-                        O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                    break;
-                case 5:
-                    if (bFlipAxis)
-                        O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
-                    else
-                        O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                    break;
-                default:
-                    break;
+                break;
+            default:
+                break;
             }
 
             O << "\t\t</Joint>" << std::endl;
@@ -272,11 +272,12 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     O << "\t\t\t<Body>Body" << bodynumber - 1 << "</Body>" << std::endl;
     O << "\t\t\t<Body>Body" << bodynumber << "</Body>" << std::endl;
     O << "\t\t\t<offsetfrom>Body" << bodynumber << "</offsetfrom>" << std::endl;
-    O << "\t\t\t<limits>" << "0 0" << "</limits>" << std::endl;
+    O << "\t\t\t<limits>"
+      << "0 0"
+      << "</limits>" << std::endl;
     O << "\t\t</Joint>" << std::endl;
 
     O << "\t</KinBody>" << std::endl;
-
 
     if (bodynumber > 1) {
         _bPointTSR = false;
@@ -288,20 +289,20 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     } else {
         _bPointTSR = true;
         numdof = bodynumber - 1;
-                RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
+        RAVELOG_INFO("This is a point TSR, no robotized TSR needed\n");
         return true;
     }
 
     if (_bPointTSR && param.TSRs.size() != 1) {
-                RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
+        RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
         return false;
     }
 
     O << "</Robot>" << std::endl;
 
-    robot = penv->ReadRobotXMLData(OpenRAVE::RobotBasePtr(), O.str(), std::list<std::pair<std::string, std::string> >());
+    robot = penv->ReadRobotXMLData(OpenRAVE::RobotBasePtr(), O.str(), std::list<std::pair<std::string, std::string>>());
     if (robot.get() == nullptr) {
-                RAVELOG_INFO("Could not init robot from data!\n");
+        RAVELOG_INFO("Could not init robot from data!\n");
         return false;
     }
 
@@ -311,7 +312,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     if (prelativetolink.get() == nullptr)
         robot->SetTransform(param.TSRs[0].T0_w);
     else
-        robot->SetTransform(prelativetolink->GetTransform() * param.TSRs[0].T0_w);    // TODO: this is not the relative that I think
+        robot->SetTransform(prelativetolink->GetTransform() * param.TSRs[0].T0_w); 
 
     manipulator = robot->GetActiveManipulator();
     eeIndex = manipulator->GetEndEffector()->GetIndex();
@@ -344,24 +345,15 @@ void TaskSpaceRegionChain::GetJacobian(const OpenRAVE::Transform &T0_s, const Op
         for (int row = 0; row < 3; row++) {
             J(row, col) = Jtrans[row * numdof + col];
         }
-        J(3, col) = T0_s.rot[0] * Jrot[1 * numdof + col]
-                    - T0_s.rot[1] * Jrot[0 * numdof + col]
-                    - T0_s.rot[2] * Jrot[3 * numdof + col]
-                    + T0_s.rot[3] * Jrot[2 * numdof + col];
-        J(4, col) = T0_s.rot[0] * Jrot[2 * numdof + col]
-                    + T0_s.rot[1] * Jrot[3 * numdof + col]
-                    - T0_s.rot[2] * Jrot[0 * numdof + col]
-                    - T0_s.rot[3] * Jrot[1 * numdof + col];
-        J(5, col) = T0_s.rot[0] * Jrot[3 * numdof + col]
-                    - T0_s.rot[1] * Jrot[2 * numdof + col]
-                    + T0_s.rot[2] * Jrot[1 * numdof + col]
-                    - T0_s.rot[3] * Jrot[0 * numdof + col];
+        J(3, col) = T0_s.rot[0] * Jrot[1 * numdof + col] - T0_s.rot[1] * Jrot[0 * numdof + col] - T0_s.rot[2] * Jrot[3 * numdof + col] + T0_s.rot[3] * Jrot[2 * numdof + col];
+        J(4, col) = T0_s.rot[0] * Jrot[2 * numdof + col] + T0_s.rot[1] * Jrot[3 * numdof + col] - T0_s.rot[2] * Jrot[0 * numdof + col] - T0_s.rot[3] * Jrot[1 * numdof + col];
+        J(5, col) = T0_s.rot[0] * Jrot[3 * numdof + col] - T0_s.rot[1] * Jrot[2 * numdof + col] + T0_s.rot[2] * Jrot[1 * numdof + col] - T0_s.rot[3] * Jrot[0 * numdof + col];
     }
 }
 
 OpenRAVE::dReal
 TaskSpaceRegionChain::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::vector<OpenRAVE::dReal> &TSRJointVals, OpenRAVE::Transform &T0_closest) const {
-    if(_bPointTSR) {
+    if (_bPointTSR) {
         TSRJointVals.clear();
         TSRJointVals.resize(numdof);
 
@@ -417,7 +409,7 @@ bool TaskSpaceRegionChain::GetChainJointLimits(OpenRAVE::dReal *lowerlimits, Ope
     for (unsigned int i = 0; i < _lowerlimits.size(); i++) {
         lowerlimits[i] = _lowerlimits[i];
         upperlimits[i] = _upperlimits[i];
-                RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
+        RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
     }
 
     return true;
@@ -427,7 +419,7 @@ bool TaskSpaceRegionChain::GetChainJointLimits(std::vector<OpenRAVE::dReal> &low
     for (unsigned int i = 0; i < _lowerlimits.size(); i++) {
         lowerlimits[i] = _lowerlimits[i];
         upperlimits[i] = _upperlimits[i];
-                RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
+        RAVELOG_DEBUG("lower: %f   upper: %f\n", lowerlimits[i], upperlimits[i]);
     }
 
     return true;
@@ -454,7 +446,7 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const OpenRAVE::dRea
     return true;
 }
 
-bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal>& TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
+bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<OpenRAVE::dReal> &TSRJointVals, std::vector<OpenRAVE::dReal> &mimicbodyvals) {
     if (_mimicbody == nullptr)
         return false;
 
@@ -474,7 +466,7 @@ bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const OpenRAVE::dReal *TS
     return true;
 }
 
-bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal>& TSRJointVals) {
+bool TaskSpaceRegionChain::ApplyMimicValuesToMimicBody(const std::vector<OpenRAVE::dReal> &TSRJointVals) {
     if (_mimicbody == nullptr)
         return false;
     MimicValuesToFullMimicBodyValues(TSRJointVals, _mimicjointvals_temp);

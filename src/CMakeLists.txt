@@ -8,13 +8,11 @@ add_library(AtlasMPNet SHARED
         StateValidityChecker.cpp
         TaskSpaceRegionChain.cpp
         planner/RRTConnect.cpp
+        planner/MPNetXSampler.cpp
+        planner/MPNetXPlanner.cpp
         planner/MPNetSampler.cpp
         planner/MPNetPlanner.cpp
         planner/RobotHelper.cpp
-        planner/PRM.cpp
-        planner/BiEST.cpp
-        planner/EST.cpp
-        planner/PRMMPNet.cpp
         )
 set_target_properties(AtlasMPNet PROPERTIES
         COMPILE_FLAGS "${OpenRAVE_CXX_FLAGS}"

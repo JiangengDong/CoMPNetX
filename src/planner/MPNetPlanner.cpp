@@ -115,6 +115,7 @@ ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree
 
     if (stateList.empty()                                        // did not traverse at all
         || si_->equalStates(nmotion->state, stateList.back())) { // did not make a progress
+        si_->freeStates(stateList);
         return TRAPPED;
     }
     Motion *motion = nullptr;
@@ -129,6 +130,7 @@ ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree
         nmotion = motion;
     }
     tgi.xmotion = motion;
+    si_->freeStates(stateList);
 
     return reach ? REACHED : ADVANCED;
 }

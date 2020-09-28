@@ -5,11 +5,11 @@
 #ifndef ATLASMPNET_PARAMETERS_H
 #define ATLASMPNET_PARAMETERS_H
 
-#include <openrave/openrave.h>
 #include <Eigen/Dense>
-#include <utility>
 #include <ompl/base/ScopedState.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
+#include <openrave/openrave.h>
+#include <utility>
 
 namespace AtlasMPNet {
     class SimpleXMLReader : public OpenRAVE::BaseXMLReader {
@@ -42,10 +42,14 @@ namespace AtlasMPNet {
     class SolverParameter : public SimpleXMLReader {
     public:
         enum SolverType {
-            RRT = 0, RRTstar, RRTConnect, MPNet, PRM, LazyPRM, KPIECE, BKPIECE, BIEST
+            RRT = 0,
+            RRTstar,
+            RRTConnect,
+            CoMPNet, 
+            CoMPNetX
         } type_ = RRT;
         double time_ = 5.0; // Planning time allowed.
-        double range_ = 0; // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
+        double range_ = 0;  // Planner `range` value for planners that support this parameter. Automatically determined otherwise (when 0).
 
         SolverParameter() : SimpleXMLReader("solver_parameters") {}
 
@@ -63,12 +67,14 @@ namespace AtlasMPNet {
     class ConstraintParameter : public SimpleXMLReader {
     public:
         enum SpaceType {
-            PROJECTION = 0, ATLAS, TANGENT_BUNDLE
+            PROJECTION = 0,
+            ATLAS,
+            TANGENT_BUNDLE
         } type_ = ATLAS;
-        double tolerance_ = ompl::magic::CONSTRAINT_PROJECTION_TOLERANCE; // Constraint satisfaction tolerance.
+        double tolerance_ = ompl::magic::CONSTRAINT_PROJECTION_TOLERANCE;           // Constraint satisfaction tolerance.
         unsigned int max_iter_ = ompl::magic::CONSTRAINT_PROJECTION_MAX_ITERATIONS; // Maximum number sample tries per sample.
-        double delta_ = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA; // Step-size for discrete geodesic on manifold.
-        double lambda_ = ompl::magic::CONSTRAINED_STATE_SPACE_LAMBDA; // Maximum `wandering` allowed during traversal. Must be greater than 1.
+        double delta_ = ompl::magic::CONSTRAINED_STATE_SPACE_DELTA;                 // Step-size for discrete geodesic on manifold.
+        double lambda_ = ompl::magic::CONSTRAINED_STATE_SPACE_LAMBDA;               // Maximum `wandering` allowed during traversal. Must be greater than 1.
 
         ConstraintParameter() : SimpleXMLReader("constraint_parameters") {}
 
@@ -85,12 +91,12 @@ namespace AtlasMPNet {
      */
     class AtlasParameter : public SimpleXMLReader {
     public:
-        double exploration_ = ompl::magic::ATLAS_STATE_SPACE_EXPLORATION; // Value in [0, 1] which tunes balance of refinement and exploration in atlas sampling.
-        double epsilon_ = ompl::magic::ATLAS_STATE_SPACE_EPSILON; // Maximum distance from an atlas chart to the manifold. Must be positive.
-        double rho_ = ompl::magic::ATLAS_STATE_SPACE_RHO_MULTIPLIER; // Maximum radius for an atlas chart. Must be positive.
-        double alpha_ = ompl::magic::ATLAS_STATE_SPACE_ALPHA; // Maximum angle between an atlas chart and the manifold. Must be in [0, PI/2].
+        double exploration_ = ompl::magic::ATLAS_STATE_SPACE_EXPLORATION;                   // Value in [0, 1] which tunes balance of refinement and exploration in atlas sampling.
+        double epsilon_ = ompl::magic::ATLAS_STATE_SPACE_EPSILON;                           // Maximum distance from an atlas chart to the manifold. Must be positive.
+        double rho_ = ompl::magic::ATLAS_STATE_SPACE_RHO_MULTIPLIER;                        // Maximum radius for an atlas chart. Must be positive.
+        double alpha_ = ompl::magic::ATLAS_STATE_SPACE_ALPHA;                               // Maximum angle between an atlas chart and the manifold. Must be in [0, PI/2].
         unsigned int max_charts_ = ompl::magic::ATLAS_STATE_SPACE_MAX_CHARTS_PER_EXTENSION; // Maximum number of atlas charts that can be generated during one manifold traversal.
-        bool using_bias_ = false; // Sets whether the atlas should use frontier-biased chart sampling rather than uniform.
+        bool using_bias_ = false;                                                           // Sets whether the atlas should use frontier-biased chart sampling rather than uniform.
 
         bool separate_ = false; // (Only used in atlas state space!) Sets that the atlas should not compute chart separating halfspaces.
 
@@ -105,8 +111,8 @@ namespace AtlasMPNet {
 
     class TSRParameter : public SimpleXMLReader {
     public:
-        OpenRAVE::Transform T0_w; ///< the center of the TSR relative to the link it is attached to (or relative to world frame)
-        OpenRAVE::Transform Tw_e; ///< the end-effector offset of this TSR
+        OpenRAVE::Transform T0_w;   ///< the center of the TSR relative to the link it is attached to (or relative to world frame)
+        OpenRAVE::Transform Tw_e;   ///< the end-effector offset of this TSR
         OpenRAVE::dReal Bw[6][2]{}; ///< matrix defining maximum and minimum allowable deviation from T0_w in x,y,z,roll,pitch,and yaw
 
         TSRParameter() : SimpleXMLReader("tsr") {}
@@ -129,11 +135,13 @@ namespace AtlasMPNet {
     class TSRChainParameter : public SimpleXMLReader {
     public:
         enum PurposeType {
-            CONSTRAINT = 0, SAMPLE_START, SAMPLE_GOAL
+            CONSTRAINT = 0,
+            SAMPLE_START,
+            SAMPLE_GOAL
         } purpose = CONSTRAINT;
-        int manipind = -1; ///< this specifies the index of the manipulator of the robot that is associated with this TSR
-        std::string relativebodyname="NULL"; ///< name of the body T0_w is attached to (NULL = world frame)
-        std::string relativelinkname="NULL"; ///< name of the link T0_w is attached to (NULL = world frame)
+        int manipind = -1;                     ///< this specifies the index of the manipulator of the robot that is associated with this TSR
+        std::string relativebodyname = "NULL"; ///< name of the body T0_w is attached to (NULL = world frame)
+        std::string relativelinkname = "NULL"; ///< name of the link T0_w is attached to (NULL = world frame)
         std::string mimic_body_name = "NULL";
         std::vector<int> mimic_inds;
         std::vector<TSRParameter> TSRs;
@@ -158,6 +166,9 @@ namespace AtlasMPNet {
         std::string voxel_path;
         std::string ohot_path;
         std::string dnet_path;
+        bool use_dnet = false;
+        bool use_voxel = false;
+        bool predict_tsr = false;
         double dnet_threshold;
         double dnet_coeff;
 
@@ -213,6 +224,6 @@ namespace AtlasMPNet {
     private:
         TSRChainParameter _tsrchain_temp;
     };
-}
+} // namespace AtlasMPNet
 
 #endif //ATLASMPNET_PARAMETERS_H

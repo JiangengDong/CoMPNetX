@@ -3,8 +3,9 @@
 //
 #include "Parameters.h"
 
-#include <openrave/openrave.h>
+#include <Eigen/Dense>
 #include <ompl/base/ScopedState.h>
+#include <openrave/openrave.h>
 #include <sstream>
 
 using namespace AtlasMPNet;
@@ -17,18 +18,14 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
         {"rrt", RRT},
         {"rrtstar", RRTstar},
         {"rrtconnect", RRTConnect},
-        {"mpnet", MPNet},
-        {"prm", PRM},
-        {"lazyprm", LazyPRM},
-        {"kpiece", KPIECE},
-        {"bkpiece", BKPIECE},
-        {"biest", BIEST}};
+        {"compnet", CoMPNet}, 
+        {"compnetx", CoMPNetX}};
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
         else {
             std::istringstream value;
-            for (const auto &att:atts) {
+            for (const auto &att : atts) {
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
@@ -39,7 +36,7 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
                 else if (key == "type") {
                     type_ = str2type.at(value.str());
                 } else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -73,7 +70,8 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
         {"proj", PROJECTION},
         {"atlas", ATLAS},
         {"tangent_bundle", TANGENT_BUNDLE},
-        {"tangent-bundle", TANGENT_BUNDLE}};
+        {"tangent-bundle", TANGENT_BUNDLE},
+        {"tb", TANGENT_BUNDLE}};
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
@@ -94,7 +92,7 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
                 else if (key == "type") {
                     type_ = str2type.at(value.str());
                 } else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -132,7 +130,7 @@ SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &
             return PE_Ignore;
         else {
             std::istringstream value;
-            for (const auto &att:atts) {
+            for (const auto &att : atts) {
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
@@ -151,7 +149,7 @@ SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &
                 else if (key == "separate")
                     value >> separate_;
                 else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -181,29 +179,23 @@ bool AtlasParameter::serialize(std::ostream &O) const {
     return true;
 }
 
-SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
+SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string>> &atts) {
     if (name == _tag_name) {
         if (_tag_open)
             return PE_Ignore;
         else {
             std::istringstream value;
-            for (const auto &att:atts) {
+            for (const auto &att : atts) {
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
                 if (key == "t0_w") {
                     OpenRAVE::TransformMatrix temptm;
-                    value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8]
-                          >> temptm.m[1] >> temptm.m[5] >> temptm.m[9]
-                          >> temptm.m[2] >> temptm.m[6] >> temptm.m[10]
-                          >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
+                    value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8] >> temptm.m[1] >> temptm.m[5] >> temptm.m[9] >> temptm.m[2] >> temptm.m[6] >> temptm.m[10] >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
                     T0_w = OpenRAVE::Transform(temptm);
                 } else if (key == "tw_e") {
                     OpenRAVE::TransformMatrix temptm;
-                    value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8]
-                          >> temptm.m[1] >> temptm.m[5] >> temptm.m[9]
-                          >> temptm.m[2] >> temptm.m[6] >> temptm.m[10]
-                          >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
+                    value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8] >> temptm.m[1] >> temptm.m[5] >> temptm.m[9] >> temptm.m[2] >> temptm.m[6] >> temptm.m[10] >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
                     Tw_e = OpenRAVE::Transform(temptm);
                 } else if (key == "bw") {
                     // Read in the Bw matrix
@@ -211,7 +203,7 @@ SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &na
                         for (double &element : row)
                             value >> element;
                 } else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -256,7 +248,7 @@ bool TSRParameter::serialize(std::ostream &O) const {
     return true;
 }
 
-SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string> > &atts) {
+SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string>> &atts) {
     const static std::map<std::string, PurposeType> str2type = {
         {"constraint", CONSTRAINT},
         {"sample_start", SAMPLE_START},
@@ -266,7 +258,7 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
             return PE_Ignore;
         } else {
             std::istringstream value;
-            for (const auto &att:atts) {
+            for (const auto &att : atts) {
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
@@ -288,13 +280,13 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
                         temp = -1;
                         value >> temp;
                         if (temp == -1) {
-                                    RAVELOG_ERROR ("Unexpected character.");
+                            RAVELOG_ERROR("Unexpected character.");
                             break;
                         }
                         mimic_inds.emplace_back(temp);
                     }
                 } else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -304,7 +296,7 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
             temp_tsr.startElement(name, atts);
             return PE_Support;
         } else {
-                    RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
+            RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
             return PE_Ignore;
         }
     } else {
@@ -346,18 +338,18 @@ bool TSRChainParameter::serialize(std::ostream &O) const {
             O << " " << mimic_inds[i];
     }
     O << "\">" << std::endl;
-    for (const auto &tsr:TSRs) {
+    for (const auto &tsr : TSRs) {
         O << tsr << std::endl;
     }
     O << "</" << _tag_name << ">" << std::endl;
     return true;
 }
 
-bool TSRChainParameter::reset(){
+bool TSRChainParameter::reset() {
     purpose = CONSTRAINT;
     manipind = -1;
-    relativebodyname="NULL";
-    relativelinkname="NULL";
+    relativebodyname = "NULL";
+    relativelinkname = "NULL";
     mimic_body_name = "NULL";
     mimic_inds.clear();
     TSRs.clear();
@@ -369,29 +361,33 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
             return PE_Ignore;
         else {
             std::istringstream value;
-            for (const auto &att:atts) {
+            for (const auto &att : atts) {
                 auto key = att.first;
                 value.clear();
                 value.str(att.second);
-                if (key == "pnet_path")
+                if (key == "pnet_path") {
                     value >> pnet_path;
-                else if (key == "voxel_path") {
+                } else if (key == "voxel_path") {
                     value >> voxel_path;
-                }
-                else if (key == "ohot_path") {
+                    if (voxel_path != "")
+                        use_voxel = true;
+                } else if (key == "ohot_path") {
                     value >> ohot_path;
-                }
-                else if (key == "dnet_path") {
+                } else if (key == "dnet_path") {
                     value >> dnet_path;
-                }
-                else if (key == "dnet_threshold") {
+                    if (dnet_path != "")
+                        use_dnet = true;
+                } else if (key == "dnet_threshold") {
                     value >> dnet_threshold;
-                }
-                else if (key == "dnet_coeff") {
+                } else if (key == "dnet_coeff") {
                     value >> dnet_coeff;
-                }
-                else
-                            RAVELOG_WARN ("Unrecognized attribute %s.", key.c_str());
+                } else if (key == "predict_tsr") {
+                    if (value.str() == "true")
+                        predict_tsr = true;
+                    else 
+                        predict_tsr = false;
+                } else
+                    RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
             _tag_open = true;
             return PE_Support;
@@ -427,8 +423,8 @@ Parameters::Parameters() : OpenRAVE::PlannerBase::PlannerParameters() {
     _vXMLParameters.emplace_back(atlas_parameter_.getTagName());
     _vXMLParameters.emplace_back(_tsrchain_temp.getTagName());
     _vXMLParameters.emplace_back(mpnet_parameter_.getTagName());
-    _vXMLParameters.emplace_back("tsr");    // Avoid hard code the tag names. Improve this part later
-    _vXMLParameters.emplace_back("tsr_chains");    // Avoid hard code the tag names. Improve this part later
+    _vXMLParameters.emplace_back("tsr");        // Avoid hard code the tag names. Improve this part later
+    _vXMLParameters.emplace_back("tsr_chains"); // Avoid hard code the tag names. Improve this part later
 }
 
 Parameters::~Parameters() = default;
@@ -492,7 +488,7 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     O << solver_parameter_ << std::endl
       << constraint_parameter_ << std::endl
       << atlas_parameter_ << std::endl;
-    for (const auto &tsr_chain:tsrchains_) {
+    for (const auto &tsr_chain : tsrchains_) {
         O << tsr_chain << std::endl;
     }
     return !!O;
@@ -512,7 +508,7 @@ OpenRAVE::BaseXMLReader::ProcessElement Parameters::startElement(std::string con
         return status;
     if ((status = mpnet_parameter_.startElement(name, atts)) != PE_Pass)
         return status;
-    if (name=="tsr_chains")
+    if (name == "tsr_chains")
         return PE_Support;
     return PE_Pass;
 }
@@ -522,10 +518,9 @@ bool Parameters::endElement(std::string const &name) {
         tsrchains_.emplace_back(_tsrchain_temp);
         _tsrchain_temp.reset();
         return false;
-    } else if(name=="tsr_chains") {
+    } else if (name == "tsr_chains") {
         return false;
-    }
-    else
+    } else
         return !atlas_parameter_.endElement(name) &&
                !constraint_parameter_.endElement(name) &&
                !solver_parameter_.endElement(name) &&

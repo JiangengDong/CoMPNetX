@@ -33,7 +33,7 @@ namespace AtlasMPNet {
 
         typedef std::vector<std::pair<OpenRAVE::Transform, OpenRAVE::Transform>> TransformPairVector;
 
-        void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector& Tpairs) const;
+        void robotFK(const Eigen::Ref<const Eigen::VectorXd> &x, TransformPairVector &Tpairs) const;
     };
-}
+} // namespace AtlasMPNet
 #endif //ATLASMPNET_CONSTRAINT_H

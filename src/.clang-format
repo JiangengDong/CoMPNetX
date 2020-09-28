@@ -1,3 +1,4 @@
+# I don't think this is a good format, but I am too lazy to search for a better one
 BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 4

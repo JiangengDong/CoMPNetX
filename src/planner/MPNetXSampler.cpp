@@ -2,11 +2,11 @@
 // Created by jiangeng on 3/29/20.
 //
 
-#include "MPNetSampler.h"
+#include "MPNetXSampler.h"
 
 #include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
 
-AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
+AtlasMPNet::MPNetXSampler::MPNetXSampler(const ompl::base::StateSpace *space,
                                        OpenRAVE::RobotBasePtr robot,
                                        std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
                                        MPNetParameter param) : ompl::base::StateSampler(space),
@@ -27,9 +27,24 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
         manip_iktools_.emplace_back(RobotHelper(robot, manips[tsrchain->GetManipInd()]));
     }
 
-    _scale_factor.resize(dof_robot_, 1.0);
+    _scale_factor.resize(13, 1.0);
     robot->GetActiveDOFLimits(_lower_limits, _upper_limits);
-    for (unsigned int i = 0; i < dof_robot_; i++) {
+
+    _lower_limits.emplace_back(-1.8594740);
+    _lower_limits.emplace_back(-1.13057968);
+    _lower_limits.emplace_back(-0.5839896);
+    _lower_limits.emplace_back(-3.142);
+    _lower_limits.emplace_back(-3.142);
+    _lower_limits.emplace_back(-3.142);
+
+    _upper_limits.emplace_back(1.7491616);
+    _upper_limits.emplace_back(1.4989415);
+    _upper_limits.emplace_back(1.47961);
+    _upper_limits.emplace_back(3.142);
+    _upper_limits.emplace_back(3.142);
+    _upper_limits.emplace_back(3.142);
+
+    for (unsigned int i = 0; i < 13; i++) {
         _scale_factor[i] = _upper_limits[i] - _lower_limits[i];
     }
 
@@ -38,8 +53,8 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     pnet_.to(at::kCUDA);
     OMPL_DEBUG("Load %s successfully.", pnet_filename.c_str());
 
-    use_dnet = param.use_dnet;
     if (param.use_dnet) {
+        use_dnet = true;
         std::string dnet_filename = param.dnet_path;
         dnet_ = torch::jit::load(dnet_filename);
         dnet_.to(at::kCUDA);
@@ -51,8 +66,8 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     ohot_ = torch::from_blob(ohot_vec.data(), {1, 128}).clone();
     OMPL_DEBUG("Load %s successfully.", ohot_filename.c_str());
 
-    use_voxel = param.use_voxel;
     if (param.use_voxel) {
+        use_voxel = true;
         std::string voxel_filename = param.voxel_path;
         std::vector<float> voxel_vec = loadData(voxel_filename, 256);
         voxel_ = torch::from_blob(voxel_vec.data(), {1, 256}).clone();
@@ -62,7 +77,7 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
     predict_tsr = param.predict_tsr;
 }
 
-bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
+bool AtlasMPNet::MPNetXSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
     // sample a robot config with MPNet
     auto pnet_input = use_voxel ? (torch::cat({voxel_, ohot_, stateToTensor(start), stateToTensor(goal)}, 1).to(at::kCUDA))
                                 : (torch::cat({ohot_, stateToTensor(start), stateToTensor(goal)}, 1).to(at::kCUDA));
@@ -70,21 +85,22 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
 
     if (use_dnet) {
         auto pnet_output_temp = torch::autograd::Variable(pnet_output.clone()).detach().set_requires_grad(true);
-        auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA);
+        auto dnet_input = torch::cat({voxel_, ohot_, pnet_output_temp}, 1).to(at::kCUDA); // warn: dnet cannot work with compnetx yet
         auto dnet_output = dnet_.forward({dnet_input}).toTensor();
         dnet_output.backward();
         auto grad = pnet_output_temp.grad();
-        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-        if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
-            pnet_output -= 0.4 * grad;
+        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);             //d=0.2,s=0.01 and d=0.01 and s=0.1 are good
+        if (dnet_output_temp.accessor<float, 2>()[0][0] > 0.1 && dim_ == 13) { // project juice/fuze_bottle/coke_can
+            pnet_output -= 0.1 * grad;
+        } else if (dnet_output_temp.accessor<float, 2>()[0][0] > 1.2 && dim_ == 11) { // project plasticmug/mugblack/pitcher
+            pnet_output -= 0.01 * grad;
         }
     }
 
+    auto sample_config = tensorToVector(pnet_output);
+    EnforceBound(sample_config);
     // handshake
-    std::vector<double> sample_config(dim_);
-    space_->copyToReals(sample_config, start);  // copy the tsr value of the start state
-    std::vector<double> robot_sample = tensorToVector(pnet_output);
-    EnforceBound(robot_sample);
+    std::vector<double> robot_sample(sample_config.begin(), sample_config.begin() + dof_robot_);
     robot_->SetActiveDOFValues(robot_sample);
     OpenRAVE::Transform Ttsr, Trobot;
     unsigned int offset = dof_robot_;
@@ -103,37 +119,56 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     return true;
 }
 
-std::vector<double> AtlasMPNet::MPNetSampler::tensorToVector(const torch::Tensor &tensor) {
+std::vector<double> AtlasMPNet::MPNetXSampler::tensorToVector(const torch::Tensor &tensor) {
     auto data = tensor.accessor<float, 2>()[0];
-    std::vector<double> dest(dof_robot_);
-    for (unsigned int i = 0; i < dof_robot_; i++) {
-        dest[i] = static_cast<float>(data[i]) * _scale_factor[i]; // unnormailize here
+    std::vector<double> dest(dim_);
+    if (dim_ == 13) { // juice/fuze_bottle/coke_can
+        for (unsigned int i = 0; i < dim_; i++) {
+            dest[i] = static_cast<float>(data[i]) * _scale_factor[i]; // unnormailize here
+        }
+        return dest;
+    } else if (dim_ == 11) { // plasticmug/mugblack/pitcher
+        for (unsigned int i = 0; i < 10; i++) {
+            dest[i] = static_cast<float>(data[i]) * _scale_factor[i]; // unnormailize here
+        }
+        dest[10] = static_cast<float>(data[12]) * _scale_factor[12];
+        return dest;
     }
-    return dest;
 }
 
-torch::Tensor AtlasMPNet::MPNetSampler::vectorToTensor(const std::vector<double> &vec) {
-    std::vector<float> scaled_src(dof_robot_);
-    for (unsigned int i = 0; i < dof_robot_; i++) {
+torch::Tensor AtlasMPNet::MPNetXSampler::vectorToTensor(const std::vector<double> &vec) {
+    std::vector<float> scaled_src(dim_);
+    for (unsigned int i = 0; i < dim_; i++) {
         scaled_src[i] = vec[i] / _scale_factor[i];
     }
-    return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
+    return torch::from_blob(scaled_src.data(), {1, dim_}).clone();
 }
 
-torch::Tensor AtlasMPNet::MPNetSampler::stateToTensor(const ompl::base::State *from) {
-    std::vector<float> scaled_src(dof_robot_);
-    const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
-    for (unsigned int i = 0; i < dof_robot_; i++) {
-        scaled_src[i] = from_state[i] / _scale_factor[i];
+torch::Tensor AtlasMPNet::MPNetXSampler::stateToTensor(const ompl::base::State *from) {
+    std::vector<float> scaled_src(13);
+    if (dim_ == 13) { // juice/fuze_bottle/coke_can
+        const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+        for (unsigned int i = 0; i < dim_; i++) {
+            scaled_src[i] = from_state[i] / _scale_factor[i];
+        }
+        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
+    } else if (dim_ == 11) { // plasticmug/mugblack/pitcher
+        const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+        for (unsigned int i = 0; i < 10; i++) {
+            scaled_src[i] = from_state[i] / _scale_factor[i];
+        }
+        scaled_src[10] = 0.0;
+        scaled_src[11] = 0.0;
+        scaled_src[12] = from_state[10] / _scale_factor[12];
+        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
     }
-    return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
 }
 
-void AtlasMPNet::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::base::State *to) {
+void AtlasMPNet::MPNetXSampler::tensorToState(const torch::Tensor &from, ompl::base::State *to) {
     auto data = from.accessor<float, 2>()[0];
     auto &to_state = *(to->as<ompl::base::ConstrainedStateSpace::StateType>());
     float val;
-    for (unsigned int i = 0; i < dof_robot_; i++) {
+    for (unsigned int i = 0; i < dim_; i++) {
         val = static_cast<float>(data[i]) * _scale_factor[i];
         if (val < _lower_limits[i])
             to_state[i] = _lower_limits[i];
@@ -144,7 +179,7 @@ void AtlasMPNet::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::ba
     }
 }
 
-std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filename, unsigned int n) {
+std::vector<float> AtlasMPNet::MPNetXSampler::loadData(const std::string &filename, unsigned int n) {
     std::ifstream file(filename);
     std::string line;
     std::vector<float> vec(n);
@@ -157,8 +192,8 @@ std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filenam
     return vec;
 }
 
-bool AtlasMPNet::MPNetSampler::EnforceBound(std::vector<double> &val) {
-    for (unsigned int i = 0; i < dof_robot_; i++) { // enforcing TSR as well
+bool AtlasMPNet::MPNetXSampler::EnforceBound(std::vector<double> &val) {
+    for (unsigned int i = 0; i < dim_; i++) { // enforcing TSR as well
         if (val[i] < _lower_limits[i])
             val[i] = _lower_limits[i];
         else if (val[i] > _upper_limits[i])

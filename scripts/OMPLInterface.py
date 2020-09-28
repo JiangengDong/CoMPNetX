@@ -47,7 +47,7 @@ def pause():
 
 
 class SolverParameter(object):
-    types = ("rrt", "rrtstar", "rrtconnect", "mpnet", "prm", "lazyprm", "kpiece", "bkpiece", "biest")
+    types = ("rrt", "rrtstar", "rrtconnect", "compnet", "compnetx")
     Template_str = """<solver_parameters type="%s" time="%d" range="%f"/>\n"""
 
     def __init__(self, type="rrtconnect", time=120, range=0.05):
@@ -400,13 +400,14 @@ class TSRChain(object):
 
 
 class MPNetParameter(object):
-    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%f" dnet_coeff="%f"/>\n"""
+    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%f" dnet_coeff="%f" predict_tsr="%s"/>\n"""
 
-    def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path="", dnet_threshold=0.3, dnet_coeff=0.4):
+    def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path="", predict_tsr=False, dnet_threshold=0.3, dnet_coeff=0.4):
         self._pnet_path = ""
         self._dnet_path = ""
         self._voxel_path = ""
         self._ohot_path = ""
+        self._predict_tsr = False
         self._dnet_threshold = 0.3
         self._dnet_coeff = 0.4
 
@@ -414,11 +415,12 @@ class MPNetParameter(object):
         self.dnet_path = dnet_path
         self.voxel_path = voxel_path
         self.ohot_path = ohot_path
+        self.predict_tsr = predict_tsr
         self.dnet_threshold = dnet_threshold
         self.dnet_coeff = dnet_coeff
 
     def __str__(self):
-        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path, self._dnet_threshold, self._dnet_coeff)
+        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path, self._dnet_threshold, self._dnet_coeff, "true" if self._predict_tsr else "false")
 
     @property
     def pnet_path(self):
@@ -431,6 +433,8 @@ class MPNetParameter(object):
             if not os.path.exists(pnet_path):
                 raise IOError("%s not found" % value)
             self._pnet_path = pnet_path
+        else:
+            self._pnet_path = ""
 
     @property
     def dnet_path(self):
@@ -443,6 +447,8 @@ class MPNetParameter(object):
             if not os.path.exists(dnet_path):
                 raise IOError("%s not found" % value)
             self._dnet_path = dnet_path
+        else:
+            self._dnet_path = ""
 
     @property
     def voxel_path(self):
@@ -455,6 +461,8 @@ class MPNetParameter(object):
             if not os.path.exists(voxel_path):
                 raise IOError("%s not found" % value)
             self._voxel_path = voxel_path
+        else:
+            self._voxel_path = ""
 
     @property
     def ohot_path(self):
@@ -467,6 +475,17 @@ class MPNetParameter(object):
             if not os.path.exists(ohot_path):
                 raise IOError("%s not found" % value)
             self._ohot_path = ohot_path
+        else:
+            self._ohot_path = ""
+
+    @property
+    def predict_tsr(self):
+        return self._predict_tsr
+
+    @predict_tsr.setter
+    def predict_tsr(self, value):
+        assert type(value) == bool
+        self._predict_tsr = value
 
     @property
     def dnet_threshold(self):
