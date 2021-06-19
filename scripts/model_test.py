@@ -784,7 +784,7 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     if args.output_dir is None:
-        args.output_dir = "%s-%s-%s" % (args.task, args.algorithm, args.space)
+        args.output_dir = os.path.abspath("data/result/%s-%s-%s" % (args.task, args.algorithm, args.space))
     print "The following arguments will be used in this test."
     print "\tTask:             ", args.task
     print "\tAlgorithm:        ", args.algorithm

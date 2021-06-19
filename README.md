@@ -1,13 +1,10 @@
-# AtlasMPNet
+# CoMPNetX
 
-This project aims to solved constrained motion planning problem.
-It implements AtlasRRTConnect algorithm. The target file is a plugin for OpenRAVE.
-
-The project mainly depends on two libraries: OMPL and OpenRAVE. The OMPL library provides an framework of sample-based motion planning problem.
-The OpenRAVE is used as a simulation environment for rigid body calculation. 
+This project aims to solved constrained motion planning problem. It mainly depends on two libraries: OMPL and OpenRAVE. The OMPL library provides an framework for sample-based motion planning. The OpenRAVE is used as a simulation environment for rigid body calculation.
 
 ## Dependencies
 
+- Ubuntu 16.04
 - OpenRAVE: 0.9.0
 - OMPL: 1.4.2
 - Boost: 1.58
@@ -16,58 +13,86 @@ The OpenRAVE is used as a simulation environment for rigid body calculation.
   - or_urdf
   - baxter_common
   - openrave_catkin
-  - pr_assets
   - srdfdom
   - urdfdom
-- CoMPS: using their openrave models
 
-## How to run
+## Project structure
 
-We build a docker image that contains all the dependencies and environment variables for this project. Please refer to [JiangengDong/OpenRAVE-Docker](https://github.com/JiangengDong/OpenRAVE-Docker) for the details. Otherwise, you need to check all the dependencies on your own.
+```
+CoMPNetX
+├── README.md
+├── CMakeLists.txt
+├── ... some other files
+├── data
+│   └── .gitkeep
+├── docker
+│   └── Dockerfile
+├── python
+│   ├── main.py
+│   ├── train.py
+│   ├── test.py
+│   └── ... other python scripts
+└── src
+    ├── CMakeLists.txt
+    └── compnetx
+        ├── ...C++ headers
+        └── src
+            ├── lib.cpp
+            └── ... C++ source files
+```
 
-### Using a docker image
+The structure of this project is as shown above. We depend on OpenRAVE's plugin mechanism to easily interact with files and strings while retaining the ability to plan quickly.
 
-1. Build this project. The result library is a plugin for OpenRAVE, which is put under `plugins` directory.
+- [python/](python/): This folder contains Python2.7 scripts for training and testing our CoMPNetX algorithm. [python/main.py](python/main.py) is the entrance of this project that routes you to different planners and constraint adherence methods. For its detailed usage, check the [Usage](#Usage) section below.
+
+- [src/compnetx/](src/compnetx/): This folder contains the C++ source code for our planner. It will be compiled into an OpenRAVE's plugin so that it can be loaded into python.
+
+- [docker/Dockerfile](docker/Dockerfile): A docker file which packs all the dependencies for our project. A prebuilt image ([jiangengdong/compnetx](#TODO_fix_this_link)) is also available on docker hub.
+
+- [data/](data/): This is the placeholder for our dataset, which you need to download manually from our [Google Drive](#TODO_fix_this_link). Our dataset has the following structure.
+
     ```
-    cd /path/to/project/root
-    mkdir build && cd build
-    cmake ..
-    make -j 4
-    ```
-
-1. Set environment variable `OPENRAVE_PLUGINS`. The OpenRAVE loads plugins by searching in directories defined in environment variable `OPENRAVE_PLUGINS`, hence we need
-to add our plugin to OPENRAVE's searching path. This environment variable is not set in the image because the project root 
-may change, so you still need to set it manually.
-    ```
-    export OPENRAVE_PLUGINS=${OPENRAVE_PLUGINS}:/path/to/project/root/plugins
-    ```
-
-1. Run the scripts under `scripts` with python2 to test this plugin.
-
-### Not using a docker image
-
-1. Build this project. The result library is a plugin for OpenRAVE, which is put under `plugins` directory.
-    ```
-    cd /path/to/project/root
-    mkdir build && cd build
-    cmake ..
-    make -j 4
-    ```
-
-1. Set environment variable `OPENRAVE_PLUGINS`. The OpenRAVE loads plugins by searching in directories defined in environment variable `OPENRAVE_PLUGINS`, hence we need
-to add our plugin to OPENRAVE's searching path. 
-    ```
-    export OPENRAVE_PLUGINS=${OPENRAVE_PLUGINS}:/path/to/project/root/plugins
-    ```
-
-1. Similarly, OPENRAVE searches models under the directories specified by `OPENRAVE_DATA`. We use comps's model files.
-    ```
-    export OPENRAVE_DATA=${DATA}:/path/to/comps/ormodels
-    ```
-
-1. This project also depends on a ROS package `or_urdf` that loads URDF to OPENRAVE.
-    ``` 
-    source /path/to/catkin_ws/devel/setup.bash
+    data
+    ├── environment_setup
+    ├── openrave_model
+    ├── pytorch_model
+    ├── voxel
+    │   ├── raw
+    │   └── encoded
+    └── task_text
+        ├── raw
+        └── encoded
     ```
 
-1. After finishing the steps above, you can run the scripts under `scripts` with python2 to test this plugin.
+## Usage
+
+First of all, you need to make sure all the dependencies are satisfied. You can either [install them on your computer](#Install-on-the-host-computer) or [use a docker container](#Use-docker-container).
+
+Then you can build the C++ part with CMake. A [plugin/](plugin/) folder will be created automatically under the project's root where the generated library lies.
+
+```bash
+$ cd CoMPNetX
+$ mkdir build && cd build
+$ cmake ..
+$ make -j
+```
+
+Now you can run [python/main.py](python/main.py). It accepts the following command line arguments.
+TODO: this part will be updated after the interface is done.
+
+```
+--train
+--use_grad
+--space        ["proj", "atals", "tb"]
+--environment  ["bartender", "kitchen"]
+```
+
+## How to prepare the dependencies
+
+### Install on the host computer
+
+TODO: fix this part
+
+### Use docker container
+
+TODO: fix this part

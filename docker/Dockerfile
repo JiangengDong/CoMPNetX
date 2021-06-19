@@ -121,4 +121,5 @@ RUN rosdep update && \
     catkin_make
 # install pytorch
 RUN conda init 
-RUN pip3 install --no-cache-dir torch torchvision torchaudio
+RUN pip3 install --no-cache-dir torch torchvision torchaudio pyyaml h5py numpy 
+RUN pip2 install --no-cache-dir pyyaml
