@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "TaskSpaceRegionChain.h"
 
-using namespace AtlasMPNet;
+using namespace CoMPNetX;
 
 StateValidityChecker::StateValidityChecker(const ompl::base::SpaceInformationPtr &si,
                                            const OpenRAVE::RobotBasePtr &robot,

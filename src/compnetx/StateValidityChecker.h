@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
 
-#ifndef ATLASMPNET_STATEVALIDITYCHECKER_H
-#define ATLASMPNET_STATEVALIDITYCHECKER_H
+#ifndef COMPNETX_STATEVALIDITYCHECKER_H
+#define COMPNETX_STATEVALIDITYCHECKER_H
 
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
@@ -44,31 +44,31 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "TaskSpaceRegionChain.h"
 
-namespace AtlasMPNet {
-    /*! \brief The Wrapper of the OpenRAVE collision checker for use in OMPL
+namespace CoMPNetX {
+/*! \brief The Wrapper of the OpenRAVE collision checker for use in OMPL
      *
      * Use the OpenRAVE collision checker (usually the fcl) to check it a state is valid.
      */
-    class StateValidityChecker : public ompl::base::StateValidityChecker {
-    public:
-        typedef std::shared_ptr<StateValidityChecker> Ptr;
-        StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr &robot,
-                             const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains);
+class StateValidityChecker : public ompl::base::StateValidityChecker {
+public:
+    typedef std::shared_ptr<StateValidityChecker> Ptr;
+    StateValidityChecker(const ompl::base::SpaceInformationPtr &si, const OpenRAVE::RobotBasePtr &robot,
+                         const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains);
 
-        bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
+    bool computeFk(const ompl::base::State *state, uint32_t checklimits) const;
 
-        bool isValid(const ompl::base::State *state) const override;
+    bool isValid(const ompl::base::State *state) const override;
 
-    private:
-        ompl::base::StateSpacePtr _state_space;
-        OpenRAVE::EnvironmentBasePtr _env;
-        OpenRAVE::RobotBasePtr _robot;
-        const std::size_t _robot_dof;
-        std::vector<TaskSpaceRegionChain::Ptr> _tsr_chains;
-        std::vector<int> _tsr_dofs;
-        int _num_tsr_chains;
-    };
+private:
+    ompl::base::StateSpacePtr _state_space;
+    OpenRAVE::EnvironmentBasePtr _env;
+    OpenRAVE::RobotBasePtr _robot;
+    const std::size_t _robot_dof;
+    std::vector<TaskSpaceRegionChain::Ptr> _tsr_chains;
+    std::vector<int> _tsr_dofs;
+    int _num_tsr_chains;
+};
 
-} // namespace AtlasMPNet
+} // namespace CoMPNetX
 
-#endif //ATLASMPNET_STATEVALIDITYCHECKER_H
+#endif //COMPNETX_STATEVALIDITYCHECKER_H

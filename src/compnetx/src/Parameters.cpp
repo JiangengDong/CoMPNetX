@@ -8,7 +8,7 @@
 #include <openrave/openrave.h>
 #include <sstream>
 
-using namespace AtlasMPNet;
+using namespace CoMPNetX;
 
 /*
  * implementation of SolverParameters
@@ -18,10 +18,10 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
         {"rrt", RRT},
         {"rrtstar", RRTstar},
         {"rrtconnect", RRTConnect},
-        {"compnet", CoMPNet}, 
+        {"compnet", CoMPNet},
         {"compnetx", CoMPNetX}};
-    if (name == _tag_name) {
-        if (_tag_open)
+    if (name == tag_name_) {
+        if (tag_open_)
             return PE_Ignore;
         else {
             std::istringstream value;
@@ -30,15 +30,15 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
                 value.clear();
                 value.str(att.second);
                 if (key == "time")
-                    value >> time_;
+                    value >> time;
                 else if (key == "range")
-                    value >> range_;
+                    value >> range;
                 else if (key == "type") {
-                    type_ = str2type.at(value.str());
+                    type = str2type.at(value.str());
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else
@@ -46,17 +46,17 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
 }
 
 bool SolverParameter::endElement(std::string const &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
+    if (name == tag_name_) {
+        tag_open_ = false;
         return true;
     } else
         return false;
 }
 
 bool SolverParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name
-      << " time=\"" << time_ << "\""
-      << " range=\"" << range_ << "\""
+    O << "<" << tag_name_
+      << " time=\"" << time << "\""
+      << " range=\"" << range << "\""
       << "/>";
     return true;
 }
@@ -72,8 +72,8 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
         {"tangent_bundle", TANGENT_BUNDLE},
         {"tangent-bundle", TANGENT_BUNDLE},
         {"tb", TANGENT_BUNDLE}};
-    if (name == _tag_name) {
-        if (_tag_open)
+    if (name == tag_name_) {
+        if (tag_open_)
             return PE_Ignore;
         else {
             std::istringstream value;
@@ -94,7 +94,7 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else
@@ -102,15 +102,15 @@ SimpleXMLReader::ProcessElement ConstraintParameter::startElement(std::string co
 }
 
 bool ConstraintParameter::endElement(std::string const &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
+    if (name == tag_name_) {
+        tag_open_ = false;
         return true;
     } else
         return false;
 }
 
 bool ConstraintParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name
+    O << "<" << tag_name_
       << " type=\"" << type_ << "\""
       << " tolerance=\"" << tolerance_ << "\""
       << " max_iter=\"" << max_iter_ << "\""
@@ -125,8 +125,8 @@ bool ConstraintParameter::serialize(std::ostream &O) const {
  */
 
 SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
-    if (name == _tag_name) {
-        if (_tag_open)
+    if (name == tag_name_) {
+        if (tag_open_)
             return PE_Ignore;
         else {
             std::istringstream value;
@@ -151,7 +151,7 @@ SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &
                 else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else
@@ -159,15 +159,15 @@ SimpleXMLReader::ProcessElement AtlasParameter::startElement(std::string const &
 }
 
 bool AtlasParameter::endElement(std::string const &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
+    if (name == tag_name_) {
+        tag_open_ = false;
         return true;
     } else
         return false;
 }
 
 bool AtlasParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name
+    O << "<" << tag_name_
       << " exploration=\"" << exploration_ << "\""
       << " epsilon=\"" << epsilon_ << "\""
       << " rho=\"" << rho_ << "\""
@@ -180,8 +180,8 @@ bool AtlasParameter::serialize(std::ostream &O) const {
 }
 
 SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &name, const std::list<std::pair<std::string, std::string>> &atts) {
-    if (name == _tag_name) {
-        if (_tag_open)
+    if (name == tag_name_) {
+        if (tag_open_)
             return PE_Ignore;
         else {
             std::istringstream value;
@@ -192,20 +192,20 @@ SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &na
                 if (key == "t0_w") {
                     OpenRAVE::TransformMatrix temptm;
                     value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8] >> temptm.m[1] >> temptm.m[5] >> temptm.m[9] >> temptm.m[2] >> temptm.m[6] >> temptm.m[10] >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
-                    T0_w = OpenRAVE::Transform(temptm);
+                    T0_w_ = OpenRAVE::Transform(temptm);
                 } else if (key == "tw_e") {
                     OpenRAVE::TransformMatrix temptm;
                     value >> temptm.m[0] >> temptm.m[4] >> temptm.m[8] >> temptm.m[1] >> temptm.m[5] >> temptm.m[9] >> temptm.m[2] >> temptm.m[6] >> temptm.m[10] >> temptm.trans.x >> temptm.trans.y >> temptm.trans.z;
-                    Tw_e = OpenRAVE::Transform(temptm);
+                    Tw_e_ = OpenRAVE::Transform(temptm);
                 } else if (key == "bw") {
                     // Read in the Bw matrix
-                    for (auto &row : Bw)
+                    for (auto &row : Bw_)
                         for (double &element : row)
                             value >> element;
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else
@@ -213,24 +213,24 @@ SimpleXMLReader::ProcessElement TSRParameter::startElement(const std::string &na
 }
 
 bool TSRParameter::endElement(const std::string &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
+    if (name == tag_name_) {
+        tag_open_ = false;
         return true;
     } else
         return false;
 }
 
 bool TSRParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name;
+    O << "<" << tag_name_;
     // T0_w matrix
-    OpenRAVE::TransformMatrix temptm(T0_w);
+    OpenRAVE::TransformMatrix temptm(T0_w_);
     O << " T0_w=\""
       << temptm.m[0] << " " << temptm.m[4] << " " << temptm.m[8] << " "
       << temptm.m[1] << " " << temptm.m[5] << " " << temptm.m[9] << " "
       << temptm.m[2] << " " << temptm.m[6] << " " << temptm.m[10] << " "
       << temptm.trans.x << " " << temptm.trans.y << " " << temptm.trans.z << "\"";
     // Tw_e matrix
-    OpenRAVE::TransformMatrix temptm2(Tw_e);
+    OpenRAVE::TransformMatrix temptm2(Tw_e_);
     O << " Tw_e=\""
       << temptm2.m[0] << " " << temptm2.m[4] << " " << temptm2.m[8] << " "
       << temptm2.m[1] << " " << temptm2.m[5] << " " << temptm2.m[9] << " "
@@ -241,9 +241,9 @@ bool TSRParameter::serialize(std::ostream &O) const {
     for (unsigned int i = 0; i < 6; i++)
         for (unsigned int j = 0; j < 2; j++)
             if (j == 0 && i == 0)
-                O << Bw[i][j];
+                O << Bw_[i][j];
             else
-                O << " " << Bw[i][j];
+                O << " " << Bw_[i][j];
     O << "\"/>";
     return true;
 }
@@ -253,8 +253,8 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
         {"constraint", CONSTRAINT},
         {"sample_start", SAMPLE_START},
         {"sample_goal", SAMPLE_GOAL}};
-    if (name == _tag_name) {
-        if (_tag_open) {
+    if (name == tag_name_) {
+        if (tag_open_) {
             return PE_Ignore;
         } else {
             std::istringstream value;
@@ -263,15 +263,15 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
                 value.clear();
                 value.str(att.second);
                 if (key == "manipulator_index")
-                    value >> manipind;
+                    value >> manipind_;
                 else if (key == "relative_body_name")
-                    value >> relativebodyname;
+                    value >> relativebodyname_;
                 else if (key == "relative_link_name")
-                    value >> relativelinkname;
+                    value >> relativelinkname_;
                 else if (key == "purpose") {
-                    purpose = str2type.at(value.str());
+                    purpose_ = str2type.at(value.str());
                 } else if (key == "mimic_body_name") {
-                    value >> mimic_body_name;
+                    value >> mimic_body_name_;
                 } else if (key == "mimic_body_index") {
                     if (att.second.empty())
                         continue;
@@ -283,17 +283,17 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
                             RAVELOG_ERROR("Unexpected character.");
                             break;
                         }
-                        mimic_inds.emplace_back(temp);
+                        mimic_inds_.emplace_back(temp);
                     }
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else if (name == "tsr") {
-        if (_tag_open) {
-            temp_tsr.startElement(name, atts);
+        if (tag_open_) {
+            temp_tsr_.startElement(name, atts);
             return PE_Support;
         } else {
             RAVELOG_WARN("TSR cannot be placed outside TSRChain tags.");
@@ -305,17 +305,17 @@ SimpleXMLReader::ProcessElement TSRChainParameter::startElement(const std::strin
 }
 
 bool TSRChainParameter::endElement(const std::string &name) {
-    if (name == _tag_name) {
-        if (_tag_open) {
-            _tag_open = false;
+    if (name == tag_name_) {
+        if (tag_open_) {
+            tag_open_ = false;
             return true;
         } else
             return false;
     } else if (name == "tsr") {
-        if (_tag_open) {
-            temp_tsr.endElement(name);
-            TSRs.emplace_back(temp_tsr);
-            temp_tsr.reset();
+        if (tag_open_) {
+            temp_tsr_.endElement(name);
+            TSRs_.emplace_back(temp_tsr_);
+            temp_tsr_.reset();
         }
         return false;
     } else {
@@ -324,40 +324,40 @@ bool TSRChainParameter::endElement(const std::string &name) {
 }
 
 bool TSRChainParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name << " ";
-    O << "purpose=\"" << purpose << "\" "
-      << "manipulator_index=\"" << manipind << "\" "
-      << "relative_body_name=\"" << relativebodyname << "\" "
-      << "relative_link_name=\"" << relativelinkname << "\" ";
-    O << "mimic_body_name=\"" << mimic_body_name << "\" ";
+    O << "<" << tag_name_ << " ";
+    O << "purpose=\"" << purpose_ << "\" "
+      << "manipulator_index=\"" << manipind_ << "\" "
+      << "relative_body_name=\"" << relativebodyname_ << "\" "
+      << "relative_link_name=\"" << relativelinkname_ << "\" ";
+    O << "mimic_body_name=\"" << mimic_body_name_ << "\" ";
     O << "mimic_body_index=\"";
-    for (unsigned int i = 0; i < mimic_inds.size(); i++) {
+    for (unsigned int i = 0; i < mimic_inds_.size(); i++) {
         if (i == 0)
-            O << mimic_inds[i];
+            O << mimic_inds_[i];
         else
-            O << " " << mimic_inds[i];
+            O << " " << mimic_inds_[i];
     }
     O << "\">" << std::endl;
     for (const auto &tsr : TSRs) {
         O << tsr << std::endl;
     }
-    O << "</" << _tag_name << ">" << std::endl;
+    O << "</" << tag_name_ << ">" << std::endl;
     return true;
 }
 
 bool TSRChainParameter::reset() {
-    purpose = CONSTRAINT;
-    manipind = -1;
-    relativebodyname = "NULL";
-    relativelinkname = "NULL";
-    mimic_body_name = "NULL";
-    mimic_inds.clear();
-    TSRs.clear();
+    purpose_ = CONSTRAINT;
+    manipind_ = -1;
+    relativebodyname_ = "NULL";
+    relativelinkname_ = "NULL";
+    mimic_body_name_ = "NULL";
+    mimic_inds_.clear();
+    TSRs_.clear();
 }
 
 OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
-    if (name == _tag_name) {
-        if (_tag_open)
+    if (name == tag_name_) {
+        if (tag_open_)
             return PE_Ignore;
         else {
             std::istringstream value;
@@ -376,20 +376,20 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                 } else if (key == "dnet_path") {
                     value >> dnet_path;
                     if (dnet_path != "")
-                        use_dnet = true;
+                        use_dnet_ = true;
                 } else if (key == "dnet_threshold") {
-                    value >> dnet_threshold;
+                    value >> dnet_threshold_;
                 } else if (key == "dnet_coeff") {
-                    value >> dnet_coeff;
+                    value >> dnet_coeff_;
                 } else if (key == "predict_tsr") {
                     if (value.str() == "true")
-                        predict_tsr = true;
-                    else 
-                        predict_tsr = false;
+                        use_tsr_ = true;
+                    else
+                        use_tsr_ = false;
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
-            _tag_open = true;
+            tag_open_ = true;
             return PE_Support;
         }
     } else
@@ -397,16 +397,16 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
 }
 
 bool MPNetParameter::endElement(std::string const &name) {
-    if (name == _tag_name) {
-        _tag_open = false;
+    if (name == tag_name_) {
+        tag_open_ = false;
         return true;
     } else
         return false;
 }
 
 bool MPNetParameter::serialize(std::ostream &O) const {
-    O << "<" << _tag_name
-      << " pnet_path=\"" << pnet_path << "\""
+    O << "<" << tag_name_
+      << " pnet_path=\"" << pnet_path_ << "\""
       << " voxel_path=\"" << voxel_path << "\""
       << " ohot_path=\"" << ohot_path << "\""
       << " dnet_path=\"" << dnet_path << "\""

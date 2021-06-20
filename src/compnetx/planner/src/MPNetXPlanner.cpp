@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan */
 
-#include "MPNetPlanner.h"
+#include "planner/MPNetXPlanner.h"
 
 #include <ompl/base/goals/GoalSampleableRegion.h>
 #include <ompl/base/spaces/constraint/AtlasStateSpace.h>
@@ -42,26 +42,26 @@
 #include <ompl/tools/config/SelfConfig.h>
 #include <ompl/util/String.h>
 
-ompl::geometric::MPNetPlanner::MPNetPlanner(const base::SpaceInformationPtr &si,
-                                            const OpenRAVE::RobotBasePtr &robot,
-                                            const std::vector<AtlasMPNet::TaskSpaceRegionChain::Ptr> &tsrchains,
-                                            AtlasMPNet::MPNetParameter param)
-    : base::Planner(si, "MPNetPlanner") {
+ompl::geometric::MPNetXPlanner::MPNetXPlanner(const base::SpaceInformationPtr &si,
+                                              const OpenRAVE::RobotBasePtr &robot,
+                                              const std::vector<CoMPNetX::TaskSpaceRegionChain::Ptr> &tsrchains,
+                                              CoMPNetX::MPNetParameter param)
+    : base::Planner(si, "MPNetXPlanner") {
     specs_.recognizedGoal = base::GOAL_SAMPLEABLE_REGION;
     specs_.directed = true;
 
-    Planner::declareParam<double>("range", this, &MPNetPlanner::setRange, &MPNetPlanner::getRange, "0.:1.:10000.");
+    Planner::declareParam<double>("range", this, &MPNetXPlanner::setRange, &MPNetXPlanner::getRange, "0.:1.:10000.");
 
     connectionPoint_ = std::make_pair<base::State *, base::State *>(nullptr, nullptr);
     distanceBetweenTrees_ = std::numeric_limits<double>::infinity();
-    sampler_ = std::make_shared<AtlasMPNet::MPNetSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
+    sampler_ = std::make_shared<CoMPNetX::MPNetXSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
 }
 
-ompl::geometric::MPNetPlanner::~MPNetPlanner() {
+ompl::geometric::MPNetXPlanner::~MPNetXPlanner() {
     freeMemory();
 }
 
-void ompl::geometric::MPNetPlanner::setup() {
+void ompl::geometric::MPNetXPlanner::setup() {
     Planner::setup();
     tools::SelfConfig sc(si_, getName());
     sc.configurePlannerRange(maxDistance_);
@@ -74,7 +74,7 @@ void ompl::geometric::MPNetPlanner::setup() {
     tGoal_->setDistanceFunction([this](const Motion *a, const Motion *b) { return distanceFunction(a, b); });
 }
 
-void ompl::geometric::MPNetPlanner::freeMemory() {
+void ompl::geometric::MPNetXPlanner::freeMemory() {
     std::vector<Motion *> motions;
 
     if (tStart_) {
@@ -96,7 +96,7 @@ void ompl::geometric::MPNetPlanner::freeMemory() {
     }
 }
 
-void ompl::geometric::MPNetPlanner::clear() {
+void ompl::geometric::MPNetXPlanner::clear() {
     Planner::clear();
     freeMemory();
     if (tStart_)
@@ -107,7 +107,7 @@ void ompl::geometric::MPNetPlanner::clear() {
     distanceBetweenTrees_ = std::numeric_limits<double>::infinity();
 }
 
-ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion) {
+ompl::geometric::MPNetXPlanner::GrowState ompl::geometric::MPNetXPlanner::growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion) {
     Motion *nmotion = tree->nearest(rmotion);
     // this is designed for AtlasStateSpace only.
     std::vector<ompl::base::State *> stateList;
@@ -135,7 +135,7 @@ ompl::geometric::MPNetPlanner::GrowState ompl::geometric::MPNetPlanner::growTree
     return reach ? REACHED : ADVANCED;
 }
 
-ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::PlannerTerminationCondition &ptc) {
+ompl::base::PlannerStatus ompl::geometric::MPNetXPlanner::solve(const base::PlannerTerminationCondition &ptc) {
     checkValidity();
 
     Motion *start_motion, *goal_motion;
@@ -297,7 +297,7 @@ ompl::base::PlannerStatus ompl::geometric::MPNetPlanner::solve(const base::Plann
     return solved ? base::PlannerStatus::EXACT_SOLUTION : base::PlannerStatus::TIMEOUT;
 }
 
-void ompl::geometric::MPNetPlanner::getPlannerData(base::PlannerData &data) const {
+void ompl::geometric::MPNetXPlanner::getPlannerData(base::PlannerData &data) const {
     Planner::getPlannerData(data);
 
     std::vector<Motion *> motions;

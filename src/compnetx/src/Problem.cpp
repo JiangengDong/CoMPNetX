@@ -43,26 +43,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 
-#include "MPNetXPlanner.h"
-#include "MPNetPlanner.h"
+#include "planner/MPNetPlanner.h"
+#include "planner/MPNetXPlanner.h"
 
-AtlasMPNet::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(std::move(penv)) {
-    RegisterCommand("GetParameters", boost::bind(&AtlasMPNet::Problem::GetParametersCommand, this, _1, _2), "returns the values of all the parameters");
-    RegisterCommand("GetPlanningTime", boost::bind(&AtlasMPNet::Problem::GetPlanningTimeCommand, this, _1, _2),
+CoMPNetX::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(std::move(penv)) {
+    RegisterCommand("GetParameters", boost::bind(&CoMPNetX::Problem::GetParametersCommand, this, _1, _2), "returns the values of all the parameters");
+    RegisterCommand("GetPlanningTime", boost::bind(&CoMPNetX::Problem::GetPlanningTimeCommand, this, _1, _2),
                     "returns the amount of time (in seconds) spent during the last planning step");
-    RegisterCommand("SetLogLevel", boost::bind(&AtlasMPNet::Problem::SetLogLevelCommand, this, _1, _2), "set the log level");
-    RegisterCommand("GetDistanceToManifold", boost::bind(&AtlasMPNet::Problem::GetDistanceToManifoldCommand, this, _1, _2), "calculate the distance from a config to the manifold");
+    RegisterCommand("SetLogLevel", boost::bind(&CoMPNetX::Problem::SetLogLevelCommand, this, _1, _2), "set the log level");
+    RegisterCommand("GetDistanceToManifold", boost::bind(&CoMPNetX::Problem::GetDistanceToManifoldCommand, this, _1, _2), "calculate the distance from a config to the manifold");
 }
 
-AtlasMPNet::Problem::~Problem() = default;
+CoMPNetX::Problem::~Problem() = default;
 
-bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, std::istream &input) {
-    AtlasMPNet::Parameters::Ptr params = boost::make_shared<AtlasMPNet::Parameters>();
+bool CoMPNetX::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, std::istream &input) {
+    CoMPNetX::Parameters::Ptr params = boost::make_shared<CoMPNetX::Parameters>();
     input >> *params;
     return InitPlan(robot, params);
 }
 
-bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::PlannerBase::PlannerParametersConstPtr params) {
+bool CoMPNetX::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::PlannerBase::PlannerParametersConstPtr params) {
     initialized_ = false;
     if (robot == nullptr || params == nullptr) {
         OMPL_ERROR("Robot and params must not be NULL.\n"); // NOLINT(hicpp-signed-bitwise)
@@ -83,7 +83,7 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     goal_.clear();
     simple_setup_.reset();
 
-    parameters_ = boost::make_shared<AtlasMPNet::Parameters>();
+    parameters_ = boost::make_shared<CoMPNetX::Parameters>();
     parameters_->copy(params);
     env_ = robot->GetEnv();
     robot_ = std::move(robot);
@@ -98,7 +98,7 @@ bool AtlasMPNet::Problem::InitPlan(OpenRAVE::RobotBasePtr robot, OpenRAVE::Plann
     return initialized_;
 }
 
-OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
+OpenRAVE::PlannerStatus CoMPNetX::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr ptraj) {
     // Initialize ptraj
     size_t dof = robot_->GetActiveDOF();
     OpenRAVE::ConfigurationSpecification planningspec = robot_->GetActiveConfigurationSpecification("linear");
@@ -117,79 +117,79 @@ OpenRAVE::PlannerStatus AtlasMPNet::Problem::PlanPath(OpenRAVE::TrajectoryBasePt
         OMPL_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
-    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameter_.time_);
+    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameter_.time);
     if (parameters_->constraint_parameter_.type_ != ConstraintParameter::PROJECTION)
         OMPL_INFORM("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
     switch (ompl::base::PlannerStatus::StatusType(status)) {
-    case ompl::base::PlannerStatus::UNKNOWN:
-        OMPL_WARN("Unknown status!");
-        break;
-    case ompl::base::PlannerStatus::INVALID_START:
-        OMPL_WARN("Invalid start!");
-        break;
-    case ompl::base::PlannerStatus::INVALID_GOAL:
-        OMPL_WARN("Invalid goal!");
-        break;
-    case ompl::base::PlannerStatus::UNRECOGNIZED_GOAL_TYPE:
-        OMPL_WARN("Unrecognized goal type!");
-        break;
-    case ompl::base::PlannerStatus::TIMEOUT:
-        OMPL_WARN("Failed to find a solution!");
-        break;
-    case ompl::base::PlannerStatus::CRASH:
-        OMPL_WARN("The planner crashed!");
-        break;
-    case ompl::base::PlannerStatus::ABORT:
-        OMPL_WARN("The planner did not find a solution for some other reason!");
-        break;
-    case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
-        OMPL_WARN("Found an approximate solution. ");
-        break;
-    case ompl::base::PlannerStatus::EXACT_SOLUTION: {
-        auto ompl_traj = simple_setup_->getSolutionPath();
-        ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
-        std::vector<double> values, robot_values;
-        for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
-            space->copyToReals(values, ompl_traj.getState(i));
-            robot_values.assign(values.begin(), values.begin() + dof);
-            ptraj->Insert(i, robot_values, true);
-        }
+        case ompl::base::PlannerStatus::UNKNOWN:
+            OMPL_WARN("Unknown status!");
+            break;
+        case ompl::base::PlannerStatus::INVALID_START:
+            OMPL_WARN("Invalid start!");
+            break;
+        case ompl::base::PlannerStatus::INVALID_GOAL:
+            OMPL_WARN("Invalid goal!");
+            break;
+        case ompl::base::PlannerStatus::UNRECOGNIZED_GOAL_TYPE:
+            OMPL_WARN("Unrecognized goal type!");
+            break;
+        case ompl::base::PlannerStatus::TIMEOUT:
+            OMPL_WARN("Failed to find a solution!");
+            break;
+        case ompl::base::PlannerStatus::CRASH:
+            OMPL_WARN("The planner crashed!");
+            break;
+        case ompl::base::PlannerStatus::ABORT:
+            OMPL_WARN("The planner did not find a solution for some other reason!");
+            break;
+        case ompl::base::PlannerStatus::APPROXIMATE_SOLUTION:
+            OMPL_WARN("Found an approximate solution. ");
+            break;
+        case ompl::base::PlannerStatus::EXACT_SOLUTION: {
+            auto ompl_traj = simple_setup_->getSolutionPath();
+            ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
+            std::vector<double> values, robot_values;
+            for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
+                space->copyToReals(values, ompl_traj.getState(i));
+                robot_values.assign(values.begin(), values.begin() + dof);
+                ptraj->Insert(i, robot_values, true);
+            }
 
-        // print the result
-        OMPL_INFORM("States in path: %d", ompl_traj.getStateCount());
-        std::stringstream ss;
-        ss << std::endl;
-        for (int i = 0; i < 3; i++) {
-            ss << "\tState " << i << ":";
-            space->copyToReals(values, ompl_traj.getState(i));
-            for (auto v : values) {
-                ss << " " << v;
+            // print the result
+            OMPL_INFORM("States in path: %d", ompl_traj.getStateCount());
+            std::stringstream ss;
+            ss << std::endl;
+            for (int i = 0; i < 3; i++) {
+                ss << "\tState " << i << ":";
+                space->copyToReals(values, ompl_traj.getState(i));
+                for (auto v : values) {
+                    ss << " " << v;
+                }
+                ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
             }
-            ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
-        }
-        for (unsigned long i = ompl_traj.getStateCount() - 3; i < ompl_traj.getStateCount(); i++) {
-            ss << "\tState " << i << ":";
-            space->copyToReals(values, ompl_traj.getState(i));
-            for (auto v : values) {
-                ss << " " << v;
+            for (unsigned long i = ompl_traj.getStateCount() - 3; i < ompl_traj.getStateCount(); i++) {
+                ss << "\tState " << i << ":";
+                space->copyToReals(values, ompl_traj.getState(i));
+                for (auto v : values) {
+                    ss << " " << v;
+                }
+                ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
             }
-            ss << "\tDistance: " << constraint_->distance(ompl_traj.getState(i)) << std::endl;
+            OMPL_DEBUG(ss.str().c_str());
+            plannerStatus = OpenRAVE::PS_HasSolution;
+            break;
         }
-        OMPL_DEBUG(ss.str().c_str());
-        plannerStatus = OpenRAVE::PS_HasSolution;
-        break;
-    }
-    default:
-        break;
+        default:
+            break;
     }
     return plannerStatus;
 }
 
-OpenRAVE::PlannerBase::PlannerParametersConstPtr AtlasMPNet::Problem::GetParameters() const {
+OpenRAVE::PlannerBase::PlannerParametersConstPtr CoMPNetX::Problem::GetParameters() const {
     return parameters_;
 }
 
-bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream &sin) const {
+bool CoMPNetX::Problem::GetParametersCommand(std::ostream &sout, std::istream &sin) const {
     sout << parameters_->solver_parameter_ << std::endl
          << parameters_->constraint_parameter_ << std::endl
          << parameters_->atlas_parameter_ << std::endl;
@@ -199,12 +199,12 @@ bool AtlasMPNet::Problem::GetParametersCommand(std::ostream &sout, std::istream 
     return true;
 }
 
-bool AtlasMPNet::Problem::GetPlanningTimeCommand(std::ostream &sout, std::istream &sin) const {
+bool CoMPNetX::Problem::GetPlanningTimeCommand(std::ostream &sout, std::istream &sin) const {
     sout << simple_setup_->getLastPlanComputationTime();
     return true;
 }
 
-bool AtlasMPNet::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &sin) const {
+bool CoMPNetX::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &sin) const {
     int leveli;
     sin >> leveli;
     ompl::msg::LogLevel level;
@@ -214,7 +214,7 @@ bool AtlasMPNet::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &s
     return true;
 }
 
-bool AtlasMPNet::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const {
+bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const {
     auto dof = robot_->GetActiveDOF();
     std::vector<double> joint_vals(dof);
     double temp;
@@ -243,7 +243,7 @@ bool AtlasMPNet::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::
     return true;
 }
 
-bool AtlasMPNet::Problem::setTSRChainRobot() {
+bool CoMPNetX::Problem::setTSRChainRobot() {
     env_ = robot_->GetEnv();
     TaskSpaceRegionChain::Ptr tsrchain_temp;
     for (const auto &tsrchain_param : parameters_->tsrchains_) {
@@ -274,7 +274,7 @@ bool AtlasMPNet::Problem::setTSRChainRobot() {
  *
  * @return true if setup successfully
  */
-bool AtlasMPNet::Problem::setAmbientStateSpace() {
+bool CoMPNetX::Problem::setAmbientStateSpace() {
     const unsigned int dof = robot_->GetActiveDOF();
     unsigned int dof_tsrs = 0;
     for (const auto &tsrchain : tsrchains_) {
@@ -343,22 +343,22 @@ bool AtlasMPNet::Problem::setAmbientStateSpace() {
     return true;
 }
 
-bool AtlasMPNet::Problem::setConstrainedStateSpace() {
+bool CoMPNetX::Problem::setConstrainedStateSpace() {
     constraint_ = std::make_shared<TSRChainConstraint>(robot_, tsrchains_);
     // create the constrained configuration space
     switch (parameters_->constraint_parameter_.type_) {
-    case ConstraintParameter::PROJECTION:
-        constrained_state_space_ = std::make_shared<ompl::base::ProjectedStateSpace>(ambient_state_space_, constraint_);
-        constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
-        break;
-    case ConstraintParameter::ATLAS:
-        constrained_state_space_ = std::make_shared<ompl::base::AtlasStateSpace>(ambient_state_space_, constraint_);
-        constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
-        break;
-    case ConstraintParameter::TANGENT_BUNDLE:
-        constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
-        constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
-        break;
+        case ConstraintParameter::PROJECTION:
+            constrained_state_space_ = std::make_shared<ompl::base::ProjectedStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
+            break;
+        case ConstraintParameter::ATLAS:
+            constrained_state_space_ = std::make_shared<ompl::base::AtlasStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::ConstrainedSpaceInformation>(constrained_state_space_);
+            break;
+        case ConstraintParameter::TANGENT_BUNDLE:
+            constrained_state_space_ = std::make_shared<ompl::base::TangentBundleStateSpace>(ambient_state_space_, constraint_);
+            constrained_space_info_ = std::make_shared<ompl::base::TangentBundleSpaceInformation>(constrained_state_space_);
+            break;
     }
     if (constraint_ == nullptr || constrained_state_space_ == nullptr || constrained_space_info_ == nullptr) {
         OMPL_ERROR("Failed to construct constrained state space!");
@@ -394,15 +394,15 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     std::stringstream ss;
     ss << std::endl;
     switch (parameters_->constraint_parameter_.type_) {
-    case ConstraintParameter::PROJECTION:
-        ss << "\tType: Projection" << std::endl;
-        break;
-    case ConstraintParameter::ATLAS:
-        ss << "\tType: Atlas" << std::endl;
-        break;
-    case ConstraintParameter::TANGENT_BUNDLE:
-        ss << "\tType: Tangent bundle" << std::endl;
-        break;
+        case ConstraintParameter::PROJECTION:
+            ss << "\tType: Projection" << std::endl;
+            break;
+        case ConstraintParameter::ATLAS:
+            ss << "\tType: Atlas" << std::endl;
+            break;
+        case ConstraintParameter::TANGENT_BUNDLE:
+            ss << "\tType: Tangent bundle" << std::endl;
+            break;
     }
     ss << "\tDimension of manifold: " << constrained_state_space_->getManifoldDimension() << std::endl;
     ss << "\tParameters of constrained state space: " << std::endl;
@@ -424,7 +424,7 @@ bool AtlasMPNet::Problem::setConstrainedStateSpace() {
     return true;
 }
 
-bool AtlasMPNet::Problem::setStartAndGoalStates() {
+bool CoMPNetX::Problem::setStartAndGoalStates() {
     std::vector<double> qtemp;
     OpenRAVE::Transform Ttemp;
     std::vector<OpenRAVE::RobotBase::ManipulatorPtr> manips = robot_->GetManipulators();
@@ -493,8 +493,8 @@ bool AtlasMPNet::Problem::setStartAndGoalStates() {
     return true;
 }
 
-bool AtlasMPNet::Problem::setStateValidityChecker() {
-    state_validity_checker_ = std::make_shared<AtlasMPNet::StateValidityChecker>(constrained_space_info_, robot_, tsrchains_);
+bool CoMPNetX::Problem::setStateValidityChecker() {
+    state_validity_checker_ = std::make_shared<CoMPNetX::StateValidityChecker>(constrained_space_info_, robot_, tsrchains_);
     // print result
     if (state_validity_checker_ != nullptr) {
         OMPL_INFORM("Constructed state validity checker successfully.");
@@ -505,24 +505,24 @@ bool AtlasMPNet::Problem::setStateValidityChecker() {
     }
 }
 
-bool AtlasMPNet::Problem::setPlanner() {
+bool CoMPNetX::Problem::setPlanner() {
     // create a planner
-    switch (parameters_->solver_parameter_.type_) {
-    case SolverParameter::RRT:
-        planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
-        break;
-    case SolverParameter::RRTstar:
-        planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
-        break;
-    case SolverParameter::RRTConnect:
-        planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
-        break;
-    case SolverParameter::CoMPNetX:
-        planner_ = std::make_shared<ompl::geometric::MPNetXPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
-        break;
-    case SolverParameter::CoMPNet:
-        planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
-        break;
+    switch (parameters_->solver_parameter_.type) {
+        case SolverParameter::RRT:
+            planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
+            break;
+        case SolverParameter::RRTstar:
+            planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
+            break;
+        case SolverParameter::RRTConnect:
+            planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
+            break;
+        case SolverParameter::CoMPNetX:
+            planner_ = std::make_shared<ompl::geometric::MPNetXPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
+            break;
+        case SolverParameter::CoMPNet:
+            planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
+            break;
     }
     if (planner_ == nullptr) {
         OMPL_ERROR("Failed to construct planner!");
@@ -530,18 +530,18 @@ bool AtlasMPNet::Problem::setPlanner() {
     }
 
     // set the range if constructed successfully
-    switch (parameters_->solver_parameter_.type_) {
-    case SolverParameter::RRT:
-        planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameter_.range_);
-        break;
-    case SolverParameter::RRTstar:
-        planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameter_.range_);
-        break;
-    case SolverParameter::RRTConnect:
-        planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameter_.range_);
-        break;
-    default:
-        break;
+    switch (parameters_->solver_parameter_.type) {
+        case SolverParameter::RRT:
+            planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameter_.range);
+            break;
+        case SolverParameter::RRTstar:
+            planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameter_.range);
+            break;
+        case SolverParameter::RRTConnect:
+            planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameter_.range);
+            break;
+        default:
+            break;
     }
 
     // print result
@@ -549,24 +549,24 @@ bool AtlasMPNet::Problem::setPlanner() {
     std::stringstream ss;
     ss << std::endl;
     ss << "\tPlanner: " << planner_->getName() << std::endl;
-    switch (parameters_->solver_parameter_.type_) {
-    case SolverParameter::RRT:
-        ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange();
-        break;
-    case SolverParameter::RRTstar:
-        ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTstar>()->getRange();
-        break;
-    case SolverParameter::RRTConnect:
-        ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTConnect>()->getRange();
-        break;
-    default:
-        break;
+    switch (parameters_->solver_parameter_.type) {
+        case SolverParameter::RRT:
+            ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange();
+            break;
+        case SolverParameter::RRTstar:
+            ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTstar>()->getRange();
+            break;
+        case SolverParameter::RRTConnect:
+            ss << "\t\tRange: " << planner_->as<ompl::geometric::RRTConnect>()->getRange();
+            break;
+        default:
+            break;
     }
     OMPL_DEBUG(ss.str().c_str());
     return true;
 }
 
-bool AtlasMPNet::Problem::simpleSetup() {
+bool CoMPNetX::Problem::simpleSetup() {
     // create a SimpleSetup
     simple_setup_ = std::make_shared<ompl::geometric::SimpleSetup>(constrained_space_info_);
     if (simple_setup_ == nullptr) {

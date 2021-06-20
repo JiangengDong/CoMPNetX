@@ -9,7 +9,7 @@
 
 #include "TaskSpaceRegionChain.h"
 
-using namespace AtlasMPNet;
+using namespace CoMPNetX;
 
 TSRChainConstraint::TSRChainConstraint(const OpenRAVE::RobotBasePtr &robot, const std::vector<TaskSpaceRegionChain::Ptr> &tsr_chains) : Constraint([&robot, &tsr_chains] {
                                                                                                                                             unsigned int dof = robot->GetActiveDOF();

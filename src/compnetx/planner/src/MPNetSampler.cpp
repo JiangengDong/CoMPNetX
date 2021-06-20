@@ -2,18 +2,18 @@
 // Created by jiangeng on 3/29/20.
 //
 
-#include "MPNetSampler.h"
+#include "planner/MPNetSampler.h"
 
 #include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
 
-AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
-                                       OpenRAVE::RobotBasePtr robot,
-                                       std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
-                                       MPNetParameter param) : ompl::base::StateSampler(space),
-                                                               robot_(robot),
-                                                               tsrchains_(std::move(tsrchains)) {
-    dnet_coeff = param.dnet_coeff;
-    dnet_threshold = param.dnet_threshold;
+CoMPNetX::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
+                                     OpenRAVE::RobotBasePtr robot,
+                                     std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
+                                     MPNetParameter param) : ompl::base::StateSampler(space),
+                                                             robot_(robot),
+                                                             tsrchains_(std::move(tsrchains)) {
+    dnet_coeff = param.dnet_coeff_;
+    dnet_threshold = param.dnet_threshold_;
 
     dim_ = 0;
     dof_robot_ = robot->GetActiveDOF();
@@ -33,14 +33,14 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
         _scale_factor[i] = _upper_limits[i] - _lower_limits[i];
     }
 
-    std::string pnet_filename = param.pnet_path;
+    std::string pnet_filename = param.pnet_path_;
     pnet_ = torch::jit::load(pnet_filename);
     pnet_.to(at::kCUDA);
     OMPL_DEBUG("Load %s successfully.", pnet_filename.c_str());
 
-    use_dnet = param.use_dnet;
-    if (param.use_dnet) {
-        std::string dnet_filename = param.dnet_path;
+    use_dnet = param.use_dnet_;
+    if (param.use_dnet_) {
+        std::string dnet_filename = param.dnet_path_;
         dnet_ = torch::jit::load(dnet_filename);
         dnet_.to(at::kCUDA);
         OMPL_DEBUG("Load %s successfully.", dnet_filename.c_str());
@@ -59,10 +59,10 @@ AtlasMPNet::MPNetSampler::MPNetSampler(const ompl::base::StateSpace *space,
         OMPL_DEBUG("Load %s successfully.", voxel_filename.c_str());
     }
 
-    predict_tsr = param.predict_tsr;
+    predict_tsr = param.use_tsr_;
 }
 
-bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
+bool CoMPNetX::MPNetSampler::sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) {
     // sample a robot config with MPNet
     auto pnet_input = use_voxel ? (torch::cat({voxel_, ohot_, stateToTensor(start), stateToTensor(goal)}, 1).to(at::kCUDA))
                                 : (torch::cat({ohot_, stateToTensor(start), stateToTensor(goal)}, 1).to(at::kCUDA));
@@ -75,14 +75,14 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
         dnet_output.backward();
         auto grad = pnet_output_temp.grad();
         torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);
-        if (dnet_output_temp.accessor<float, 2>()[0][0]>0.3) {
+        if (dnet_output_temp.accessor<float, 2>()[0][0] > 0.3) {
             pnet_output -= 0.4 * grad;
         }
     }
 
     // handshake
     std::vector<double> sample_config(dim_);
-    space_->copyToReals(sample_config, start);  // copy the tsr value of the start state
+    space_->copyToReals(sample_config, start); // copy the tsr value of the start state
     std::vector<double> robot_sample = tensorToVector(pnet_output);
     EnforceBound(robot_sample);
     robot_->SetActiveDOFValues(robot_sample);
@@ -103,7 +103,7 @@ bool AtlasMPNet::MPNetSampler::sample(const ompl::base::State *start, const ompl
     return true;
 }
 
-std::vector<double> AtlasMPNet::MPNetSampler::tensorToVector(const torch::Tensor &tensor) {
+std::vector<double> CoMPNetX::MPNetSampler::tensorToVector(const torch::Tensor &tensor) {
     auto data = tensor.accessor<float, 2>()[0];
     std::vector<double> dest(dof_robot_);
     for (unsigned int i = 0; i < dof_robot_; i++) {
@@ -112,7 +112,7 @@ std::vector<double> AtlasMPNet::MPNetSampler::tensorToVector(const torch::Tensor
     return dest;
 }
 
-torch::Tensor AtlasMPNet::MPNetSampler::vectorToTensor(const std::vector<double> &vec) {
+torch::Tensor CoMPNetX::MPNetSampler::vectorToTensor(const std::vector<double> &vec) {
     std::vector<float> scaled_src(dof_robot_);
     for (unsigned int i = 0; i < dof_robot_; i++) {
         scaled_src[i] = vec[i] / _scale_factor[i];
@@ -120,7 +120,7 @@ torch::Tensor AtlasMPNet::MPNetSampler::vectorToTensor(const std::vector<double>
     return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
 }
 
-torch::Tensor AtlasMPNet::MPNetSampler::stateToTensor(const ompl::base::State *from) {
+torch::Tensor CoMPNetX::MPNetSampler::stateToTensor(const ompl::base::State *from) {
     std::vector<float> scaled_src(dof_robot_);
     const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
     for (unsigned int i = 0; i < dof_robot_; i++) {
@@ -129,7 +129,7 @@ torch::Tensor AtlasMPNet::MPNetSampler::stateToTensor(const ompl::base::State *f
     return torch::from_blob(scaled_src.data(), {1, dof_robot_}).clone();
 }
 
-void AtlasMPNet::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::base::State *to) {
+void CoMPNetX::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::base::State *to) {
     auto data = from.accessor<float, 2>()[0];
     auto &to_state = *(to->as<ompl::base::ConstrainedStateSpace::StateType>());
     float val;
@@ -144,7 +144,7 @@ void AtlasMPNet::MPNetSampler::tensorToState(const torch::Tensor &from, ompl::ba
     }
 }
 
-std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filename, unsigned int n) {
+std::vector<float> CoMPNetX::MPNetSampler::loadData(const std::string &filename, unsigned int n) {
     std::ifstream file(filename);
     std::string line;
     std::vector<float> vec(n);
@@ -157,7 +157,7 @@ std::vector<float> AtlasMPNet::MPNetSampler::loadData(const std::string &filenam
     return vec;
 }
 
-bool AtlasMPNet::MPNetSampler::EnforceBound(std::vector<double> &val) {
+bool CoMPNetX::MPNetSampler::EnforceBound(std::vector<double> &val) {
     for (unsigned int i = 0; i < dof_robot_; i++) { // enforcing TSR as well
         if (val[i] < _lower_limits[i])
             val[i] = _lower_limits[i];

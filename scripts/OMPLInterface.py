@@ -559,7 +559,7 @@ class OMPLInterface:
     def __init__(self, env, robot, loglevel=2):
         self.env = env
         self.robot = robot
-        self.planner = orpy.RaveCreatePlanner(self.env, 'AtlasMPNet')
+        self.planner = orpy.RaveCreatePlanner(self.env, 'CoMPNetX')
         assert self.planner != None
         self.planner.SendCommand("SetLogLevel %d" % loglevel)
 
@@ -577,7 +577,7 @@ class OMPLInterface:
         params.SetExtraParameters(str(planner_params))
 
         with self.env, self.robot:
-        # with EmptyContext():
+            # with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None, np.nan, None
@@ -605,7 +605,7 @@ class OMPLInterface:
         params.SetExtraParameters(str(planner_params))
 
         with self.env, self.robot:
-        # with EmptyContext():
+            # with EmptyContext():
             if not self.planner.InitPlan(self.robot, params):
                 print("Start or goal is invalid!")
                 return None
@@ -636,5 +636,3 @@ class OMPLInterface:
             dist_list = [dist for (vals, dist) in all_list]
 
         return val_list, dist_list
-
-

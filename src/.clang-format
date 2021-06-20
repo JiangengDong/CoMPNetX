@@ -1,10 +1,10 @@
-# I don't think this is a good format, but I am too lazy to search for a better one
-BasedOnStyle: LLVM
-UseTab: Never
-IndentWidth: 4
-TabWidth: 4
-AllowShortIfStatementsOnASingleLine: false
-IndentCaseLabels: false
-ColumnLimit: 0
-AccessModifierOffset: -4
-NamespaceIndentation: All
+{
+    BasedOnStyle: LLVM,
+    UseTab: Never,
+    IndentWidth: 4,
+    TabWidth: 4,
+    AllowShortIfStatementsOnASingleLine: true,
+    IndentCaseLabels: true,
+    ColumnLimit: 0,
+    AccessModifierOffset: -4,
+}

@@ -1,6 +1,6 @@
-#include "RobotHelper.h"
+#include "planner/RobotHelper.h"
 
-using namespace AtlasMPNet;
+using namespace CoMPNetX;
 
 void RobotHelper::GetJacobian(const OpenRAVE::Transform &T0_s, const OpenRAVE::Transform &T0_closest, Eigen::Ref<Eigen::MatrixXd> J) const {
     std::vector<OpenRAVE::dReal> Jtrans, Jrot;

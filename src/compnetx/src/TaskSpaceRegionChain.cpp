@@ -33,30 +33,30 @@
 #include <boost/math/constants/constants.hpp>
 #include <openrave/openrave.h>
 
-using namespace AtlasMPNet;
+using namespace CoMPNetX;
 
 TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &penv_in, const TSRChainParameter &param) {
     this->param = param;
-    _mimic_inds = this->param.mimic_inds;
+    _mimic_inds = this->param.mimic_inds_;
     numdof = -1;
     _bPointTSR = false;
 
     // find the mimic body according to its name
-    if (strcasecmp(param.mimic_body_name.c_str(), "NULL") == 0) {
+    if (strcasecmp(param.mimic_body_name_.c_str(), "NULL") == 0) {
         _mimicbody.reset();
     } else {
-        _mimicbody = penv_in->GetRobot(param.mimic_body_name);
+        _mimicbody = penv_in->GetRobot(param.mimic_body_name_);
         if (_mimicbody.get() == nullptr) {
             RAVELOG_INFO("Error: could not find the specified kinbody to make a mimic\n");
         }
     }
 
     // find the relative-to link according to its body name and link name
-    if (strcasecmp(param.relativebodyname.c_str(), "NULL") == 0) {
+    if (strcasecmp(param.relativebodyname_.c_str(), "NULL") == 0) {
         prelativetolink.reset();
     } else {
         OpenRAVE::KinBodyPtr pobject;
-        pobject = penv_in->GetKinBody(param.relativebodyname);
+        pobject = penv_in->GetKinBody(param.relativebodyname_);
         if (pobject.get() == nullptr) {
             RAVELOG_INFO("Error: could not find the specified object to attach frame\n");
         }
@@ -65,7 +65,7 @@ TaskSpaceRegionChain::TaskSpaceRegionChain(const OpenRAVE::EnvironmentBasePtr &p
         std::vector<OpenRAVE::KinBody::LinkPtr> vlinks = pobject->GetLinks();
         bool bGotLink = false;
         for (auto &vlink : vlinks) {
-            if (strcmp(param.relativelinkname.c_str(), vlink->GetName().c_str()) == 0) {
+            if (strcmp(param.relativelinkname_.c_str(), vlink->GetName().c_str()) == 0) {
                 RAVELOG_INFO("frame link: %s:%s\n", vlink->GetParent()->GetName().c_str(), vlink->GetName().c_str());
                 prelativetolink = vlink;
                 bGotLink = true;
@@ -128,23 +128,23 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     unsigned int bodynumber = 1;
     OpenRAVE::Transform Tw0_e = OpenRAVE::Transform();
 
-    for (auto &tsr : param.TSRs) {
+    for (auto &tsr : param.TSRs_) {
         for (int j = 0; j < 6; j++) {
             bFlipAxis = false;
             //don't add a body if there is no freedom in this dimension
-            if (tsr.Bw[j][0] == 0 && tsr.Bw[j][1] == 0)
+            if (tsr.Bw_[j][0] == 0 && tsr.Bw_[j][1] == 0)
                 continue;
 
-            if (tsr.Bw[j][0] == tsr.Bw[j][1]) {
+            if (tsr.Bw_[j][0] == tsr.Bw_[j][1]) {
                 RAVELOG_FATAL(
                     "ERROR: TSR Chains are currently unable to deal with cases where two bounds are equal but non-zero, cannot robotize.\n");
                 return false;
             }
 
             //check for axis flip, this is marked by the Bw values being backwards
-            if (tsr.Bw[j][0] > tsr.Bw[j][1]) {
-                tsr.Bw[j][0] = -tsr.Bw[j][0];
-                tsr.Bw[j][1] = -tsr.Bw[j][1];
+            if (tsr.Bw_[j][0] > tsr.Bw_[j][1]) {
+                tsr.Bw_[j][0] = -tsr.Bw_[j][0];
+                tsr.Bw_[j][1] = -tsr.Bw_[j][1];
                 bFlipAxis = true;
             }
 
@@ -152,13 +152,13 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
             if (_mimicbody.get() != nullptr) {
                 //we may only be mimicing some of the joints of the TSR
                 if (bodynumber - 1 < _mimic_inds.size()) {
-                    tsr.Bw[j][0] = tsr.Bw[j][0] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
-                    tsr.Bw[j][1] = tsr.Bw[j][1] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
+                    tsr.Bw_[j][0] = tsr.Bw_[j][0] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
+                    tsr.Bw_[j][1] = tsr.Bw_[j][1] - _mimicjointoffsets[_mimic_inds[bodynumber - 1]];
                 }
             }
 
-            _lowerlimits.push_back(tsr.Bw[j][0]);
-            _upperlimits.push_back(tsr.Bw[j][1]);
+            _lowerlimits.push_back(tsr.Bw_[j][0]);
+            _upperlimits.push_back(tsr.Bw_[j][1]);
 
             O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
             O << "\t\t\t<offsetfrom>Body0</offsetfrom>" << std::endl;
@@ -171,31 +171,31 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
                 O << "\t\t\t<Geom type=\"cylinder\">" << std::endl;
 
             switch (j) {
-            case 0:
-                O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
-                break;
-            case 1:
-                O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
-                break;
-            case 2:
-                O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
-                break;
-            case 3:
-                O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
-                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                break;
-            case 4:
-                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                break;
-            case 5:
-                O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
-                O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
-                O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
-                break;
-            default:
-                break;
+                case 0:
+                    O << "\t\t\t\t<extents>0.06 0.02 0.02</extents>" << std::endl;
+                    break;
+                case 1:
+                    O << "\t\t\t\t<extents>0.02 0.06 0.02</extents>" << std::endl;
+                    break;
+                case 2:
+                    O << "\t\t\t\t<extents>0.02 0.02 0.06</extents>" << std::endl;
+                    break;
+                case 3:
+                    O << "\t\t\t\t<RotationAxis>0 0 1 90</RotationAxis>" << std::endl;
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                case 4:
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                case 5:
+                    O << "\t\t\t\t<RotationAxis>1 0 0 90</RotationAxis>" << std::endl;
+                    O << "\t\t\t\t<Radius>0.02</Radius>" << std::endl;
+                    O << "\t\t\t\t<Height>0.08</Height>" << std::endl;
+                    break;
+                default:
+                    break;
             }
             if (j < 3)
                 O << "\t\t\t\t<diffusecolor>0.7 0.3 0.3</diffusecolor>" << std::endl;
@@ -217,45 +217,45 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
             O << "\t\t\t<maxvel>1</maxvel>" << std::endl;
             O << "\t\t\t<resolution>1</resolution>" << std::endl;
 
-            O << "\t\t\t<limits>" << tsr.Bw[j][0] << " " << tsr.Bw[j][1] << "</limits>" << std::endl;
+            O << "\t\t\t<limits>" << tsr.Bw_[j][0] << " " << tsr.Bw_[j][1] << "</limits>" << std::endl;
 
             switch (j) {
-            case 0:
-                O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                break;
-            case 1:
-                O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                break;
-            case 2:
-                O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                break;
-            case 3:
-                if (bFlipAxis)
-                    O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
-                else
+                case 0:
                     O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
-                break;
-            case 4:
-                if (bFlipAxis)
-                    O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
-                else
+                    break;
+                case 1:
                     O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
-                break;
-            case 5:
-                if (bFlipAxis)
-                    O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
-                else
+                    break;
+                case 2:
                     O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
-                break;
-            default:
-                break;
+                    break;
+                case 3:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>-1 0 0</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>1 0 0</axis>" << std::endl;
+                    break;
+                case 4:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>0 -1 0</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>0 1 0</axis>" << std::endl;
+                    break;
+                case 5:
+                    if (bFlipAxis)
+                        O << "\t\t\t<axis>0 0 -1</axis>" << std::endl;
+                    else
+                        O << "\t\t\t<axis>0 0 1</axis>" << std::endl;
+                    break;
+                default:
+                    break;
             }
 
             O << "\t\t</Joint>" << std::endl;
 
             bodynumber++;
         }
-        Tw0_e = Tw0_e * tsr.Tw_e;
+        Tw0_e = Tw0_e * tsr.Tw_e_;
     }
 
     O << "\t\t<Body name = \"Body" << bodynumber << "\" type=\"dynamic\" enable=\"false\">" << std::endl;
@@ -293,7 +293,7 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
         return true;
     }
 
-    if (_bPointTSR && param.TSRs.size() != 1) {
+    if (_bPointTSR && param.TSRs_.size() != 1) {
         RAVELOG_INFO("Can't yet handle case where the tsr chain has no freedom but multiple TSRs, try making it a chain of length 1\n");
         return false;
     }
@@ -310,9 +310,9 @@ bool TaskSpaceRegionChain::RobotizeTSRChain(const OpenRAVE::EnvironmentBasePtr &
     penv_in->Add(robot, true);
 
     if (prelativetolink.get() == nullptr)
-        robot->SetTransform(param.TSRs[0].T0_w);
+        robot->SetTransform(param.TSRs_[0].T0_w_);
     else
-        robot->SetTransform(prelativetolink->GetTransform() * param.TSRs[0].T0_w); 
+        robot->SetTransform(prelativetolink->GetTransform() * param.TSRs_[0].T0_w_);
 
     manipulator = robot->GetActiveManipulator();
     eeIndex = manipulator->GetEndEffector()->GetIndex();
