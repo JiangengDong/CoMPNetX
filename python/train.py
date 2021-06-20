@@ -1,14 +1,14 @@
 import argparse
-from genericpath import exists
+import datetime
 import os
+import shutil
 
 import torch
+import yaml
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
-import yaml
-import datetime
 
 from data import CoMPNetXDataset
 from models import EnetConstraint, PNet, VoxelEncoder
@@ -57,18 +57,25 @@ def process_args(args: argparse.Namespace) -> argparse.Namespace:
     args.weight_dir = os.path.join(args.output_dir, "model_weight")
     args.torchscript_dir = os.path.join(args.output_dir, "torchscript")
     args.embedding_dir = os.path.join(args.output_dir, "embedding")
+    args.script_dir = os.path.join(args.output_dir, "script")
 
     return args
 
 
 def prepare_directories(args):
+    shutil.rmtree(args.output_dir, ignore_errors=True)
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.tensorboard_dir, exist_ok=True)
     os.makedirs(args.weight_dir, exist_ok=True)
     os.makedirs(args.torchscript_dir, exist_ok=True)
     os.makedirs(args.embedding_dir, exist_ok=True)
+    os.makedirs(args.script_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, "args.yaml"), "w") as f:
         yaml.dump(args.__dict__, f)
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    for filename in ("train.py", "data.py", "models.py"):
+        shutil.copyfile(os.path.join(dir_path, filename), os.path.join(args.script_dir, filename))
 
 
 def main(args):
