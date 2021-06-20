@@ -9,6 +9,8 @@ deprecated/
 /data/
 /plugins/
 /models/
+.empty/
+.cache/
 
 ##### C++ #####
 # Prerequisites

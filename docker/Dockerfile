@@ -120,6 +120,15 @@ RUN rosdep update && \
     cd /home/compnetx/catkin_ws && \
     catkin_make
 # install pytorch
-RUN conda init 
-RUN pip3 install --no-cache-dir torch torchvision torchaudio pyyaml h5py numpy 
+RUN conda init
+RUN pip3 install --no-cache-dir torch torchvision torchaudio pyyaml h5py numpy
 RUN pip2 install --no-cache-dir pyyaml
+RUN pip3 install --no-cache-dir tensorboard
+
+# patch: install ssh-client to use git inside container
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ssh-client && \
+    apt-get autoremove -y && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/*
