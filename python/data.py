@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import yaml
 import h5py
 import torch
@@ -5,6 +6,7 @@ from typing import Dict, Tuple
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+import sys
 
 JOINT_RANGE = np.array([6.1083, 2.668, 3.4033, 3.194, 6.118, 3.6647, 6.118])
 KITCHEN_TSR_RANGE = np.array([3.6086, 2.62952, 2.0635998, 6.284, 6.284, 6.284])
@@ -170,7 +172,7 @@ class CoMPNetXDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = CoMPNetXDataset("kitchen", True, True, True, True)
-    dataloader = DataLoader(dataset, 20)
-    for (inp, outp, dist, voxel, task_embedding) in dataloader:
-        pass
+    np.set_printoptions(threshold=sys.maxsize)
+    result = load_train_data("bartender", use_text=False, use_reach=False, use_tsr_config=True)
+    print(np.max(result["outputs"] * np.concatenate((JOINT_RANGE, BARTENDER_TSR_RANGE)), axis=0))
+    print(np.min(result["outputs"] * np.concatenate((JOINT_RANGE, BARTENDER_TSR_RANGE)), axis=0))
