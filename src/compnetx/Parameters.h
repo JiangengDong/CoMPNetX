@@ -164,8 +164,8 @@ class MPNetParameter : public SimpleXMLReader {
 public:
     std::string pnet_path_;
     std::string dnet_path_;
-    std::string voxel_path;
-    std::string ohot_path;
+    std::string voxel_path_;
+    std::string ohot_path_;
     bool use_dnet_ = false;
     bool use_tsr_ = false;
     double dnet_threshold_;

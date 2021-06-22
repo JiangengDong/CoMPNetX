@@ -5,66 +5,38 @@
 #ifndef COMPNETX_MPNETSAMPLER_H
 #define COMPNETX_MPNETSAMPLER_H
 
+#include <highfive/H5Easy.hpp>
 #include <ompl/base/StateSampler.h>
 #include <ompl/base/StateSpace.h>
 #include <openrave/openrave.h>
-#include <torch/script.h>
 #include <utility>
 
 #include "Parameters.h"
-#include "RobotHelper.h"
 #include "TaskSpaceRegionChain.h"
 
 namespace CoMPNetX {
 class MPNetSampler : public ompl::base::StateSampler {
 public:
     typedef std::shared_ptr<MPNetSampler> Ptr;
-    MPNetSampler(const ompl::base::StateSpace *space,
-                 OpenRAVE::RobotBasePtr robot,
-                 std::vector<TaskSpaceRegionChain::Ptr> tsrchains,
-                 MPNetParameter param);
+    MPNetSampler(const ompl::base::StateSpace *space) : ompl::base::StateSampler(space) {}
 
-    bool sample(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample);
+    virtual bool sampleMPNet(const ompl::base::State *start, const ompl::base::State *goal, ompl::base::State *sample) = 0;
 
-    void sampleUniform(ompl::base::State *state) override {
+    void sampleUniform(ompl::base::State *state) override {}
+
+    void sampleUniformNear(ompl::base::State *state, const ompl::base::State *near, double distance) override {}
+
+    void sampleGaussian(ompl::base::State *state, const ompl::base::State *mean, double stdDev) override {}
+
+protected:
+    static std::vector<float> loadHDF5Dataset(const std::string &filename) {
+        auto colon_pos = filename.find(':');
+        std::string name = filename.substr(0, colon_pos);
+        std::string dataset_name = filename.substr(colon_pos + 1, filename.size());
+        H5Easy::File file(name, H5Easy::File::ReadOnly);
+        auto data = H5Easy::load<std::vector<float>>(file, dataset_name);
+        return data;
     }
-
-    void sampleUniformNear(ompl::base::State *state, const ompl::base::State *near, double distance) override {
-    }
-
-    void sampleGaussian(ompl::base::State *state, const ompl::base::State *mean, double stdDev) override {
-    }
-
-private:
-    torch::jit::script::Module pnet_;
-    torch::jit::script::Module dnet_;
-    torch::Tensor ohot_;
-    torch::Tensor voxel_;
-
-    unsigned int dim_; // dimension of config
-    std::vector<double> _scale_factor, _lower_limits, _upper_limits;
-    OpenRAVE::RobotBasePtr robot_;
-    unsigned int dof_robot_;
-    std::vector<TaskSpaceRegionChain::Ptr> tsrchains_;
-    std::vector<RobotHelper> manip_iktools_;
-    std::vector<unsigned int> dof_tsrchains_;
-
-    bool use_dnet;
-    bool use_voxel;
-    bool predict_tsr;
-    double dnet_coeff;
-    double dnet_threshold;
-
-    torch::Tensor vectorToTensor(const std::vector<double> &src);
-
-    std::vector<double> tensorToVector(const torch::Tensor &tensor);
-
-    static std::vector<float> loadData(const std::string &filename, unsigned int n);
-
-    bool EnforceBound(std::vector<double> &val);
-
-    torch::Tensor stateToTensor(const ompl::base::State *from);
-    void tensorToState(const torch::Tensor &from, ompl::base::State *to);
 };
 } // namespace CoMPNetX
 

@@ -1,0 +1,3 @@
+[submodule "extern/HighFive"]
+	path = extern/HighFive
+	url = https://github.com/BlueBrain/HighFive.git

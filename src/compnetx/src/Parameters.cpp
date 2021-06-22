@@ -30,11 +30,11 @@ SimpleXMLReader::ProcessElement SolverParameter::startElement(std::string const 
                 value.clear();
                 value.str(att.second);
                 if (key == "time")
-                    value >> time;
+                    value >> time_;
                 else if (key == "range")
-                    value >> range;
+                    value >> range_;
                 else if (key == "type") {
-                    type = str2type.at(value.str());
+                    type_ = str2type.at(value.str());
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
@@ -54,9 +54,16 @@ bool SolverParameter::endElement(std::string const &name) {
 }
 
 bool SolverParameter::serialize(std::ostream &O) const {
+    const static std::map<SolverType, std::string> type2str = {
+        {RRT, "rrt"},
+        {RRTstar, "rrtstar"},
+        {RRTConnect, "rrtconnect"},
+        {CoMPNet, "compnet"},
+        {CoMPNetX, "compnetx"}};
     O << "<" << tag_name_
-      << " time=\"" << time << "\""
-      << " range=\"" << range << "\""
+      << " type=\"" << type2str.at(type_) << "\""
+      << " time=\"" << time_ << "\""
+      << " range=\"" << range_ << "\""
       << "/>";
     return true;
 }
@@ -110,8 +117,12 @@ bool ConstraintParameter::endElement(std::string const &name) {
 }
 
 bool ConstraintParameter::serialize(std::ostream &O) const {
+    const static std::map<SpaceType, std::string> type2str = {
+        {PROJECTION, "projection"},
+        {ATLAS, "atlas"},
+        {TANGENT_BUNDLE, "tangent_bundle"}};
     O << "<" << tag_name_
-      << " type=\"" << type_ << "\""
+      << " type=\"" << type2str.at(type_) << "\""
       << " tolerance=\"" << tolerance_ << "\""
       << " max_iter=\"" << max_iter_ << "\""
       << " delta=\"" << delta_ << "\""
@@ -338,7 +349,7 @@ bool TSRChainParameter::serialize(std::ostream &O) const {
             O << " " << mimic_inds_[i];
     }
     O << "\">" << std::endl;
-    for (const auto &tsr : TSRs) {
+    for (const auto &tsr : TSRs_) {
         O << tsr << std::endl;
     }
     O << "</" << tag_name_ << ">" << std::endl;
@@ -353,6 +364,7 @@ bool TSRChainParameter::reset() {
     mimic_body_name_ = "NULL";
     mimic_inds_.clear();
     TSRs_.clear();
+    return true;
 }
 
 OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string const &name, std::list<std::pair<std::string, std::string>> const &atts) {
@@ -366,16 +378,10 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                 value.clear();
                 value.str(att.second);
                 if (key == "pnet_path") {
-                    value >> pnet_path;
-                } else if (key == "voxel_path") {
-                    value >> voxel_path;
-                    if (voxel_path != "")
-                        use_voxel = true;
-                } else if (key == "ohot_path") {
-                    value >> ohot_path;
+                    value >> pnet_path_;
                 } else if (key == "dnet_path") {
-                    value >> dnet_path;
-                    if (dnet_path != "")
+                    value >> dnet_path_;
+                    if (dnet_path_ != "")
                         use_dnet_ = true;
                 } else if (key == "dnet_threshold") {
                     value >> dnet_threshold_;
@@ -386,6 +392,10 @@ OpenRAVE::BaseXMLReader::ProcessElement MPNetParameter::startElement(std::string
                         use_tsr_ = true;
                     else
                         use_tsr_ = false;
+                } else if (key == "voxel_path") {
+                    voxel_path_ = att.second;
+                } else if (key == "ohot_path") {
+                    ohot_path_ = att.second;
                 } else
                     RAVELOG_WARN("Unrecognized attribute %s.", key.c_str());
             }
@@ -407,9 +417,12 @@ bool MPNetParameter::endElement(std::string const &name) {
 bool MPNetParameter::serialize(std::ostream &O) const {
     O << "<" << tag_name_
       << " pnet_path=\"" << pnet_path_ << "\""
-      << " voxel_path=\"" << voxel_path << "\""
-      << " ohot_path=\"" << ohot_path << "\""
-      << " dnet_path=\"" << dnet_path << "\""
+      << " voxel_path=\"" << voxel_path_ << "\""
+      << " ohot_path=\"" << ohot_path_ << "\""
+      << " dnet_path=\"" << dnet_path_ << "\""
+      << " dnet_threshold=\"" << dnet_threshold_ << "\""
+      << " dnet_coeff=\"" << dnet_coeff_ << "\""
+      << " predict_tsr=\"" << (use_tsr_ ? "true" : "false") << "\""
       << "/>";
     return true;
 }

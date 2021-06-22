@@ -6,10 +6,9 @@ add_library(CoMPNetX SHARED
     compnetx/src/StateValidityChecker.cpp
     compnetx/src/TaskSpaceRegionChain.cpp
     compnetx/planner/src/RRTConnect.cpp
-    compnetx/planner/src/MPNetXSampler.cpp
+    compnetx/planner/src/MPNetWithTSRSampler.cpp
+    compnetx/planner/src/MPNetWithoutTSRSampler.cpp
     compnetx/planner/src/MPNetXPlanner.cpp
-    compnetx/planner/src/MPNetSampler.cpp
-    compnetx/planner/src/MPNetPlanner.cpp
     compnetx/planner/src/RobotHelper.cpp
 )
 set_target_properties(CoMPNetX PROPERTIES
@@ -30,4 +29,5 @@ target_link_libraries(CoMPNetX
     ${OpenRAVE_LIBRARIES}
     ${Boost_LIBRARIES}
     ${OMPL_LIBRARIES}
-    ${TORCH_LIBRARIES})
+    ${TORCH_LIBRARIES}
+    HighFive)

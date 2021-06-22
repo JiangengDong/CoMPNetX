@@ -42,11 +42,14 @@
 #include <ompl/tools/config/SelfConfig.h>
 #include <ompl/util/String.h>
 
+#include "planner/MPNetWithTSRSampler.h"
+#include "planner/MPNetWithoutTSRSampler.h"
+
 ompl::geometric::MPNetXPlanner::MPNetXPlanner(const base::SpaceInformationPtr &si,
                                               const OpenRAVE::RobotBasePtr &robot,
                                               const std::vector<CoMPNetX::TaskSpaceRegionChain::Ptr> &tsrchains,
                                               CoMPNetX::MPNetParameter param)
-    : base::Planner(si, "MPNetXPlanner") {
+    : base::Planner(si, "CoMPNetXPlanner") {
     specs_.recognizedGoal = base::GOAL_SAMPLEABLE_REGION;
     specs_.directed = true;
 
@@ -54,7 +57,13 @@ ompl::geometric::MPNetXPlanner::MPNetXPlanner(const base::SpaceInformationPtr &s
 
     connectionPoint_ = std::make_pair<base::State *, base::State *>(nullptr, nullptr);
     distanceBetweenTrees_ = std::numeric_limits<double>::infinity();
-    sampler_ = std::make_shared<CoMPNetX::MPNetXSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
+
+    auto ambient_space = si_->getStateSpace()->as<ompl::base::ConstrainedStateSpace>()->getSpace();
+    if (param.use_tsr_) {
+        sampler_ = std::make_shared<CoMPNetX::MPNetWithTSRSampler>(ambient_space.get(), robot, tsrchains, param);
+    } else {
+        sampler_ = std::make_shared<CoMPNetX::MPNetWithoutTSRSampler>(ambient_space.get(), robot, tsrchains, param);
+    }
 }
 
 ompl::geometric::MPNetXPlanner::~MPNetXPlanner() {
@@ -202,7 +211,7 @@ ompl::base::PlannerStatus ompl::geometric::MPNetXPlanner::solve(const base::Plan
         }
 
         /* sample random state */
-        sampler_->sample(motionA->state, motionB->state, rstate);
+        sampler_->sampleMPNet(motionA->state, motionB->state, rstate);
         GrowState gs = growTree(treeA, tgi, rmotion);
 
         if (gs != TRAPPED) {

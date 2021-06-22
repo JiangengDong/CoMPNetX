@@ -43,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 
-#include "planner/MPNetPlanner.h"
 #include "planner/MPNetXPlanner.h"
 
 CoMPNetX::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) : OpenRAVE::PlannerBase(std::move(penv)) {
@@ -117,7 +116,7 @@ OpenRAVE::PlannerStatus CoMPNetX::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr 
         OMPL_ERROR("Unable to plan. Did you call InitPlan?\n"); // NOLINT(hicpp-signed-bitwise)
         return plannerStatus;
     }
-    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameter_.time);
+    ompl::base::PlannerStatus status = simple_setup_->solve(parameters_->solver_parameter_.time_);
     if (parameters_->constraint_parameter_.type_ != ConstraintParameter::PROJECTION)
         OMPL_INFORM("Atlas charts created: %d", constrained_state_space_->as<ompl::base::AtlasStateSpace>()->getChartCount());
     switch (ompl::base::PlannerStatus::StatusType(status)) {
@@ -225,7 +224,7 @@ bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::is
     robot_->SetActiveDOFValues(joint_vals);
 
     auto manips = robot_->GetManipulators();
-    double dist_suqare = 0;
+    double dist_square = 0;
     for (const auto &tsrchain : tsrchains_) {
         auto Trobot = manips[tsrchain->GetManipInd()]->GetEndEffectorTransform();
         OpenRAVE::Transform Ttsr;
@@ -235,10 +234,10 @@ bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::is
         for (const auto &val : tsr_joint_vals) {
             sout << val << " ";
         }
-        dist_suqare += dist * dist;
+        dist_square += dist * dist;
     }
 
-    sout << std::sqrt(dist_suqare);
+    sout << std::sqrt(dist_square);
 
     return true;
 }
@@ -507,7 +506,7 @@ bool CoMPNetX::Problem::setStateValidityChecker() {
 
 bool CoMPNetX::Problem::setPlanner() {
     // create a planner
-    switch (parameters_->solver_parameter_.type) {
+    switch (parameters_->solver_parameter_.type_) {
         case SolverParameter::RRT:
             planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
             break;
@@ -520,8 +519,8 @@ bool CoMPNetX::Problem::setPlanner() {
         case SolverParameter::CoMPNetX:
             planner_ = std::make_shared<ompl::geometric::MPNetXPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
             break;
-        case SolverParameter::CoMPNet:
-            planner_ = std::make_shared<ompl::geometric::MPNetPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
+        default:
+            planner_ = nullptr;
             break;
     }
     if (planner_ == nullptr) {
@@ -530,15 +529,15 @@ bool CoMPNetX::Problem::setPlanner() {
     }
 
     // set the range if constructed successfully
-    switch (parameters_->solver_parameter_.type) {
+    switch (parameters_->solver_parameter_.type_) {
         case SolverParameter::RRT:
-            planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameter_.range);
+            planner_->as<ompl::geometric::RRT>()->setRange(parameters_->solver_parameter_.range_);
             break;
         case SolverParameter::RRTstar:
-            planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameter_.range);
+            planner_->as<ompl::geometric::RRTstar>()->setRange(parameters_->solver_parameter_.range_);
             break;
         case SolverParameter::RRTConnect:
-            planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameter_.range);
+            planner_->as<ompl::geometric::RRTConnect>()->setRange(parameters_->solver_parameter_.range_);
             break;
         default:
             break;
@@ -549,7 +548,7 @@ bool CoMPNetX::Problem::setPlanner() {
     std::stringstream ss;
     ss << std::endl;
     ss << "\tPlanner: " << planner_->getName() << std::endl;
-    switch (parameters_->solver_parameter_.type) {
+    switch (parameters_->solver_parameter_.type_) {
         case SolverParameter::RRT:
             ss << "\t\tRange: " << planner_->as<ompl::geometric::RRT>()->getRange();
             break;

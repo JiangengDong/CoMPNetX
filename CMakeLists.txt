@@ -10,4 +10,5 @@ find_package(ompl 1.4.2 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Torch REQUIRED)
 
+add_subdirectory(extern/HighFive)
 add_subdirectory(src bin)

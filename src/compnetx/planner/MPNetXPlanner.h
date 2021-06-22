@@ -37,9 +37,9 @@
 #ifndef OMPL_GEOMETRIC_PLANNERS_MPNETX_
 #define OMPL_GEOMETRIC_PLANNERS_MPNETX_
 
-#include "MPNetXSampler.h"
 #include "Parameters.h"
 #include "TaskSpaceRegionChain.h"
+#include "planner/MPNetSampler.h"
 #include <ompl/datastructures/NearestNeighbors.h>
 #include <ompl/geometric/planners/PlannerIncludes.h>
 
@@ -134,7 +134,7 @@ protected:
     ompl::geometric::MPNetXPlanner::GrowState growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion);
 
     /** \brief State sampler */
-    CoMPNetX::MPNetXSampler::Ptr sampler_;
+    CoMPNetX::MPNetSampler::Ptr sampler_;
 
     /** \brief The start tree */
     TreeData tStart_;
