@@ -32,11 +32,7 @@ CoMPNetX::MPNetWithoutTSRSampler::MPNetWithoutTSRSampler(const ompl::base::State
     auto bound = space->as<ompl::base::RealVectorStateSpace>()->getBounds();
     upper_limits_ = bound.high;
     lower_limits_ = bound.low;
-    scale_factor_.resize(pnet_dim_, 1.0);
-    for (unsigned int i = 0; i < pnet_dim_; i++) {
-        // scale_factor_[i] = upper_limits_[i] - lower_limits_[i];
-        scale_factor_[i] = 1.0;
-    }
+    scale_factor_ = std::vector<double>{6.1083, 2.668, 3.4033, 3.194, 6.118, 3.6647, 6.118, 3.6086, 2.62952, 2.0635998, 6.284, 6.284, 6.284};
 
     std::string pnet_filename = param.pnet_path_;
     pnet_ = torch::jit::load(pnet_filename);

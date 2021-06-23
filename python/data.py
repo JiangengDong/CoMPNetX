@@ -10,7 +10,7 @@ import sys
 
 JOINT_RANGE = np.array([6.1083, 2.668, 3.4033, 3.194, 6.118, 3.6647, 6.118])
 KITCHEN_TSR_RANGE = np.array([3.6086, 2.62952, 2.0635998, 6.284, 6.284, 6.284])
-BARTENDER_TSR_RANGE = np.array([2.73688, 2.07038677, 2.028624, 6.284, 6.284, 6.284])
+BARTENDER_TSR_RANGE = np.array([3.6086, 2.62952, 2.0635998, 6.284, 6.284, 6.284])
 
 
 def load_train_data(env: str, use_text: bool, use_reach: bool, use_tsr_config: bool) -> Dict[str, np.ndarray]:

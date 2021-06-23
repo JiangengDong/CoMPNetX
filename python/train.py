@@ -113,16 +113,26 @@ def train(args: argparse.Namespace) -> Tuple[nn.Module, nn.Module, nn.Module, op
             optimizer.step()
         writer.add_scalar("loss", loss, epoch)
         # Save the models
-        if epoch % args.checkpoint_step == 0:
-            torch.save(enet.state_dict(), os.path.join(args.weight_dir, "enet_{}.pkl".format(epoch)))
-            torch.save(pnet.state_dict(), os.path.join(args.weight_dir, "pnet_{}.pkl".format(epoch)))
-            torch.save(enet_constraint.state_dict(), os.path.join(args.weight_dir, "enet_constraint_{}.pkl".format(epoch)))
+        if (epoch+1) % args.checkpoint_step == 0:
+            torch.save(enet.state_dict(), os.path.join(args.weight_dir, "enet_{}.pkl".format(epoch+1)))
+            torch.save(pnet.state_dict(), os.path.join(args.weight_dir, "pnet_{}.pkl".format(epoch+1)))
+            torch.save(enet_constraint.state_dict(), os.path.join(args.weight_dir, "enet_constraint_{}.pkl".format(epoch+1)))
 
     writer.close()
     return enet, enet_constraint, pnet, optimizer
 
 
-def export(args, enet: nn.Module, enet_constraint: nn.Module, pnet: nn.Module):
+def export(args):
+    # load models
+    enet = VoxelEncoder(args.insz_enet, args.outsz_enet)
+    enet_constraint = EnetConstraint(args.insz_constraint, args.outsz_constraint)
+    pnet = PNet(args.insz_pnet, args.outsz_pnet)
+    enet.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_{}.pkl".format(args.num_epochs))))
+    enet_constraint.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_constraint_{}.pkl".format(args.num_epochs))))
+    pnet.load_state_dict(torch.load(os.path.join(args.weight_dir, "pnet_{}.pkl".format(args.num_epochs))))
+    enet = enet.to(args.device)
+    enet_constraint = enet_constraint.to(args.device)
+    pnet = pnet.to(args.device)
     # export torchscript
     pnet_script = torch.jit.script(pnet)
     pnet_script.save(os.path.join(args.torchscript_dir, "pnet.pt"))
@@ -157,14 +167,4 @@ if __name__ == '__main__':
     args = process_args(get_args())
     # prepare_directories(args)
     # enet, enet_constraint, pnet, optimizer = train(args)
-
-    enet = VoxelEncoder(args.insz_enet, args.outsz_enet)
-    enet_constraint = EnetConstraint(args.insz_constraint, args.outsz_constraint)
-    pnet = PNet(args.insz_pnet, args.outsz_pnet)
-    enet.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_390.pkl")))
-    enet_constraint.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_constraint_390.pkl")))
-    pnet.load_state_dict(torch.load(os.path.join(args.weight_dir, "pnet_390.pkl")))
-    enet = enet.cuda()
-    enet_constraint = enet_constraint.cuda()
-    pnet = pnet.cuda()
-    export(args, enet, enet_constraint, pnet)
+    export(args)
