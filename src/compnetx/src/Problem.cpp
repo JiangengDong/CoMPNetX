@@ -506,23 +506,21 @@ bool CoMPNetX::Problem::setStateValidityChecker() {
 
 bool CoMPNetX::Problem::setPlanner() {
     // create a planner
+
     switch (parameters_->solver_parameter_.type_) {
-        case SolverParameter::RRT:
-            planner_ = std::make_shared<ompl::geometric::RRT>(constrained_space_info_);
-            break;
-        case SolverParameter::RRTstar:
-            planner_ = std::make_shared<ompl::geometric::RRTstar>(constrained_space_info_);
-            break;
         case SolverParameter::RRTConnect:
             planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
             break;
         case SolverParameter::CoMPNetX:
+
             planner_ = std::make_shared<ompl::geometric::MPNetXPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
+
             break;
         default:
             planner_ = nullptr;
             break;
     }
+
     if (planner_ == nullptr) {
         OMPL_ERROR("Failed to construct planner!");
         return false;

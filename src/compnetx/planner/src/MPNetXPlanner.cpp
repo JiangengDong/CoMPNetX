@@ -50,7 +50,9 @@ ompl::geometric::MPNetXPlanner::MPNetXPlanner(const base::SpaceInformationPtr &s
                                               const std::vector<CoMPNetX::TaskSpaceRegionChain::Ptr> &tsrchains,
                                               CoMPNetX::MPNetParameter param)
     : base::Planner(si, "CoMPNetXPlanner") {
+
     specs_.recognizedGoal = base::GOAL_SAMPLEABLE_REGION;
+
     specs_.directed = true;
 
     Planner::declareParam<double>("range", this, &MPNetXPlanner::setRange, &MPNetXPlanner::getRange, "0.:1.:10000.");
@@ -58,11 +60,10 @@ ompl::geometric::MPNetXPlanner::MPNetXPlanner(const base::SpaceInformationPtr &s
     connectionPoint_ = std::make_pair<base::State *, base::State *>(nullptr, nullptr);
     distanceBetweenTrees_ = std::numeric_limits<double>::infinity();
 
-    auto ambient_space = si_->getStateSpace()->as<ompl::base::ConstrainedStateSpace>()->getSpace();
     if (param.use_tsr_) {
-        sampler_ = std::make_shared<CoMPNetX::MPNetWithTSRSampler>(ambient_space.get(), robot, tsrchains, param);
+        sampler_ = std::make_shared<CoMPNetX::MPNetWithTSRSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
     } else {
-        sampler_ = std::make_shared<CoMPNetX::MPNetWithoutTSRSampler>(ambient_space.get(), robot, tsrchains, param);
+        sampler_ = std::make_shared<CoMPNetX::MPNetWithoutTSRSampler>(si_->getStateSpace().get(), robot, tsrchains, param);
     }
 }
 
@@ -118,7 +119,6 @@ void ompl::geometric::MPNetXPlanner::clear() {
 
 ompl::geometric::MPNetXPlanner::GrowState ompl::geometric::MPNetXPlanner::growTree(TreeData &tree, TreeGrowingInfo &tgi, Motion *rmotion) {
     Motion *nmotion = tree->nearest(rmotion);
-    // this is designed for AtlasStateSpace only.
     std::vector<ompl::base::State *> stateList;
     bool reach = si_->getStateSpace()->as<ompl::base::ConstrainedStateSpace>()->discreteGeodesic(nmotion->state, rmotion->state, false, &stateList);
 

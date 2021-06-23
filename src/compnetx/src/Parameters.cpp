@@ -504,6 +504,7 @@ bool Parameters::serialize(std::ostream &O, int options) const {
     for (const auto &tsr_chain : tsrchains_) {
         O << tsr_chain << std::endl;
     }
+    O << mpnet_parameter_ << std::endl;
     return !!O;
 }
 

@@ -19,7 +19,6 @@ CoMPNetX::MPNetWithTSRSampler::MPNetWithTSRSampler(const ompl::base::StateSpace 
     use_tsr_ = true;
 
     dof_robot_ = robot->GetActiveDOF();
-
     dof_tsrchains_.clear();
     auto manips = robot->GetManipulators();
     for (auto &tsrchain : tsrchains_) {
@@ -30,7 +29,7 @@ CoMPNetX::MPNetWithTSRSampler::MPNetWithTSRSampler(const ompl::base::StateSpace 
     space_dim_ = space_->getDimension();
     pnet_dim_ = 13;
 
-    auto bound = space->as<ompl::base::RealVectorStateSpace>()->getBounds();
+    auto bound = space->as<ompl::base::ConstrainedStateSpace>()->getSpace()->as<ompl::base::RealVectorStateSpace>()->getBounds();
     upper_limits_ = bound.high;
     lower_limits_ = bound.low;
     scale_factor_.resize(pnet_dim_, 1.0);
@@ -44,8 +43,8 @@ CoMPNetX::MPNetWithTSRSampler::MPNetWithTSRSampler(const ompl::base::StateSpace 
     pnet_.to(at::kCUDA);
     OMPL_DEBUG("Load %s successfully.", pnet_filename.c_str());
 
+    use_dnet_ = param.use_dnet_;
     if (param.use_dnet_) {
-        use_dnet_ = true;
         std::string dnet_filename = param.dnet_path_;
         dnet_ = torch::jit::load(dnet_filename);
         dnet_.to(at::kCUDA);
