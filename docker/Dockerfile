@@ -132,3 +132,5 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
+USER compnetx
+RUN pip2 install --no-cache-dir future tqdm
