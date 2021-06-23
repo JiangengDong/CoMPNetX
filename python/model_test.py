@@ -16,6 +16,7 @@ from multiprocessing import Process
 import h5py
 import yaml
 from tqdm import tqdm
+import csv
 
 import openravepy as orpy
 
@@ -181,12 +182,23 @@ def cleanupObject(orEnv, obj_name, obj, setup_dict):
     time.sleep(0.1)
 
 
+def saveResultCSV(filename, result_dict):
+    temp_result = list(result_dict.values())[0]
+    fieldnames = ["scene_name"] + list(temp_result.keys())
+    with open(filename, "wb") as f:
+        csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
+        for (scene_name, scene_result) in result_dict.items():
+            row = {"scene_name": scene_name}
+            row.update(scene_result)
+            csv_writer.writerow(row)
+
+
 def test(args):
     all_setup_dict = loadTestData(args.env)
 
     param = PlannerParameter()
     param.solver_parameter.type = args.algorithm
-    param.solver_parameter.time = 300
+    param.solver_parameter.time = 120
     param.solver_parameter.range = 0.05
     param.constraint_parameter.type = args.space
     param.constraint_parameter.tolerance = 1e-3
@@ -283,8 +295,7 @@ def test(args):
             # save result and clean up
             result_dict[scene_name][obj_name] = t_time
 
-        with open(os.path.join(args.result_dir, "result.yaml"), "w") as f:
-            yaml.dump(result_dict, f)
+        saveResultCSV(os.path.join(args.result_dir, "result.csv"), result_dict)
 
 
 def get_args():
