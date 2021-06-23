@@ -3,15 +3,18 @@ import argparse
 import datetime
 import os
 import shutil
+from typing import Tuple
 
 import torch
 import yaml
+import h5py
+from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
 
-from data import CoMPNetXDataset
+from data import CoMPNetXDataset, load_test_data
 from models import EnetConstraint, PNet, VoxelEncoder
 
 
@@ -63,7 +66,7 @@ def process_args(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
-def prepare_directories(args):
+def prepare_directories(args: argparse.Namespace):
     shutil.rmtree(args.output_dir, ignore_errors=True)
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.tensorboard_dir, exist_ok=True)
@@ -79,7 +82,7 @@ def prepare_directories(args):
         shutil.copyfile(os.path.join(dir_path, filename), os.path.join(args.script_dir, filename))
 
 
-def main(args):
+def train(args: argparse.Namespace) -> Tuple[nn.Module, nn.Module, nn.Module, optim.Optimizer]:
     # models
     enet = VoxelEncoder(args.insz_enet, args.outsz_enet).to(args.device)
     enet_constraint = EnetConstraint(args.insz_constraint, args.outsz_constraint).to(args.device)
@@ -116,11 +119,52 @@ def main(args):
             torch.save(enet_constraint.state_dict(), os.path.join(args.weight_dir, "enet_constraint_{}.pkl".format(epoch)))
 
     writer.close()
+    return enet, enet_constraint, pnet, optimizer
 
-    # TODO: produce torchscript and embeddings
+
+def export(args, enet: nn.Module, enet_constraint: nn.Module, pnet: nn.Module):
+    # export torchscript
+    pnet_script = torch.jit.script(pnet)
+    pnet_script.save(os.path.join(args.torchscript_dir, "pnet.pt"))
+
+    # export intermediate embeddings
+    data = load_test_data(args.env, args.use_text)
+    # voxel
+    voxel_data = data["voxel"]
+    f = h5py.File(os.path.join(args.embedding_dir, "voxel.hdf5"), "w")
+    with torch.no_grad():
+        for (scene_name, scene_data) in voxel_data.items():
+            g = f.create_group(scene_name)
+            for (obj_name, obj_data) in scene_data.items():
+                obj_data = obj_data.unsqueeze(0).cuda()
+                embedded_data = enet.forward(obj_data)
+                g.create_dataset(obj_name, data=embedded_data.cpu().numpy())
+    f.close()
+    # task embedding
+    embedding_data = data["task_embedding"]
+    f = h5py.File(os.path.join(args.embedding_dir, "task_embedding.hdf5"), "w")
+    with torch.no_grad():
+        for (scene_name, scene_data) in embedding_data.items():
+            g = f.create_group(scene_name)
+            for (obj_name, obj_data) in scene_data.items():
+                obj_data = obj_data.unsqueeze(0).cuda()
+                embedded_data = enet_constraint.forward(obj_data)
+                g.create_dataset(obj_name, data=embedded_data.cpu().numpy())
+    f.close()
 
 
 if __name__ == '__main__':
     args = process_args(get_args())
-    prepare_directories(args)
-    main(args)
+    # prepare_directories(args)
+    # enet, enet_constraint, pnet, optimizer = train(args)
+
+    enet = VoxelEncoder(args.insz_enet, args.outsz_enet)
+    enet_constraint = EnetConstraint(args.insz_constraint, args.outsz_constraint)
+    pnet = PNet(args.insz_pnet, args.outsz_pnet)
+    enet.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_390.pkl")))
+    enet_constraint.load_state_dict(torch.load(os.path.join(args.weight_dir, "enet_constraint_390.pkl")))
+    pnet.load_state_dict(torch.load(os.path.join(args.weight_dir, "pnet_390.pkl")))
+    enet = enet.cuda()
+    enet_constraint = enet_constraint.cuda()
+    pnet = pnet.cuda()
+    export(args, enet, enet_constraint, pnet)

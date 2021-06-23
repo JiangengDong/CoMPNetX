@@ -1,5 +1,7 @@
+#!/usr/bin/env python2
 # encoding: utf-8
-
+from __future__ import absolute_import, division, print_function
+from builtins import (bytes, open, super, range, zip, round, input, pow, object)
 import os
 import numpy as np
 import sys
@@ -11,12 +13,12 @@ import openravepy as orpy
 
 def SerializeTransform(tm):
     flatten_tm = np.array(tm[0:3, 0:4]).T.flatten()
-    return ' '.join(['%.5f' % v for v in flatten_tm])
+    return ' '.join(['%.7f' % v for v in flatten_tm])
 
 
 def SerializeBound(bw):
     flatten_bw = np.array(bw).flatten()
-    return ' '.join(['%.5f' % v for v in flatten_bw])
+    return ' '.join(['%.7f' % v for v in flatten_bw])
 
 
 def RPY2Transform(psi, theta, phi, x, y, z):
@@ -42,12 +44,12 @@ def quat2Transform(a, b, c, d, x, y, z):
 
 
 def pause():
-    print "Press enter to continue..."
+    print("Press enter to continue...")
     sys.stdin.readline()
 
 
 class SolverParameter(object):
-    types = ("rrt", "rrtstar", "rrtconnect", "compnet", "compnetx")
+    types = ("rrtconnect", "compnetx")
     Template_str = """<solver_parameters type="%s" time="%d" range="%f"/>\n"""
 
     def __init__(self, type="rrtconnect", time=120, range=0.05):
@@ -400,13 +402,15 @@ class TSRChain(object):
 
 
 class MPNetParameter(object):
-    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s" ohot_path="%s" dnet_threshold="%f" dnet_coeff="%f" predict_tsr="%s"/>\n"""
+    Template_str = """<mpnet pnet_path="%s" dnet_path="%s" voxel_path="%s:%s" ohot_path="%s:%s" dnet_threshold="%f" dnet_coeff="%f" predict_tsr="%s"/>\n"""
 
     def __init__(self, pnet_path="", dnet_path="", voxel_path="", ohot_path="", predict_tsr=False, dnet_threshold=0.3, dnet_coeff=0.4):
         self._pnet_path = ""
         self._dnet_path = ""
         self._voxel_path = ""
+        self._voxel_dataset = ""
         self._ohot_path = ""
+        self._ohot_dataset = ""
         self._predict_tsr = False
         self._dnet_threshold = 0.3
         self._dnet_coeff = 0.4
@@ -420,7 +424,7 @@ class MPNetParameter(object):
         self.dnet_coeff = dnet_coeff
 
     def __str__(self):
-        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._ohot_path, self._dnet_threshold, self._dnet_coeff, "true" if self._predict_tsr else "false")
+        return MPNetParameter.Template_str % (self._pnet_path, self._dnet_path, self._voxel_path, self._voxel_dataset, self._ohot_path, self._ohot_dataset, self._dnet_threshold, self._dnet_coeff, "true" if self._predict_tsr else "false")
 
     @property
     def pnet_path(self):
@@ -465,6 +469,14 @@ class MPNetParameter(object):
             self._voxel_path = ""
 
     @property
+    def voxel_dataset(self):
+        return self._voxel_dataset
+
+    @voxel_dataset.setter
+    def voxel_dataset(self, value):
+        self._voxel_dataset = value
+
+    @property
     def ohot_path(self):
         return self._ohot_path
 
@@ -477,6 +489,14 @@ class MPNetParameter(object):
             self._ohot_path = ohot_path
         else:
             self._ohot_path = ""
+
+    @property
+    def ohot_dataset(self):
+        return self._ohot_dataset
+
+    @ohot_dataset.setter
+    def ohot_dataset(self, value):
+        self._ohot_dataset = value
 
     @property
     def predict_tsr(self):

@@ -2,7 +2,7 @@
 import yaml
 import h5py
 import torch
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
@@ -141,6 +141,46 @@ def load_train_data(env: str, use_text: bool, use_reach: bool, use_tsr_config: b
     f_path.close()
     f_task_embedding.close()
     f_tsr.close()
+
+    return result
+
+
+def load_test_data(env: str, use_text: bool) -> Dict[str, Dict[str, Dict[str, torch.Tensor]]]:
+    assert env in ["bartender", "kitchen"]
+
+    with open("data/dataset/description.yaml", "r") as f:
+        description = yaml.load(f, Loader=yaml.CLoader)
+    groups = description[env]["test"]
+    if env == "bartender":
+        objs = ["fuze_bottle", "juice", "coke_can", "plasticmug", "teakettle"]
+    else:
+        objs = ["fuze_bottle", "juice", "coke_can", "mugred", "mugblack", "pitcher", "door"]
+
+    f_voxel = h5py.File("data/dataset/{}_voxel.hdf5".format(env), "r")
+    if use_text:
+        f_task_embedding = h5py.File("data/dataset/{}_text_embedding.hdf5".format(env), "r")
+    else:
+        f_task_embedding = h5py.File("data/dataset/{}_ntp_embedding.hdf5".format(env), "r")
+
+    result = {
+        "voxel": {},
+        "task_embedding": {}
+    }
+
+    for group in tqdm(groups, desc="Load test dataset from disk"):
+        voxels = f_voxel[group]
+        task_embeddings = f_task_embedding["pick_place"][group]
+        result["voxel"][group] = {}
+        result["task_embedding"][group] = {}
+
+        for obj in objs:
+            voxel = voxels[obj]
+            task_embedding = task_embeddings[obj]
+            result["voxel"][group][obj] = torch.from_numpy(np.array(voxel).astype(np.float32))
+            result["task_embedding"][group][obj] = torch.from_numpy(np.array(task_embedding).astype(np.float32))
+
+    f_voxel.close()
+    f_task_embedding.close()
 
     return result
 
