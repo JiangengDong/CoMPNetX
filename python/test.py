@@ -21,6 +21,7 @@ import csv
 import openravepy as orpy
 
 from OMPLInterface import RPY2Transform, OMPLInterface, PlannerParameter, TSRChain
+from multiprocessing import Process
 
 
 def loadTestData(env):
@@ -182,16 +183,76 @@ def cleanupObject(orEnv, obj_name, obj, setup_dict):
     time.sleep(0.1)
 
 
-def saveResultCSV(filename, result_dict):
-    temp_result = list(result_dict.values())[0]
-    fieldnames = ["scene_name"] + list(temp_result.keys())
-    with open(filename, "wb") as f:
-        csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
-        csv_writer.writeheader()
-        for (scene_name, scene_result) in result_dict.items():
-            row = {"scene_name": scene_name}
-            row.update(scene_result)
-            csv_writer.writerow(row)
+def test_per_scene(scene_name, scene_setup, param, args):
+    # preparation
+    orEnv = setOpenRAVE(args.visible, "ode")
+    loadTable(orEnv)
+    cabinet = None if args.env == "bartender" else loadCabinet(orEnv)
+    obj_dict = loadObjects(orEnv)
+    robot = loadBaxter(orEnv)
+    planner = OMPLInterface(orEnv, robot, loglevel=args.log_level)
+
+    # main loop
+    result_dict = {}
+    # initialize scene. Put all the objects to their start position.
+    print("\n========== scene name: %s ==========" % scene_name)
+    initScene(orEnv, robot, cabinet, obj_dict, scene_setup)
+    result_dict[scene_name] = {}
+
+    obj_names = scene_setup["obj_order"]
+    print("Object order: %s" % str(obj_names))
+    for obj_name in obj_names:
+        print("Planning for %s ..." % obj_name)
+        obj_setup = scene_setup[obj_name]
+        obj = obj_dict[obj_name] if obj_name != "door" else cabinet
+        if obj_name == "door":  # door uses a different setting, so skip it here
+            cleanupObject(orEnv, obj_name, obj, obj_setup)
+            continue
+
+        # unpack values
+        T0_w = obj_setup["goal_trans"]
+        Tw_e = obj_setup["tsr_offset"]
+        Bw = obj_setup["tsr_bound"]
+        startik = obj_setup["start_config"]
+        goalik = obj_setup["goal_config"]
+        # go to start position
+        robot.SetActiveDOFValues(startik)
+        robot.Grab(obj)
+        robot.WaitForController(0)
+        # show the start and goal
+        if args.visible:
+            robot.SetActiveDOFValues(startik)
+            robot.WaitForController(0)
+            time.sleep(2)
+            robot.SetActiveDOFValues(goalik)
+            robot.WaitForController(0)
+            time.sleep(2)
+            robot.SetActiveDOFValues(startik)
+            robot.WaitForController(0)
+            time.sleep(0.1)
+        # plan
+        param.clearTSRChains()
+        param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
+        param.mpnet_parameter.voxel_dataset = "/%s/%s" % (scene_name, obj_name)
+        param.mpnet_parameter.ohot_dataset = "/%s/%s" % (scene_name, obj_name)
+        resp, t_time, traj = planner.solve(startik, goalik, param)
+        time.sleep(1)   # I don't know why, but removing this line may cause segment fault, so be careful
+        robot.WaitForController(0)
+        # show the result
+        if args.visible and resp is True:
+            robot.GetController().SetPath(traj)
+            robot.WaitForController(0)
+        # go to goal position
+        robot.ReleaseAllGrabbed()
+        robot.WaitForController(0)
+        robot.SetActiveDOFValues(goalik)
+        cleanupObject(orEnv, obj_name, obj, obj_setup)
+        # save result and clean up
+        result_dict[scene_name][obj_name] = t_time
+    
+    result_filename = os.path.join(args.result_dir, "result_{}_{}.p".format(scene_name, args.algorithm))
+    with open(result_filename, "wb") as f:
+        pickle.dump(result_dict, f)
 
 
 def test(args):
@@ -199,7 +260,7 @@ def test(args):
 
     param = PlannerParameter()
     param.solver_parameter.type = args.algorithm
-    param.solver_parameter.time = 120
+    param.solver_parameter.time = 25
     param.solver_parameter.range = 0.05
     param.constraint_parameter.type = args.space
     param.constraint_parameter.tolerance = 1e-3
@@ -229,74 +290,13 @@ def test(args):
     with open(os.path.join(args.result_dir, "args.yaml"), "w") as f:
         yaml.dump(args.__dict__, f)
 
-    # preparation
-    orEnv = setOpenRAVE(args.visible, "ode")
-    loadTable(orEnv)
-    cabinet = None if args.env == "bartender" else loadCabinet(orEnv)
-    obj_dict = loadObjects(orEnv)
-    robot = loadBaxter(orEnv)
-    planner = OMPLInterface(orEnv, robot, loglevel=args.log_level)
-
-    # main loop
-    result_dict = {}
+    # run each test in a separate process
     for (scene_name, scene_setup) in all_setup_dict.items():
-        # initialize scene. Put all the objects to their start position.
-        print("\n========== scene name: %s ==========" % scene_name)
-        initScene(orEnv, robot, cabinet, obj_dict, scene_setup)
-        result_dict[scene_name] = {}
+        p = Process(target=lambda: test_per_scene(scene_name, scene_setup, param, args))
+        p.start()
+        p.join()
 
-        obj_names = scene_setup["obj_order"]
-        print("Object order: %s" % str(obj_names))
-        for obj_name in obj_names:
-            print("Planning for %s ..." % obj_name)
-            obj_setup = scene_setup[obj_name]
-            obj = obj_dict[obj_name] if obj_name != "door" else cabinet
-            if obj_name == "door":  # door uses a different setting, so skip it here
-                cleanupObject(orEnv, obj_name, obj, obj_setup)
-                continue
-
-            # unpack values
-            T0_w = obj_setup["goal_trans"]
-            Tw_e = obj_setup["tsr_offset"]
-            Bw = obj_setup["tsr_bound"]
-            startik = obj_setup["start_config"]
-            goalik = obj_setup["goal_config"]
-            # go to start position
-            robot.SetActiveDOFValues(startik)
-            robot.Grab(obj)
-            robot.WaitForController(0)
-            # show the start and goal
-            if args.visible:
-                robot.SetActiveDOFValues(startik)
-                robot.WaitForController(0)
-                time.sleep(2)
-                robot.SetActiveDOFValues(goalik)
-                robot.WaitForController(0)
-                time.sleep(2)
-                robot.SetActiveDOFValues(startik)
-                robot.WaitForController(0)
-                time.sleep(0.1)
-            # plan
-            param.clearTSRChains()
-            param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
-            param.mpnet_parameter.voxel_dataset = "/%s/%s" % (scene_name, obj_name)
-            param.mpnet_parameter.ohot_dataset = "/%s/%s" % (scene_name, obj_name)
-            resp, t_time, traj = planner.solve(startik, goalik, param)
-            time.sleep(1)   # I don't know why, but removing this line may cause segment fault, so be careful
-            robot.WaitForController(0)
-            # show the result
-            if args.visible and resp is True:
-                robot.GetController().SetPath(traj)
-                robot.WaitForController(0)
-            # go to goal position
-            robot.ReleaseAllGrabbed()
-            robot.WaitForController(0)
-            robot.SetActiveDOFValues(goalik)
-            cleanupObject(orEnv, obj_name, obj, obj_setup)
-            # save result and clean up
-            result_dict[scene_name][obj_name] = t_time
-
-        saveResultCSV(os.path.join(args.result_dir, "result_{}.csv".format(args.algorithm)), result_dict)
+    # TODO: merge all the result pickle files into a csv and print statistics
 
 
 def get_args():
