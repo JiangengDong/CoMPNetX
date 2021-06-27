@@ -255,6 +255,49 @@ def test_per_scene(scene_name, scene_setup, param, args):
         pickle.dump(result_dict, f)
 
 
+def mergeResults(work_dir, scene_names, algorithm):
+    all_dict = {}
+    for scene_name in scene_names:
+        result_filename = os.path.join(work_dir, "result_{}_{}.p".format(scene_name, algorithm))
+        if not os.path.exists(result_filename):
+            print(result_filename)
+            continue
+
+        with open(result_filename, "rb") as f:
+            result_dict = pickle.load(f)
+        all_dict[scene_name] = result_dict[scene_name]
+
+    return all_dict
+
+    
+def saveResultCSV(filename, cols, result_dict):
+    fieldnames = ["scene_name"] + list(cols)
+    with open(filename, "wb") as f:
+        csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
+        csv_writer.writeheader()
+        for (scene_name, scene_result) in result_dict.items():
+            row = {"scene_name": scene_name}
+            row.update(scene_result)
+            csv_writer.writerow(row)
+
+
+def printStatistics(filename, cols):
+    data = np.loadtxt(filename, delimiter=",", skiprows=1, usecols=cols)
+    inf_mask = np.isinf(data)
+    nan_mask = np.isnan(data)
+    success_mask = np.logical_and(np.logical_not(inf_mask), np.logical_not(nan_mask))
+
+    success_count = success_mask.sum()
+    valid_count = success_mask.sum() + inf_mask.sum() 
+    accuracy = float(success_count) / float(valid_count)
+    print("accuracy:  ", accuracy, " (", success_count , "/", valid_count, ")")
+        
+    success_row_mask = np.logical_and.reduce(success_mask, 1)
+    success_rows = data[success_row_mask]
+    average_time = success_rows.sum(axis=1).mean(axis=0)
+    print("mean time: ", average_time)
+    
+
 def test(args):
     all_setup_dict = loadTestData(args.env)
 
@@ -295,8 +338,21 @@ def test(args):
         p = Process(target=lambda: test_per_scene(scene_name, scene_setup, param, args))
         p.start()
         p.join()
-
-    # TODO: merge all the result pickle files into a csv and print statistics
+    
+    # collect results, merge into a CSV, and print statistics
+    result_dict = mergeResults(args.result_dir, all_setup_dict.keys(), args.algorithm)
+    result_csv_path = os.path.join(args.result_dir, "result_{}.csv".format(args.algorithm))
+    if args.env == "bartender":
+        cols = ["fuze_bottle", "juice", "coke_can", "plasticmug", "teakettle"]
+        col_indices = [1, 2, 3, 4, 5]
+    elif args.env == "kitchen":
+        cols = ["fuze_bottle", "juice", "coke_can", "mugred", "mugblack", "pitcher"]
+        col_indices = [1, 2, 3, 4, 5, 6]
+    else:
+        cols = []
+        col_indices = []
+    saveResultCSV(result_csv_path, cols, result_dict)
+    printStatistics(result_csv_path, col_indices)
 
 
 def get_args():
