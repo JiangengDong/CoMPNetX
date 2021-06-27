@@ -512,9 +512,7 @@ bool CoMPNetX::Problem::setPlanner() {
             planner_ = std::make_shared<ompl::geometric::RRTConnect>(constrained_space_info_);
             break;
         case SolverParameter::CoMPNetX:
-
             planner_ = std::make_shared<ompl::geometric::MPNetXPlanner>(constrained_space_info_, robot_, tsrchains_, parameters_->mpnet_parameter_);
-
             break;
         default:
             planner_ = nullptr;

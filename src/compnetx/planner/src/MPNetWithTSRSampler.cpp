@@ -29,10 +29,26 @@ CoMPNetX::MPNetWithTSRSampler::MPNetWithTSRSampler(const ompl::base::StateSpace 
     space_dim_ = space_->getDimension();
     pnet_dim_ = 13;
 
-    auto bound = space->as<ompl::base::ConstrainedStateSpace>()->getSpace()->as<ompl::base::RealVectorStateSpace>()->getBounds();
-    upper_limits_ = bound.high;
-    lower_limits_ = bound.low;
-    scale_factor_ = std::vector<double>{6.1083, 2.668, 3.4033, 3.194, 6.118, 3.6647, 6.118, 3.6086, 2.62952, 2.0635998, 6.284, 6.284, 6.284};
+    robot->GetActiveDOFLimits(lower_limits_, upper_limits_);
+
+    lower_limits_.emplace_back(-1.8594740);
+    lower_limits_.emplace_back(-1.13057968);
+    lower_limits_.emplace_back(-0.5839896);
+    lower_limits_.emplace_back(-3.142);
+    lower_limits_.emplace_back(-3.142);
+    lower_limits_.emplace_back(-3.142);
+
+    upper_limits_.emplace_back(1.7491616);
+    upper_limits_.emplace_back(1.4989415);
+    upper_limits_.emplace_back(1.47961);
+    upper_limits_.emplace_back(3.142);
+    upper_limits_.emplace_back(3.142);
+    upper_limits_.emplace_back(3.142);
+
+    scale_factor_.resize(13, 1.0);
+    for (unsigned int i = 0; i < 13; i++) {
+        scale_factor_[i] = upper_limits_[i] - lower_limits_[i];
+    }
 
     std::string pnet_filename = param.pnet_path_;
     pnet_ = torch::jit::load(pnet_filename);
