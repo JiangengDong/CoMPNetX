@@ -171,7 +171,7 @@ def initScene(orEnv, robot, cabinet, obj_dict, setup_dict):
 
 def cleanupObject(orEnv, obj_name, obj, setup_dict):
     if obj_name == "door":
-        setCabinet(obj, setup_dict["door"]["goal_trans"])
+        setCabinet(obj, setup_dict["goal_trans"])
     elif obj_name in ("juice", "fuze_bottle", "coke_can"):
         orEnv.Remove(obj)
     elif obj_name in ("mugblack", "mugred", "plasticmug", "pitcher", "teakettle"):
@@ -187,6 +187,7 @@ def saveResultCSV(filename, result_dict):
     fieldnames = ["scene_name"] + list(temp_result.keys())
     with open(filename, "wb") as f:
         csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
+        csv_writer.writeheader()
         for (scene_name, scene_result) in result_dict.items():
             row = {"scene_name": scene_name}
             row.update(scene_result)
@@ -295,14 +296,14 @@ def test(args):
             # save result and clean up
             result_dict[scene_name][obj_name] = t_time
 
-        saveResultCSV(os.path.join(args.result_dir, "result.csv"), result_dict)
+        saveResultCSV(os.path.join(args.result_dir, "result_{}.csv".format(args.algorithm)), result_dict)
 
 
 def get_args():
     parser = ArgumentParser(description="A all-in-one script to test the CoMPNet and CoMPNetX algorithm.")
     parser.add_argument("--log_level", choices=(0, 1, 2, 3, 4), default=2, help="Lower level generates more logs")
     parser.add_argument("--visible", action="store_true")
-    parser.add_argument("--space", choices=("proj", "atlas", "tb"), default="proj")
+    parser.add_argument("--space", choices=("proj", "atlas", "tb"), default="atlas")
     parser.add_argument("--work_dir", default="./data/experiments/exp1",
                         help="Training's output directory. Setting, data and models will be read from this directory automatically.")
     parser.add_argument("--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx")

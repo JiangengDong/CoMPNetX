@@ -44,7 +44,7 @@ def quat2Transform(a, b, c, d, x, y, z):
 
 
 def pause():
-    print("Press enter to continue...")
+    print("\033[91mPress enter to continue...\033[0m", end=" ")
     sys.stdin.readline()
 
 
@@ -281,7 +281,7 @@ class TSRParameter(object):
     @T0_w.setter
     def T0_w(self, value):
         temp = np.array(value)
-        assert (temp.dtype == np.float64 or temp.dtype == np.int64) and (temp.shape == (4, 4) or temp.shape == (3, 4))
+        assert (temp.dtype == np.float or temp.dtype == np.int) and (temp.shape == (4, 4) or temp.shape == (3, 4))
         self._T0_w = temp
 
     @property
@@ -291,7 +291,7 @@ class TSRParameter(object):
     @Tw_e.setter
     def Tw_e(self, value):
         temp = np.array(value)
-        assert (temp.dtype == np.float64 or temp.dtype == np.int64) and (temp.shape == (4, 4) or temp.shape == (3, 4))
+        assert (temp.dtype == np.float or temp.dtype == np.int) and (temp.shape == (4, 4) or temp.shape == (3, 4))
         self._Tw_e = temp
 
     @property
@@ -301,7 +301,7 @@ class TSRParameter(object):
     @Bw.setter
     def Bw(self, value):
         temp = np.array(value)
-        assert (temp.dtype == np.float64 or temp.dtype == np.int64) and temp.size == 12
+        assert (temp.dtype == np.float64 or temp.dtype == np.int64 or temp.dtype == np.float32) and temp.size == 12
         self._Bw = temp
 
 
