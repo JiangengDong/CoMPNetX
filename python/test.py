@@ -21,7 +21,7 @@ import rospkg
 import yaml
 from tqdm import tqdm
 
-from .OMPLInterface import (OMPLInterface, PlannerParameter, RPY2Transform, TSRChain)
+from OMPLInterface import (OMPLInterface, PlannerParameter, RPY2Transform, TSRChain)
 
 
 def loadTestData(env):
@@ -211,6 +211,7 @@ def test_per_scene(scene_name, scene_setup, param, args):
         obj = obj_dict[obj_name] if obj_name != "door" else cabinet  # TODO: include door in the testing
         if obj_name == "door":  # door uses a different setting, so skip it here
             cleanupObject(orEnv, obj_name, obj, obj_setup)
+            result_dict[scene_name][obj_name] = np.nan
             continue
 
         # unpack values
@@ -254,7 +255,7 @@ def test_per_scene(scene_name, scene_setup, param, args):
         # save result and clean up
         result_dict[scene_name][obj_name] = t_time
 
-    if os.path.exists(os.path.join(args.result_dir, "temp")):
+    if not os.path.exists(os.path.join(args.result_dir, "temp")):
         os.makedirs(os.path.join(args.result_dir, "temp"))
     result_filename = os.path.join(args.result_dir, "temp", "result_{}.p".format(scene_name))
     with open(result_filename, "wb") as f:
@@ -309,7 +310,7 @@ def test(args):
 
     param = PlannerParameter()
     param.solver_parameter.type = args.algorithm
-    param.solver_parameter.time = 25
+    param.solver_parameter.time = 25 if args.env == "bartender" else 60
     param.solver_parameter.range = 0.05
     param.constraint_parameter.type = args.space
     param.constraint_parameter.tolerance = 1e-3
@@ -352,8 +353,8 @@ def test(args):
         cols = ["fuze_bottle", "juice", "coke_can", "plasticmug", "teakettle"]
         col_indices = [1, 2, 3, 4, 5]
     elif args.env == "kitchen":
-        cols = ["fuze_bottle", "juice", "coke_can", "mugred", "mugblack", "pitcher"]
-        col_indices = [1, 2, 3, 4, 5, 6]
+        cols = ["fuze_bottle", "juice", "coke_can", "mugred", "mugblack", "pitcher", "door"]
+        col_indices = [1, 2, 3, 4, 5, 6, 7]
     else:
         cols = []
         col_indices = []
@@ -366,16 +367,22 @@ def get_args():
     parser.add_argument("--log_level", choices=(0, 1, 2, 3, 4), default=2, help="Lower level generates more logs")
     parser.add_argument("--visible", action="store_true")
     parser.add_argument("--space", choices=("proj", "atlas", "tb"), default="atlas")
-    parser.add_argument("--work_dir", default="./data/experiments/exp1",
+    parser.add_argument("--work_dir", required=True,
                         help="Training's output directory. Setting, data and models will be read from this directory automatically.")
-    parser.add_argument("--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx")
+    parser.add_argument("--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx",
+                        help="Select an algorithm. Choose `compnetx` for both CoMPNet and CoMPNetX, and the exact algorithm will be slected according to the settings in the work directory.")
     parser.add_argument("--use_dnet", action="store_true", help="Use neural projector")
     return parser.parse_args()
 
 
 def process_args(args):
+    if sys.version_info[0] != 2:
+        print("This script only works under python2, because of the limitation of OpenRAVE. Exit.")
+        exit()
     if not os.path.exists(args.work_dir):
         print("%s does not exist. Exit. " % args.work_dir)
+        exit()
+
     with open(os.path.join(args.work_dir, "args.yaml"), "r") as f:
         training_args = yaml.load(f, Loader=yaml.CLoader)
     args.env = training_args["env"]
@@ -387,6 +394,10 @@ def process_args(args):
     args.result_dir = os.path.join(args.work_dir, "result")
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
+
+    if args.use_dnet and not os.path.exists(os.path.join(args.torchscript_dir, "dnet.pt")):
+        print("Cannot find neural projector. use_dnet is set to false.")
+        args.use_dnet = False
 
     return args
 
