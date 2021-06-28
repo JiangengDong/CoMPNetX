@@ -9,6 +9,7 @@ deprecated/
 /data/
 /plugins/
 /models/
+/experiments/
 .empty/
 .cache/
 

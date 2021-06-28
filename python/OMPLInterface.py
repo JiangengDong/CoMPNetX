@@ -1,13 +1,14 @@
 #!/usr/bin/env python2
 # encoding: utf-8
 from __future__ import absolute_import, division, print_function
-from builtins import (bytes, open, super, range, zip, round, input, pow, object)
+
 import os
-import numpy as np
 import sys
 import time
+from builtins import bytes, input, object, open, pow, range, round, super, zip
 from collections import Iterable
 
+import numpy as np
 import openravepy as orpy
 
 

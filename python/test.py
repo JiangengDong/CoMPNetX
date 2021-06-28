@@ -6,23 +6,22 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
+import csv
 import os
 import pickle
-import rospkg
+import sys
 import time
 from argparse import ArgumentParser
 from multiprocessing import Process
-import sys
+
 import h5py
+import numpy as np
+import openravepy as orpy
+import rospkg
 import yaml
 from tqdm import tqdm
-import csv
 
-import openravepy as orpy
-
-from OMPLInterface import RPY2Transform, OMPLInterface, PlannerParameter, TSRChain, RPY2Transform
-from multiprocessing import Process
+from .OMPLInterface import (OMPLInterface, PlannerParameter, RPY2Transform, TSRChain)
 
 
 def loadTestData(env):
@@ -30,7 +29,7 @@ def loadTestData(env):
 
     with open("data/dataset/description.yaml", "r") as f:
         description = yaml.load(f, Loader=yaml.CLoader)
-    groups = description[env]["test"][:1]
+    groups = description[env]["test"]
     f_setup = h5py.File("data/dataset/{}_setup.hdf5".format(env), "r")
 
     result = {}
