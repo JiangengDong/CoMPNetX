@@ -133,7 +133,7 @@ std::vector<double> CoMPNetX::MPNetWithTSRSampler::tensorToVector(const torch::T
             dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
         }
         dest[10] = static_cast<float>(data[12]) * scale_factor_[12];
-    } else {
+    } else { // TODO: add door
         OMPL_ERROR("Invalid ambient space dimension!");
     }
     return dest;

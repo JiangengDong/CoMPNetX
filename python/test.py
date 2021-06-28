@@ -208,49 +208,66 @@ def test_per_scene(scene_name, scene_setup, param, args):
     for obj_name in obj_names:
         print("Planning for %s ..." % obj_name)
         obj_setup = scene_setup[obj_name]
-        obj = obj_dict[obj_name] if obj_name != "door" else cabinet  # TODO: include door in the testing
-        if obj_name == "door":  # door uses a different setting, so skip it here
-            cleanupObject(orEnv, obj_name, obj, obj_setup)
-            result_dict[scene_name][obj_name] = np.nan
-            continue
+        obj = obj_dict[obj_name] if obj_name != "door" else cabinet
 
         # unpack values
-        T0_w = obj_setup["goal_trans"]
-        Tw_e = obj_setup["tsr_offset"]
-        Bw = obj_setup["tsr_bound"]
-        startik = obj_setup["start_config"]
-        goalik = obj_setup["goal_config"]
+        start_config = obj_setup["start_config"]
+        goal_config = obj_setup["goal_config"]
+        start_trans = obj_setup["start_trans"]
+        goal_trans = obj_setup["goal_trans"]
         # go to start position
-        robot.SetActiveDOFValues(startik)
-        robot.Grab(obj)
+        robot.SetActiveDOFValues(start_config)
+        if obj_name != "door":
+            robot.Grab(obj)
         robot.WaitForController(0)
         # show the start and goal
         if args.visible:
-            robot.SetActiveDOFValues(startik)
+            robot.SetActiveDOFValues(start_config)
             robot.WaitForController(0)
+            if obj_name == "door":
+                setCabinet(cabinet, start_trans)
             time.sleep(2)
-            robot.SetActiveDOFValues(goalik)
+            robot.SetActiveDOFValues(goal_config)
             robot.WaitForController(0)
+            if obj_name == "door":
+                setCabinet(cabinet, goal_trans)
             time.sleep(2)
-            robot.SetActiveDOFValues(startik)
+            robot.SetActiveDOFValues(start_config)
             robot.WaitForController(0)
+            if obj_name == "door":
+                setCabinet(cabinet, start_trans)
             time.sleep(0.1)
-        # plan
+        # TSR parameters
         param.clearTSRChains()
-        param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
+        if obj_name != "door":
+            T0_w = obj_setup["goal_trans"]
+            Tw_e = obj_setup["tsr_offset"]
+            Bw = obj_setup["tsr_bound"]
+            param.addTSRChain(TSRChain().addTSR(T0_w, Tw_e, Bw))
+        else:
+            T0_w = obj_setup["tsr_base"]
+            Tw_e_0 = obj_setup["tsr_offset0"]
+            Bw_0 = obj_setup["tsr_bound0"]
+            Tw_e_1 = obj_setup["tsr_offset1"]
+            Bw_1 = obj_setup["tsr_bound1"]
+            param.addTSRChain(TSRChain(mimic_body_name="cabinets", mimic_body_index=[3]).addTSR(T0_w, Tw_e_0, Bw_0).addTSR(T0_w, Tw_e_1, Bw_1))
+        # voxel and task representation embeddings
         param.mpnet_parameter.voxel_dataset = "/%s/%s" % (scene_name, obj_name)
         param.mpnet_parameter.ohot_dataset = "/%s/%s" % (scene_name, obj_name)
-        resp, t_time, traj = planner.solve(startik, goalik, param)
+        # plan
+        resp, t_time, traj = planner.solve(start_config, goal_config, param)
         time.sleep(1)   # I don't know why, but removing this line may cause segment fault, so be careful
         robot.WaitForController(0)
         # show the result
         if args.visible and resp is True:
             robot.GetController().SetPath(traj)
+            cabinet.GetController().SetPath(traj)
             robot.WaitForController(0)
+            cabinet.WaitForController(0)
         # go to goal position
         robot.ReleaseAllGrabbed()
         robot.WaitForController(0)
-        robot.SetActiveDOFValues(goalik)
+        robot.SetActiveDOFValues(goal_config)
         cleanupObject(orEnv, obj_name, obj, obj_setup)
         # save result and clean up
         result_dict[scene_name][obj_name] = t_time
@@ -364,7 +381,7 @@ def test(args):
 
 def get_args():
     parser = ArgumentParser(description="A all-in-one script to test the CoMPNet and CoMPNetX algorithm.")
-    parser.add_argument("--log_level", choices=(0, 1, 2, 3, 4), default=2, help="Lower level generates more logs")
+    parser.add_argument("--log_level", type=int, choices=(0, 1, 2, 3, 4), default=2, help="Lower level generates more logs")
     parser.add_argument("--visible", action="store_true")
     parser.add_argument("--space", choices=("proj", "atlas", "tb"), default="atlas")
     parser.add_argument("--work_dir", required=True,

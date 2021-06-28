@@ -453,7 +453,7 @@ bool TaskSpaceRegionChain::MimicValuesToFullMimicBodyValues(const std::vector<Op
     mimicbodyvals.resize(_mimicbody->GetDOF());
     _mimicbody->GetDOFValues(mimicbodyvals);
     for (unsigned int i = 0; i < _mimic_inds.size(); i++) {
-        mimicbodyvals[_mimic_inds[i]] = _mimicjointoffsets[_mimic_inds[i]] + TSRJointVals[i];
+        mimicbodyvals[_mimic_inds[i]] = /*_mimicjointoffsets[_mimic_inds[i]] +*/ TSRJointVals[i];
     }
     return true;
 }
