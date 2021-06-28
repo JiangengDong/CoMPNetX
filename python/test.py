@@ -365,7 +365,7 @@ def test(args):
 
     # collect results, merge into a CSV, and print statistics
     result_dict = mergeResults(args.result_dir, all_setup_dict.keys())
-    result_csv_path = os.path.join(args.result_dir, "result_{}_{}.csv".format(args.algorithm, ("proj" if args.use_dnet else "no-proj")))
+    result_csv_path = os.path.join(args.result_dir, "result_{}_{}_{}.csv".format(args.algorithm, args.space, ("dnet" if args.use_dnet else "no-dnet")))
     if args.env == "bartender":
         cols = ["fuze_bottle", "juice", "coke_can", "plasticmug", "teakettle"]
         col_indices = [1, 2, 3, 4, 5]
