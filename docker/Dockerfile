@@ -97,6 +97,13 @@ RUN wget -O libtorch.zip https://download.pytorch.org/libtorch/cu102/libtorch-cx
     cp -r libtorch/bin libtorch/include libtorch/lib libtorch/share /usr/local/ && \
     rm -rf libtorch
 
+# Patch: install ssh-client so that we can use git inside the container
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ssh-client && \
+    apt-get autoremove -y && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/*
+
 # add a user "compnetx" with password "compnetx"
 RUN useradd -m compnetx && \
     echo "compnetx:compnetx" | chpasswd && \
@@ -121,16 +128,5 @@ RUN rosdep update && \
     catkin_make
 # install pytorch
 RUN conda init
-RUN pip3 install --no-cache-dir torch torchvision torchaudio pyyaml h5py numpy
-RUN pip2 install --no-cache-dir pyyaml
-RUN pip3 install --no-cache-dir tensorboard
-
-# patch: install ssh-client to use git inside container
-USER root
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ssh-client && \
-    apt-get autoremove -y && \
-    apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/*
-USER compnetx
-RUN pip2 install --no-cache-dir future tqdm
+RUN pip3 install --no-cache-dir torch torchvision torchaudio pyyaml h5py numpy tensorboard
+RUN pip2 install --no-cache-dir pyyaml tqdm future
