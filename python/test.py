@@ -13,6 +13,7 @@ import rospkg
 import time
 from argparse import ArgumentParser
 from multiprocessing import Process
+import sys
 import h5py
 import yaml
 from tqdm import tqdm
@@ -20,7 +21,7 @@ import csv
 
 import openravepy as orpy
 
-from OMPLInterface import RPY2Transform, OMPLInterface, PlannerParameter, TSRChain
+from OMPLInterface import RPY2Transform, OMPLInterface, PlannerParameter, TSRChain, RPY2Transform
 from multiprocessing import Process
 
 
@@ -29,7 +30,7 @@ def loadTestData(env):
 
     with open("data/dataset/description.yaml", "r") as f:
         description = yaml.load(f, Loader=yaml.CLoader)
-    groups = description[env]["test"]
+    groups = description[env]["test"][:1]
     f_setup = h5py.File("data/dataset/{}_setup.hdf5".format(env), "r")
 
     result = {}
@@ -61,6 +62,11 @@ def setOpenRAVE(visible=False, coll_checker="ode"):
     orEnv = orpy.Environment()
     if visible:
         orEnv.SetViewer('qtcoin')
+        viewer = orEnv.GetViewer()
+        viewer.SetCamera(np.array([[0.83316667, 0.27865777, -0.4776852, 2.19543743],
+                                   [0.55220156, -0.46622736, 0.69116242, -2.45863342],
+                                   [-0.03011214, -0.839632, -0.54232035, 2.58929443],
+                                   [0.,          0.,         0.,          1.]]))
     orEnv.Reset()
     orEnv.SetDebugLevel(orpy.DebugLevel.Info)
     colchecker = orpy.RaveCreateCollisionChecker(orEnv, coll_checker)
@@ -108,7 +114,7 @@ def loadObjects(orEnv):
         "fuze_bottle": loadFromFolder('fuze_bottle.kinbody.xml'),
         "coke_can": loadFromFolder('coke_can.kinbody.xml'),
         "mugblack": loadFromFolder('mugblack.kinbody.xml'),
-        "plasticmug": loadFromFolder('mugred.kinbody.xml'),
+        "plasticmug": loadFromFolder('plasticmug.kinbody.xml'),
         "pitcher": loadFromFolder('pitcher.kinbody.xml'),
         "teakettle": loadFromFolder('teakettle.kinbody.xml'),
         "mugred": loadFromFolder('mugred.kinbody.xml')
@@ -192,7 +198,6 @@ def test_per_scene(scene_name, scene_setup, param, args):
     robot = loadBaxter(orEnv)
     planner = OMPLInterface(orEnv, robot, loglevel=args.log_level)
 
-    # main loop
     result_dict = {}
     # initialize scene. Put all the objects to their start position.
     print("\n========== scene name: %s ==========" % scene_name)
@@ -204,7 +209,7 @@ def test_per_scene(scene_name, scene_setup, param, args):
     for obj_name in obj_names:
         print("Planning for %s ..." % obj_name)
         obj_setup = scene_setup[obj_name]
-        obj = obj_dict[obj_name] if obj_name != "door" else cabinet
+        obj = obj_dict[obj_name] if obj_name != "door" else cabinet  # TODO: include door in the testing
         if obj_name == "door":  # door uses a different setting, so skip it here
             cleanupObject(orEnv, obj_name, obj, obj_setup)
             continue
@@ -249,16 +254,18 @@ def test_per_scene(scene_name, scene_setup, param, args):
         cleanupObject(orEnv, obj_name, obj, obj_setup)
         # save result and clean up
         result_dict[scene_name][obj_name] = t_time
-    
-    result_filename = os.path.join(args.result_dir, "result_{}_{}.p".format(scene_name, args.algorithm))
+
+    if os.path.exists(os.path.join(args.result_dir, "temp")):
+        os.makedirs(os.path.join(args.result_dir, "temp"))
+    result_filename = os.path.join(args.result_dir, "temp", "result_{}.p".format(scene_name))
     with open(result_filename, "wb") as f:
         pickle.dump(result_dict, f)
 
 
-def mergeResults(work_dir, scene_names, algorithm):
+def mergeResults(work_dir, scene_names):
     all_dict = {}
     for scene_name in scene_names:
-        result_filename = os.path.join(work_dir, "result_{}_{}.p".format(scene_name, algorithm))
+        result_filename = os.path.join(work_dir, "temp", "result_{}.p".format(scene_name))
         if not os.path.exists(result_filename):
             print(result_filename)
             continue
@@ -269,7 +276,7 @@ def mergeResults(work_dir, scene_names, algorithm):
 
     return all_dict
 
-    
+
 def saveResultCSV(filename, cols, result_dict):
     fieldnames = ["scene_name"] + list(cols)
     with open(filename, "wb") as f:
@@ -288,15 +295,15 @@ def printStatistics(filename, cols):
     success_mask = np.logical_and(np.logical_not(inf_mask), np.logical_not(nan_mask))
 
     success_count = success_mask.sum()
-    valid_count = success_mask.sum() + inf_mask.sum() 
+    valid_count = success_mask.sum() + inf_mask.sum()
     accuracy = float(success_count) / float(valid_count)
-    print("accuracy:  ", accuracy, " (", success_count , "/", valid_count, ")")
-        
+    print("accuracy:  ", accuracy, " (", success_count, "/", valid_count, ")")
+
     success_row_mask = np.logical_and.reduce(success_mask, 1)
     success_rows = data[success_row_mask]
     average_time = success_rows.sum(axis=1).mean(axis=0)
     print("mean time: ", average_time)
-    
+
 
 def test(args):
     all_setup_dict = loadTestData(args.env)
@@ -320,7 +327,7 @@ def test(args):
         param.atlas_parameter.epsilon = 0.01
     # MPNet parameters
     param.mpnet_parameter.pnet_path = os.path.join(args.work_dir, "torchscript", "pnet.pt")
-    param.mpnet_parameter.dnet_path = os.path.join(args.work_dir, "torchscript", "dnet.pt") if False else ""  # TODO: add use_dnet
+    param.mpnet_parameter.dnet_path = os.path.join(args.work_dir, "torchscript", "dnet.pt") if args.use_dnet else ""
     param.mpnet_parameter.voxel_path = os.path.join(args.work_dir, "embedding", "voxel.hdf5")
     param.mpnet_parameter.ohot_path = os.path.join(args.work_dir, "embedding", "task_embedding.hdf5")
     param.mpnet_parameter.predict_tsr = args.use_tsr
@@ -338,10 +345,10 @@ def test(args):
         p = Process(target=lambda: test_per_scene(scene_name, scene_setup, param, args))
         p.start()
         p.join()
-    
+
     # collect results, merge into a CSV, and print statistics
-    result_dict = mergeResults(args.result_dir, all_setup_dict.keys(), args.algorithm)
-    result_csv_path = os.path.join(args.result_dir, "result_{}.csv".format(args.algorithm))
+    result_dict = mergeResults(args.result_dir, all_setup_dict.keys())
+    result_csv_path = os.path.join(args.result_dir, "result_{}_{}.csv".format(args.algorithm, ("proj" if args.use_dnet else "no-proj")))
     if args.env == "bartender":
         cols = ["fuze_bottle", "juice", "coke_can", "plasticmug", "teakettle"]
         col_indices = [1, 2, 3, 4, 5]
@@ -363,6 +370,7 @@ def get_args():
     parser.add_argument("--work_dir", default="./data/experiments/exp1",
                         help="Training's output directory. Setting, data and models will be read from this directory automatically.")
     parser.add_argument("--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx")
+    parser.add_argument("--use_dnet", action="store_true", help="Use neural projector")
     return parser.parse_args()
 
 
