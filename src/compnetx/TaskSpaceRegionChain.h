@@ -127,7 +127,7 @@ public:
 
     void SetActiveDOFValues(const std::vector<double> &q) const {
         if (!_bPointTSR) {
-            if (q.size() == numdof)
+            if (q.size() == static_cast<unsigned int>(numdof))
                 robot->SetActiveDOFValues(q, 0);
             else
                 RAVELOG_WARN("Incompatible dof values. ");

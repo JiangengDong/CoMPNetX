@@ -8,7 +8,7 @@ void RobotHelper::GetJacobian(const OpenRAVE::Transform &T0_s, const OpenRAVE::T
     robot_->CalculateActiveJacobian(eeIndex, T0_closest.trans, Jtrans);
     robot_->CalculateActiveRotationJacobian(eeIndex, T0_closest.rot, Jrot);
     // copy to Eigen
-    for (int col = 0; col < numdof; col++) {
+    for (unsigned int col = 0; col < numdof; col++) {
         for (int row = 0; row < 3; row++) {
             J(row, col) = Jtrans[row * numdof + col];
         }
@@ -46,7 +46,7 @@ double RobotHelper::GetClosestTransform(const OpenRAVE::Transform &T0_s, std::ve
         std::vector<OpenRAVE::dReal> probe(TSRJointVals);
         double stepsize;
         for (stepsize = 1; stepsize > 1e-4; stepsize /= 2) {
-            for (int i = 0; i < numdof; i++)
+            for (unsigned int i = 0; i < numdof; i++)
                 probe[i] = TSRJointVals[i] - stepsize * q[i];
             EnforceBound(probe);
             T0_closest = ForwardKinematics(probe);

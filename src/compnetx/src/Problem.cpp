@@ -217,7 +217,7 @@ bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::is
     auto dof = robot_->GetActiveDOF();
     std::vector<double> joint_vals(dof);
     double temp;
-    for (unsigned int i = 0; i < dof; i++) {
+    for (unsigned int i = 0; i < static_cast<unsigned int>(dof); i++) {
         sin >> temp;
         joint_vals[i] = temp;
     }

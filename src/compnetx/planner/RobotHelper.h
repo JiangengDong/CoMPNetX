@@ -17,7 +17,7 @@ public:
     ~RobotHelper(){};
 
     void EnforceBound(std::vector<double> &TSRJointVals) const {
-        for (int i = 0; i < numdof; i++) {
+        for (unsigned int i = 0; i < numdof; i++) {
             if (TSRJointVals[i] > _upper_limits[i])
                 TSRJointVals[i] = _upper_limits[i];
             else if (TSRJointVals[i] < _lower_limits[i])

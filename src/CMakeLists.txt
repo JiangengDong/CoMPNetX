@@ -16,6 +16,7 @@ set_target_properties(CoMPNetX PROPERTIES
     LINK_FLAGS "${OpenRAVE_LINK_FLAGS}"
     LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/plugins")
 target_compile_options(CoMPNetX PUBLIC
+    -Wall
     -Wno-deprecated-declarations)
 target_include_directories(CoMPNetX PUBLIC
     ./compnetx
