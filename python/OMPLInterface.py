@@ -96,7 +96,7 @@ class SolverParameter(object):
 
 
 class ConstraintParameter(object):
-    types = ("projection", "atlas", "tangent_bundle", "proj", "tangent-bundle")
+    types = ("projection", "atlas", "tangent_bundle", "proj", "tangent-bundle", "tb")
     Template_str = """<constraint_parameters type="%s" tolerance="%f" max_iter="%d" delta="%f" lambda="%f"/>\n"""
 
     def __init__(self, type="atlas", tolerance=1e-3, max_iter=50, delta=0.05, lambd=2.0):
@@ -126,7 +126,7 @@ class ConstraintParameter(object):
         assert lower_value in ConstraintParameter.types
         if lower_value == "proj":
             lower_value = "projection"
-        elif lower_value == "tangent-bundle":
+        elif lower_value == "tangent-bundle" or lower_value == "tb":
             lower_value = "tangent_bundle"
         self._type = lower_value
 
