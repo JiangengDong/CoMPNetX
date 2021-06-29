@@ -61,8 +61,15 @@ CoMPNetX::MPNetWithTSRSampler::MPNetWithTSRSampler(const ompl::base::StateSpace 
         dnet_ = torch::jit::load(dnet_filename);
         dnet_.to(at::kCUDA);
         OMPL_DEBUG("Load %s successfully.", dnet_filename.c_str());
-        dnet_coeff_ = param.dnet_coeff_;
-        dnet_threshold_ = param.dnet_threshold_;
+    }
+    if (space_dim_ == 9 or space_dim_ == 11) { // project plasticmug/mugblack/pitcher/door
+        dnet_coeff_ = 0.01;
+        dnet_threshold_ = 1.2;
+    } else if (space_dim_ == 13) { // project juice/fuze_bottle/coke_can
+        dnet_coeff_ = 0.1;
+        dnet_threshold_ = 0.1;
+    } else {
+        OMPL_ERROR("Invalid ambient space dimension!");
     }
 
     std::string ohot_filename = param.ohot_path_;
@@ -91,11 +98,9 @@ bool CoMPNetX::MPNetWithTSRSampler::sampleMPNet(const ompl::base::State *start, 
         auto dnet_output = dnet_.forward({dnet_input}).toTensor();
         dnet_output.backward();
         auto grad = pnet_output_temp.grad();
-        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU);                   //d=0.2,s=0.01 and d=0.01 and s=0.1 are good
-        if (dnet_output_temp.accessor<float, 2>()[0][0] > 0.1 && space_dim_ == 13) { // project juice/fuze_bottle/coke_can
-            pnet_output -= 0.1 * grad;
-        } else if (dnet_output_temp.accessor<float, 2>()[0][0] > 1.2 && space_dim_ == 11) { // project plasticmug/mugblack/pitcher
-            pnet_output -= 0.01 * grad;
+        torch::Tensor dnet_output_temp = dnet_output.to(at::kCPU); //d=0.2,s=0.01 and d=0.01 and s=0.1 are good
+        if (dnet_output_temp.accessor<float, 2>()[0][0] > dnet_threshold_) {
+            pnet_output -= dnet_coeff_ * grad;
         }
     }
 
@@ -124,41 +129,70 @@ bool CoMPNetX::MPNetWithTSRSampler::sampleMPNet(const ompl::base::State *start, 
 std::vector<double> CoMPNetX::MPNetWithTSRSampler::tensorToVector(const torch::Tensor &tensor) {
     auto data = tensor.accessor<float, 2>()[0];
     std::vector<double> dest(space_dim_);
-    if (space_dim_ == 13) { // juice/fuze_bottle/coke_can
-        for (unsigned int i = 0; i < space_dim_; i++) {
-            dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
+    switch (space_dim_) {
+        case 9: { // door
+            for (unsigned int i = 0; i < 7; i++) {
+                dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
+            }
+            dest[7] = static_cast<float>(data[11]) * scale_factor_[11];
+            dest[8] = static_cast<float>(data[12]) * scale_factor_[12];
+            break;
         }
-    } else if (space_dim_ == 11) { // plasticmug/teakettle/mugred/mugblack/pitcher
-        for (unsigned int i = 0; i < 10; i++) {
-            dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
+        case 11: { // teakettle/plasticmug/mugred/mugbalck/pitcher
+            for (unsigned int i = 0; i < 10; i++) {
+                dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
+            }
+            dest[10] = static_cast<float>(data[12]) * scale_factor_[12];
+            break;
         }
-        dest[10] = static_cast<float>(data[12]) * scale_factor_[12];
-    } else { // TODO: add door
-        OMPL_ERROR("Invalid ambient space dimension!");
+        case 13: { // fuze_bottle/coke_can/juice
+            for (unsigned int i = 0; i < space_dim_; i++) {
+                dest[i] = static_cast<float>(data[i]) * scale_factor_[i]; // unnormailize here
+            }
+            break;
+        }
+        default: {
+            OMPL_ERROR("Invalid ambient space dimension!");
+            break;
+        }
     }
     return dest;
 }
 
 torch::Tensor CoMPNetX::MPNetWithTSRSampler::stateToTensor(const ompl::base::State *from) {
     std::vector<float> scaled_src(13);
-    if (space_dim_ == 13) { // juice/fuze_bottle/coke_can
-        const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
-        for (unsigned int i = 0; i < space_dim_; i++) {
-            scaled_src[i] = from_state[i] / scale_factor_[i];
+    switch (space_dim_) {
+        case 9: { // door
+            const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+            for (unsigned int i = 0; i < 7; i++) {
+                scaled_src[i] = from_state[i] / scale_factor_[i];
+            }
+            scaled_src[10] = 0.0;
+            scaled_src[11] = from_state[7] / scale_factor_[11];
+            scaled_src[12] = from_state[8] / scale_factor_[12];
+            return torch::from_blob(scaled_src.data(), {1, 13}).clone();
         }
-        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
-    } else if (space_dim_ == 11) { // plasticmug/mugblack/pitcher
-        const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
-        for (unsigned int i = 0; i < 10; i++) {
-            scaled_src[i] = from_state[i] / scale_factor_[i];
+        case 11: { // teakettle/plasticmug/mugred/mugbalck/pitcher
+            const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+            for (unsigned int i = 0; i < 10; i++) {
+                scaled_src[i] = from_state[i] / scale_factor_[i];
+            }
+            scaled_src[10] = 0.0;
+            scaled_src[11] = 0.0;
+            scaled_src[12] = from_state[10] / scale_factor_[12];
+            return torch::from_blob(scaled_src.data(), {1, 13}).clone();
         }
-        scaled_src[10] = 0.0;
-        scaled_src[11] = 0.0;
-        scaled_src[12] = from_state[10] / scale_factor_[12];
-        return torch::from_blob(scaled_src.data(), {1, 13}).clone();
-    } else {
-        OMPL_ERROR("Invalid ambient space dimension!");
-        return torch::Tensor{};
+        case 13: { // fuze_bottle/coke_can/juice
+            const auto &from_state = *(from->as<ompl::base::ConstrainedStateSpace::StateType>());
+            for (unsigned int i = 0; i < space_dim_; i++) {
+                scaled_src[i] = from_state[i] / scale_factor_[i];
+            }
+            return torch::from_blob(scaled_src.data(), {1, 13}).clone();
+        }
+        default: {
+            OMPL_ERROR("Invalid ambient space dimension!");
+            return torch::Tensor{};
+        }
     }
 }
 
