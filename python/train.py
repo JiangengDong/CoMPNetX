@@ -86,7 +86,7 @@ def prepare_directories(args: argparse.Namespace):
         shutil.copyfile(os.path.join(dir_path, filename), os.path.join(args.script_dir, filename))
 
 
-def train(args: argparse.Namespace) -> Tuple[nn.Module, nn.Module, nn.Module, optim.Optimizer]:
+def train(args: argparse.Namespace) -> Tuple[nn.Module, nn.Module, nn.Module, nn.Module, optim.Optimizer, optim.Optimizer]:
     # dataset
     dataset = CoMPNetXDataset(env=args.env, use_text=args.use_text, use_reach=args.use_reach, use_tsr_config=args.use_tsr, use_manifold_distance=True)
     dataloader = DataLoader(dataset, args.batch_size, shuffle=True, drop_last=True)

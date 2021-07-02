@@ -65,7 +65,7 @@ CoMPNetX/
 
 The structure of this project is as shown above. We depend on OpenRAVE's plugin mechanism to interact with files and strings effectively while retaining the ability to plan quickly, so there are a Python part and a C++ part in our project. Here is a brief introduction for each folder. 
 
-- [data/](data/): A placeholder for our dataset and 3D models, which you need to download manually from our [Google Drive](#TODO_fix_this_link). A "slim" dataset, which is a subset of the "full" dataset, is also provided [here](#TODO_fix_this_link) for testing purpose only. After downloading and unzipping, it should look like follows. Check its own `README.md` for more details.
+- [data/](data/): A placeholder for our dataset and 3D models, which you need to download manually from our [Google Drive](#TODO_fix_this_link). A "slim" dataset, which is a subset of the "full" dataset, is also provided [here](#TODO_fix_this_link) for testing purpose only. After downloading and unzipping, it should look like follows. Check [dataset](#dataset) section below for more details.
 
     ```
     data/
@@ -89,7 +89,7 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 
 - [src/compnetx/](src/compnetx/): This folder contains the C++ source code for our planner. It will be compiled into an OpenRAVE's plugin so that it can be loaded into python.
 
-## Experiment introduction
+## Dataset
 
 
 
@@ -97,7 +97,29 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 
 ### Training
 
-TODO: fill this part
+[python/train.py](python/train.py) is the main entrance for training. Apart from some regular arguments like number of epoches, checkpoint interval and output directory, there are some flags that changes the networks' structure. 
+
+- `use_text`: Use the text embedding instead of NTP embedding as the task representation. When this flag is not set, the default choice is NTP embedding. 
+  
+- `use_reach`: Include reach paths into the expert demonstrations. Two kinds of paths are provided in the dataset: the path from robot's initial pose to the start pose where the robot starts to grab an object is called `reach` path, while the path from the start pose to the goal pose is called `pick_place` path. We train with `pick_place` path exclusively by default.
+  
+- `use_tsr`: Predict TSR chain's virtual config as well as the robot's config. This flag should be set if you want a good performance, even though we do not enable it by default.
+
+    *Explanation*: Our constraint function is defined as a "handshake" process. A virtual manipulator is constructed based on the TSR chain's parameters. The constraint is satisfied if and only if the virtual manipulator's and the real robot's end effector overlap. Hence, it is as important to predict the virtual config as to predict the real config. (TSR chain is defined in [this paper](https://journals.sagepub.com/doi/abs/10.1177/0278364910396389?casa_token=xuKHXIFQ4aYAAAAA%3AyFdqV1u_0vnvoGhS9ofT3KzCSdCwLAIcx9yJPJxEicFPP5FpG_OwzWQy4O5nxHvkWlVbtuy535FaXJU&))
+
+After training, the output directory will have the following layout. 
+
+```
+output/
+├── args.yaml      # arguments used for training
+├── model_weight/  # checkpoint files
+├── tensorboard/   # record of losses during training
+├── script/        # backup of the python script
+├── embedding/     # embedding of voxel and task representation
+└── torchscript/   # torchscripts for neural generator and discriminator
+```
+
+The last two folders are the most significant ones. After the training is done, we store outputs of voxel encoder and task encoder under [embedding](embedding) directory, saving our effort during testing. The neural generator and discriminator, which will be frequently used during testing, are converted to torchscript models for later loading into C++. 
 
 ### Testing
 
