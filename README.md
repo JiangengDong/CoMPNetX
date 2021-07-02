@@ -74,7 +74,7 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
     └── dataset/
     ```
 
-- [experiments/](experiments/): Another placeholder for our pretrained models. They are released [here](#TODO_fix_this_link). After downloading and unzipping, it should look like follows. Check its own `README.md` for more details.
+- [experiments/](experiments/): Another placeholder for our pretrained models. They are released [here](#TODO_fix_this_link). After downloading and unzipping, it should look like follows. 
 
     ```
     experiments/
@@ -88,6 +88,10 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 - [python/](python/): This folder contains Python scripts for training and testing our CoMPNetX algorithm. For its detailed usage, check the [Usage](#Usage) section below.
 
 - [src/compnetx/](src/compnetx/): This folder contains the C++ source code for our planner. It will be compiled into an OpenRAVE's plugin so that it can be loaded into python.
+
+## Experiment introduction
+
+
 
 ## Usage
 
@@ -155,16 +159,16 @@ We also provide two ways for your to run the docker container. **Note**: both of
 
 - [VSCode Remote - Container](https://code.visualstudio.com/docs/remote/containers): This is the recommended method. This way you can mount the workspace into the container and take advantage of the toolchain installed inside. We provide a configuration file [devcontainer.json](docker/.devcontainer/devcontainer.json) that can help you start quickly.
   
-- Manually start: Use the following command. 
+- Manually start: Use the following command only if you are accustomed to CLI and vim. The first three lines mounts current directory to the container so that we can run the scripts. Line 4-7 forwards the X11 unix socket into the container to enable visualization. Line 8 allows the container to use all the gpus on the host machine, so CUDA is available inside the container. 
     
     ```bash
     docker run --mount type=bind,source=`pwd`,target=/workspaces/CoMPNetX \
+               -w /workspaces/CoMPNetX -i -t \
+               -e OPENRAVE_PLUGINS=/workspaces/CoMPNetX/plugins \
                --mount type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix \
                --mount type=bind,source=${XAUTHORITY},target=/root/.Xauthority \
-               -w /workspaces/CoMPNetX -i -t \
                -e DISPLAY \
                -e QT_X11_NO_MITSHM=1 \
-               -e OPENRAVE_PLUGINS=/workspaces/CoMPNetX/plugins \
                --gpus all \
                jiangengdong/compnetx:2.11
     ```
