@@ -3,7 +3,7 @@ cmake-build-release/
 build/
 .idea/
 .vscode/
-.devcontainer/
+/.devcontainer/
 
 deprecated/
 /data/

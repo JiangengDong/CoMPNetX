@@ -380,15 +380,15 @@ def test(args):
 
 
 def get_args():
-    parser = ArgumentParser(description="A all-in-one script to test the CoMPNet and CoMPNetX algorithm.")
-    parser.add_argument("--log_level", type=int, choices=(0, 1, 2, 3, 4), default=2, help="Lower level generates more logs")
-    parser.add_argument("--visible", action="store_true")
-    parser.add_argument("--space", choices=("proj", "atlas", "tb"), default="atlas")
-    parser.add_argument("--work_dir", required=True,
-                        help="Training's output directory. Setting, data and models will be read from this directory automatically.")
-    parser.add_argument("--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx",
-                        help="Select an algorithm. Choose `compnetx` for both CoMPNet and CoMPNetX, and the exact algorithm will be slected according to the settings in the work directory.")
-    parser.add_argument("--use_dnet", action="store_true", help="Use neural projector")
+    parser = ArgumentParser(description="A all-in-one script to test RRTConnect, CoMPNet and CoMPNetX algorithm.")
+    parser.add_argument("-l", "--log_level", type=int, choices=(0, 1, 2, 3, 4), default=2, help="Set log level. Lower level generates more logs.")
+    parser.add_argument("-v", "--visible", action="store_true", help="Show a 3D visualization of the planning.")
+    parser.add_argument("-d", "--work_dir", required=True,
+                        help="Output directory during training. Setting, data and models will be read from this directory automatically.")
+    parser.add_argument("-s", "--space", choices=("proj", "atlas", "tb"), default="atlas", help="Constraint-adherence method to use.")
+    parser.add_argument("-a", "--algorithm", choices=("compnetx", "rrtconnect"), default="compnetx",
+                        help="Select an algorithm. Choose `compnetx` for both CoMPNet and CoMPNetX, and the exact algorithm will be selected according to the settings in the work directory.")
+    parser.add_argument("-p", "--use_dnet", action="store_true", help="Use neural projector.")
     return parser.parse_args()
 
 

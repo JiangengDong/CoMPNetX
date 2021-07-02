@@ -1,0 +1,47 @@
+{
+    "name": "cudagl",
+    "image": "jiangengdong/compnetx:2.11",
+    "containerEnv": {
+        "DISPLAY": "${localEnv:DISPLAY}",
+        "QT_X11_NO_MITSHM": "1",
+        "OPENRAVE_PLUGINS": "${containerWorkspaceFolder}/plugins"
+    },
+    "mounts": [
+        "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix",
+        "type=bind,source=${localEnv:XAUTHORITY},target=/root/.Xauthority",
+    ],
+    "runArgs": [
+        "--gpus=all",
+    ],
+    "settings": {
+        "terminal.integrated.profiles.linux": {
+            "bash": {
+                "path": "bash"
+            },
+            "zsh": {
+                "path": "zsh"
+            },
+            "fish": {
+                "path": "fish"
+            },
+            "tmux": {
+                "path": "tmux",
+                "icon": "terminal-tmux"
+            },
+            "pwsh": {
+                "path": "pwsh",
+                "icon": "terminal-powershell"
+            }
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "twxs.cmake",
+        "ms-vscode.cmake-tools",
+        "ms-toolsai.jupyter",
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        "gruntfuggly.todo-tree"
+    ]
+}
