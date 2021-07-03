@@ -104,7 +104,7 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 
     ```bash
     # you can setup the submodules when you clone the repository
-    git clone --recursive https://github.com/JiangengDong/CoMPNetX.git
+    git clone --recursive --branch v1.0 https://github.com/JiangengDong/CoMPNetX.git
     # or you can init and update submodules later
     git submodule init
     git submodule update
