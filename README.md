@@ -45,7 +45,7 @@ Please check [CoMPNetX's webpage](https://sites.google.com/view/compnetx/home) f
 
 ### Suggestions
 
-We highly recommend you use our pre-built docker image [jiangengdong/compnetx:2.11](https://hub.docker.com/repository/docker/jiangengdong/compnetx). It is the same image we used during development, so it is guaranteed to run smoothly. Check the [Usage](#docker-image) section below for how to use it.
+We highly recommend you use our pre-built docker image [jiangengdong/compnetx:2.11](https://hub.docker.com/repository/docker/jiangengdong/compnetx). It is the same image we used during development. Check the [Usage](#docker-image) section below for how to use it.
 
 Otherwise, we suggest you use the following version of operating system and ROS if you want to install all the dependencies manually. We found it difficult to build the ROS package or_urdf under Ubuntu 18.04. The [dockerfile](docker/Dockerfile) is a good reference for how we install the dependencies.
 
