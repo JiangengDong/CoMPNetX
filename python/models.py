@@ -36,7 +36,8 @@ class PNet(nn.Module):
             nn.Linear(input_size, 896), nn.PReLU(), nn.Dropout(),
             nn.Linear(896, 512), nn.PReLU(), nn.Dropout(),
             nn.Linear(512, 256), nn.PReLU(), nn.Dropout(),
-            nn.Linear(256, 64), nn.PReLU(),
+            nn.Linear(256, 128), nn.PReLU(),
+            nn.Linear(128, 64), nn.PReLU(),
             nn.Linear(64, output_size))
 
     def forward(self, x):
