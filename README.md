@@ -127,11 +127,11 @@ Our algorithm is tested in two environments, bartender and kitchen, each having 
 | bartender | 1727  |  106  |
 |  kitchen  | 1525  |  138  |
 
-- Bartender: There are 5 movable objects in this environment: a fuze bottle, juice can, soda can, kettle, and plastic mug. The first three objects can move freely because they are sealed, while the others should keep upright to avoid spilling out. The robot bartender is asked to place the bottle and cans to a trash bin and the others onto a tray.
+- Bartender: There are 5 movable objects in this environment: a fuze bottle, juice can, soda can, kettle, and plastic mug. The first three objects can be moved freely without orientation constraints, while the others should be kept upright to avoid spilling out. The robot bartender is asked to place the bottle and cans to a trash bin and the others onto the tray.
   
-- Kitchen: In this scenario we have 7 manipulatable objects: soda can, juice can, fuze bottle, cabinet door, black mug, red mug, and pitcher. The objective is to move the cans and bottle to the trash bin, open the cabinet door from any starting angle to a fixed final angle (π/2.7), transfer (without tilting) the black and red mugs from the cabinet to the tray, and move the pitcher from the table into the cabinet.
+- Kitchen: In this scenario we have 7 manipulatable objects: soda can, juice can, fuze bottle, cabinet door, black mug, red mug, and pitcher. The objective is to move the cans and bottle to the trash bin without orientation constraints, open the cabinet door from any starting angle to a fixed final angle (π/2.7), transfer (without tilting) the black and red mugs from the cabinet to the tray, and move the pitcher (without tilting) from the table into the cabinet.
 
-For each object, the robot needs to plan two paths: one from the robot's initial pose to the object's start pose ("reach"), and the other from the object's start pose to the goal pose ("pick & place"). We focus on the "pick & place" path in this project because the reach path is unconstrained. 
+For each object, the robot needs to plan two paths: one from the robot's initial pose to the object's start pose ("reach"), and the other from the object's start pose to the goal pose ("pick & place"). We focus on the "pick & place" path in this project because the reach path is unconstrained and any off the shelf planner (e.g., MPNet, RRT*) can be used for that task. 
 
 ### OpenRAVE models
 
