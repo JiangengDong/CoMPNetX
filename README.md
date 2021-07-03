@@ -435,7 +435,7 @@ We also provide two ways for your to run the docker container. **Note**: both of
 | atlas |   44.30    |  26.40  |        19.43        |  21.93   |
 |  tb   |   48.00    |  40.30  |        35.64        |  34.36   |
 | proj  |   72.72    |  44.51  |        32.09        |  30.91   |
-## Acknowledge
+## Acknowledgements
 
 The [TSRChain](src/compnetx/TaskSpaceRegionChain.h) code is adopted from the Constrained Manipulation Planning Suite ([CoMPS]). Many OpenRAVE models are also copied and modified from CoMPS's codebase.
 
