@@ -4,31 +4,47 @@ This repository is the codebase for our CoMPNetX paper, which solves Constrained
 
 Please check [CoMPNetX's webpage](https://sites.google.com/view/compnetx/home) for visual results.
 
+## Contents
+
+- [CoMPNetX](#compnetx)
+  - [Contents](#contents)
+  - [Dependencies](#dependencies)
+    - [Suggestions](#suggestions)
+  - [Project layout](#project-layout)
+  - [Data](#data)
+    - [Experiment introduction](#experiment-introduction)
+    - [OpenRAVE models](#openrave-models)
+    - [Dataset](#dataset)
+  - [Usage](#usage)
+    - [Training](#training)
+    - [Testing](#testing)
+    - [Docker image](#docker-image)
+  - [Pretrained models](#pretrained-models)
+    - [Model list](#model-list)
+    - [Test result for bartender (exp1 and exp2)](#test-result-for-bartender-exp1-and-exp2)
+      - [Accuracy](#accuracy)
+      - [Average time](#average-time)
+    - [Test result for kitchen (exp3 and exp4)](#test-result-for-kitchen-exp3-and-exp4)
+      - [Accuracy](#accuracy-1)
+      - [Average time](#average-time-1)
+  - [Acknowledge](#acknowledge)
+
 ## Dependencies
 
 - [OpenRAVE] : 0.9.0
-
 - [OMPL] : 1.4.2
-
 - [Boost] : 1.58
-
 - [ROS] & ROS package
-
   - [or_urdf]
-
   - [openrave_catkin]
-
   - [srdfdom]
-
   - [urdfdom]
-
-  - baxter_common
-
+  - baxter_common: 
     We modified baxter common, because the "up axis" in OpenRAVE is different from that in Gazebo. The [modified code](docker/catkin_ws/src/baxter_common) is included in this repository.
 
 ### Suggestions
 
-We highly recommend you use our pre-built docker image [jiangengdong/compnetx:2.11](https://hub.docker.com/repository/docker/jiangengdong/compnetx). It is the same image we used during development, so it is guaranteed to run smoothly. Check the [usage](#usage) section below for how to use it.
+We highly recommend you use our pre-built docker image [jiangengdong/compnetx:2.11](https://hub.docker.com/repository/docker/jiangengdong/compnetx). It is the same image we used during development, so it is guaranteed to run smoothly. Check the [Usage](#docker-image) section below for how to use it.
 
 Otherwise, we suggest you use the following version of operating system and ROS if you want to install all the dependencies manually. We found it difficult to build the ROS package or_urdf under Ubuntu 18.04. The [dockerfile](docker/Dockerfile) is a good reference for how we install the dependencies.
 
@@ -65,22 +81,22 @@ CoMPNetX/
 
 The structure of this project is as shown above. We depend on OpenRAVE's plugin mechanism to interact with files and strings effectively while retaining the ability to plan quickly, so there are a Python part and a C++ part in our project. Here is a brief introduction for each folder. 
 
-- [data/](data/): A placeholder for our dataset and 3D models, which you need to download manually from our [Google Drive](#TODO_fix_this_link). A "slim" dataset, which is a subset of the "full" dataset, is also provided [here](#TODO_fix_this_link) for testing purpose only. After downloading and unzipping, it should look like follows. Check [dataset](#dataset) section below for more details.
+- [data/](data/): A placeholder for our dataset and 3D models, which you need to download manually from our [Google Drive](https://drive.google.com/file/d/1FSd7OC6zEzQMmf_RMuOsEB8DS1tEjpFj/view?usp=sharing). A "slim" dataset, which is a subset of the "full" dataset, is also provided [here](https://drive.google.com/file/d/1W_cMgrXvx-Lin3vRUAiBgCZw8SP8qrAA/view?usp=sharing) for testing purpose only. After downloading and unzipping, it should look like follows. Check the [Data](#data) section below for more details.
 
     ```
     data/
-    ├── README.md
     ├── openrave_model/
     └── dataset/
     ```
 
-- [experiments/](experiments/): Another placeholder for our pretrained models. They are released [here](#TODO_fix_this_link). After downloading and unzipping, it should look like follows. 
+- [experiments/](experiments/): Another placeholder for our pretrained models. They are released [here](https://drive.google.com/file/d/1yJcqL8WpYU_R9aRGbxtm4ReHlXTeoR8O/view?usp=sharing). After downloading and unzipping, it should look like follows. Check the [Pretrained Models](#pretrained-models) section below for more details.
 
     ```
     experiments/
-    ├── README.md
     ├── exp1/
-    └── exp2/
+    ├── exp2/
+    ├── exp3/
+    └── exp4/
     ```
 
 - [docker/](docker/): This folder contains files for building and running the docker image. 
@@ -89,9 +105,162 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 
 - [src/compnetx/](src/compnetx/): This folder contains the C++ source code for our planner. It will be compiled into an OpenRAVE's plugin so that it can be loaded into python.
 
-## Dataset
+## Data
 
+### Experiment introduction
 
+Our algorithm is tested in two environments, bartender and kitchen, each having a number of difference scenes for training and testing.
+
+|    env    | train | test  |
+| :-------: | :---: | :---: |
+| bartender | 1727  |  106  |
+|  kitchen  | 1525  |  138  |
+
+- Bartender: There are 5 movable objects in this environment: a fuze bottle, juice can, soda can, kettle, and plastic mug. The first three objects can move freely because they are sealed, while the others should keep upright to avoid spilling out. The robot bartender is asked to place the bottle and cans to a trash bin and the others onto a tray.
+  
+- Kitchen: In this scenario we have 7 manipulatable objects: soda can, juice can, fuze bottle, cabinet door, black mug, red mug, and pitcher. The objective is to move the cans and bottle to the trash bin, open the cabinet door from any starting angle to a fixed final angle (π/2.7), transfer (without tilting) the black and red mugs from the cabinet to the tray, and move the pitcher from the table into the cabinet.
+
+For each object, the robot needs to plan two paths: one from the robot's initial pose to the object's start pose ("reach"), and the other from the object's start pose to the goal pose ("pick & place"). We focus on the "pick & place" path in this project because the reach path is unconstrained. 
+
+### OpenRAVE models
+
+Models for the 9 manipulatable objects and 2 fixed objects (trash bin and tray) are included in [data/openrave_model/](data/openrave_model/). These models are copied and modified from OpenRAVE's builtin models and [CoMPS]'s codebase.
+
+### Dataset
+
+Before we start, let's first take a look at some placeholders that will be used in this section. 
+
+- `env_id`: Either "bartender" or "kitchen".
+- `dataset`: "setup", "voxel", "text_embedding", "ntp_embedding", "path", or "tsr_path".
+- `scene_id`: A string that represent a unique scene. Valid `scene_id`s are store in [data/dataset/description.yaml](data/dataset/description.yaml). This YAML has the follow structure. 
+    ```yaml
+    bartender:
+      test:
+      - {scene_id_1}
+      - {scene_id_2}
+      - ...
+      train:
+      - ...
+    kitchen:
+      test:
+      - ...
+      train:
+      - ...
+    ```
+- `obj_name`: Objects in the scene. For the bartender environment, manipulatable objects can be one of `["fuze_bottle", "juice", "coke_can", "teakettle", "plasticmug"]`. For the kitchen environment, they can be `["fuze_bottle", "juice", "coke_can", "door", "mugred", "mugblack", "pitcher"]`. 
+
+Now we can take a look at the datasets. All the datasets are store with the name `{env_id}_{dataset}.hdf5` as HDF5 files, and most of them are organized in the structure `[/prefix]/{scene_id}/{obj_name}[/suffix]`, where the prefix and suffix are optional. 
+  
+- **`setup` dataset**
+  
+    This dataset contains the information on how to setup the environments. 
+
+    ```
+    /
+    ├── {scene_id}/
+    │   ├── obj_order
+    │   ├── {fixed obj_name}/
+    │   │   └── start_trans    # Robot's initial config.
+    │   ├── {movable obj_name}/
+    │   │   ├── initial_config # Robot's initial config.
+    │   │   ├── start_trans    # The object's start transform in the work space.
+    │   │   ├── start_config   # Robot's config when grabing the object at the start point.
+    │   │   ├── goal_trans     # Opposed to `start_trans`. Also T0_w of the TSR.
+    │   │   ├── goal_config    # Opposed to `start_config`.
+    │   │   ├── tsr_bound      # Bw of the TSR.
+    │   │   └── tsr_offset     # Tw_e of the TSR.
+    │   ├── door/
+    │   │   ├── initial_config # Robot's initial config.
+    │   │   ├── start_trans    # The start joint value of door hinge
+    │   │   ├── start_config   # Robot's config when grabing the handle at the start point.
+    │   │   ├── goal_trans     # Opposed to `start_trans`.
+    │   │   ├── goal_config    # Opposed to `start_config`.
+    │   │   ├── tsr_base       # T0_w of the TSR chain.
+    │   │   ├── tsr_bound0     # Bw of the first TSR in the TSR chain.
+    │   │   ├── tsr_offset0    # Tw_e of the first TSR in the TSR chain.
+    │   │   ├── tsr_bound1     # Bw the second TSR in the TSR chain.
+    │   │   └── tsr_offset1    # Tw_e of the second TSR in the TSR chain.
+    │   └── ... # the other objects
+    └── ... # the other scenes
+    ```
+
+    Objects in the scene are divided into three categories. 
+
+    - The first category is fixed objects, i.e. the `recyclingbin` and the `tray`. These objects' transforms are fixed for each scene, so they have only one field `start_trans`. 
+
+    - The second category is movable objects. It includes all the manipulatable objects except `door`. Their fields are shown above with comments. 
+
+    - The third category has only one object, the `door`. This is a special object, as it is not movable. Its `start_trans` is actually the joint value of the door's hinge, but we use the same name as the other objects for easier programming. Besides, its TSR chain is defined with two TSRs, unlike the other objects which have only one TSR. 
+
+    One special part in the `setup` dataset is the `obj_order`, which is an array of string that defines the order for moving all the manipulatable object. Each scene has its own `obj_order`. 
+
+- **`voxel` dataset**
+    
+    This dataset contains the raw voxels of the environment. This is the robot's perception of its surroundings before moving each object. It has the simplest layout among all the datasets.
+
+    ```
+    /
+    ├── {scene_id}/
+    │   ├── {obj_name}
+    │   └── ... # the other objects
+    └── ... # the other scenes
+    ```
+
+- **`ntp_embedding` and `text_embedding` dataset**
+    
+    These two datasets are the NTP and text-based representation of the tasks. They share the same layout, and the difference is that NTP embeddings are 270-d vectors, while text embeddings are 4096-d vectors.
+
+    ```
+    /
+    ├── reach/
+    │   ├── {scene_id}/
+    │   │   ├── {obj_name}
+    │   │   └── ... # the other objects
+    │   └── ... # the other scenes
+    └── pick_place/
+        └── ... # the same layout as `reach`
+    ```
+
+    As we already discussed in the [experiment introduction](#experiment-introduction) above, the robot need to plan two paths for each object. Hence, the task representations are divided into two groups, `reach` and `pick_place`.
+
+- **`path` dataset**
+
+    This dataset contains the expert demonstration paths genarated by [CoMPS]. It has the same layout as the `embedding`s dataset
+
+    ```
+    /
+    ├── reach/
+    │   ├── {scene_id}/
+    │   │   ├── {obj_name}
+    │   │   └── ... # the other objects
+    │   └── ... # the other scenes
+    └── pick_place/
+        └── ... # the same layout as `reach`
+    ```
+
+- **`tsr_path` dataset**
+
+    This dataset contains the configs of the virtual TSR chain manipulator corresponding to points in the `path` dataset. 
+    
+    Our constraint function is defined as a "handshake" process. A virtual manipulator is constructed based on the TSR chain's parameters. The constraint is satisfied if and only if the virtual manipulator's and the real robot's end effector overlap. Hence, it is as important to predict the virtual config as to predict the real config. (TSR chain is defined in [this paper](https://journals.sagepub.com/doi/abs/10.1177/0278364910396389?casa_token=xuKHXIFQ4aYAAAAA%3AyFdqV1u_0vnvoGhS9ofT3KzCSdCwLAIcx9yJPJxEicFPP5FpG_OwzWQy4O5nxHvkWlVbtuy535FaXJU&))
+
+    ```
+    /
+    ├── reach/
+    │   ├── config/
+    │   │   ├── {scene_id}/
+    │   │   │   ├── {obj_name}
+    │   │   │   └── ... # the other objects
+    │   │   └── ... # the other scenes
+    │   └── distance/
+    │       └── ... # the same layout as `config`
+    └── pick_place/
+        └── ... # the same layout as `reach`
+    ```
+
+    `TSR config`, `TSR distance` and `path` for the same scene and object always have the same length along axis 0.
+
+All the datasets above are included in the [full](https://drive.google.com/file/d/1FSd7OC6zEzQMmf_RMuOsEB8DS1tEjpFj/view?usp=sharing) package. The [slim](https://drive.google.com/file/d/1W_cMgrXvx-Lin3vRUAiBgCZw8SP8qrAA/view?usp=sharing) package has only `setup` dataset which is used in testing. 
 
 ## Usage
 
@@ -104,8 +273,6 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 - `use_reach`: Include reach paths into the expert demonstrations. Two kinds of paths are provided in the dataset: the path from robot's initial pose to the start pose where the robot starts to grab an object is called `reach` path, while the path from the start pose to the goal pose is called `pick_place` path. We train with `pick_place` path exclusively by default.
   
 - `use_tsr`: Predict TSR chain's virtual config as well as the robot's config. This flag should be set if you want a good performance, even though we do not enable it by default.
-
-    *Explanation*: Our constraint function is defined as a "handshake" process. A virtual manipulator is constructed based on the TSR chain's parameters. The constraint is satisfied if and only if the virtual manipulator's and the real robot's end effector overlap. Hence, it is as important to predict the virtual config as to predict the real config. (TSR chain is defined in [this paper](https://journals.sagepub.com/doi/abs/10.1177/0278364910396389?casa_token=xuKHXIFQ4aYAAAAA%3AyFdqV1u_0vnvoGhS9ofT3KzCSdCwLAIcx9yJPJxEicFPP5FpG_OwzWQy4O5nxHvkWlVbtuy535FaXJU&))
 
 After training, the output directory will have the following layout. 
 
@@ -195,9 +362,56 @@ We also provide two ways for your to run the docker container. **Note**: both of
                jiangengdong/compnetx:2.11
     ```
 
+## Pretrained models
+
+**Note**: These models are trained and tested without reach path.
+### Model list
+
+| folder |    env    | algorithm | task representation | has neural discriminator? |
+| :----: | :-------: | :-------: | :-----------------: | :-----------------------: |
+|  exp1  | bartender |  CoMPNet  |   text embedding    |            No             |
+|  exp2  | bartender | CoMPNetX  |    NTP embedding    |            Yes            |
+|  exp3  |  kitchen  |  CoMPNet  |   text embedding    |            No             |
+|  exp4  |  kitchen  | CoMPNetX  |    NTP embedding    |            Yes            |
+
+### Test result for bartender (exp1 and exp2)
+
+#### Accuracy 
+
+| Space | RRTConnect | CoMPNet | CoMPNetX (w/o proj) | CoMPNetX |
+| :---: | :--------: | :-----: | :-----------------: | :------: |
+| atlas |   97.17%   |  100%   |        100%         |   100%   |
+|  tb   |   91.89%   |  100%   |        100%         |  99.81%  |
+| proj  |   97.92%   | 99.43%  |       98.30%        |  99.81%  |
+
+#### Average time 
+
+| Space | RRTConnect | CoMPNet | CoMPNetX (w/o proj) | CoMPNetX |
+| :---: | :--------: | :-----: | :-----------------: | :------: |
+| atlas |   11.70    |  9.29   |        7.73         |   6.72   |
+|  tb   |   15.10    |  12.31  |        11.03        |  10.52   |
+| proj  |   20.52    |  12.34  |        9.91         |   7.68   |
+
+### Test result for kitchen (exp3 and exp4)
+
+#### Accuracy 
+
+| Space | RRTConnect | CoMPNet | CoMPNetX (w/o proj) | CoMPNetX |
+| :---: | :--------: | :-----: | :-----------------: | :------: |
+| atlas |   94.78%   |  100%   |        100%         |   100%   |
+|  tb   |   94.78%   | 99.71%  |       99.71%        |  99.27%  |
+| proj  |   96.37%   | 99.71%  |       99.56%        |  99.71%  |
+
+#### Average time 
+
+| Space | RRTConnect | CoMPNet | CoMPNetX (w/o proj) | CoMPNetX |
+| :---: | :--------: | :-----: | :-----------------: | :------: |
+| atlas |   44.30    |  26.40  |        19.43        |  21.93   |
+|  tb   |   48.00    |  40.30  |        35.64        |  34.36   |
+| proj  |   72.72    |  44.51  |        32.09        |  30.91   |
 ## Acknowledge
 
-The [TSRChain](src/compnetx/TaskSpaceRegionChain.h) code is adopted from the Constrained Manipulation Planning Suite ([CoMPS]). 
+The [TSRChain](src/compnetx/TaskSpaceRegionChain.h) code is adopted from the Constrained Manipulation Planning Suite ([CoMPS]). Many OpenRAVE models are also copied and modified from CoMPS's codebase.
 
 The definition of the [constraint function](src/compnetx/Constraint.h) is inspired by [CuikSuite], but we use quaternion instead of matrix for rotation representation. 
 
