@@ -16,6 +16,7 @@ Please check [CoMPNetX's webpage](https://sites.google.com/view/compnetx/home) f
     - [OpenRAVE models](#openrave-models)
     - [Dataset](#dataset)
   - [Usage](#usage)
+    - [Clone the repository](#clone-the-repository)
     - [Training](#training)
     - [Testing](#testing)
     - [Docker image](#docker-image)
@@ -60,6 +61,7 @@ CoMPNetX/
 ├── ... # some other files
 ├── data/
 ├── experiments/
+├── extern/
 ├── docker/
 │   ├── Dockerfile
 │   ├── .devcontainer/
@@ -98,6 +100,15 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
     ├── exp3/
     └── exp4/
     ```
+- [extern/](extern/): Packages used by our C++ code. These packages are included in this repository as [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules), so remember to pull them with the following commands. 
+
+    ```bash
+    # you can setup the submodules when you clone the repository
+    git clone --recursive https://github.com/JiangengDong/CoMPNetX.git
+    # or you can init and update submodules later
+    git submodule init
+    git submodule update
+    ``` 
 
 - [docker/](docker/): This folder contains files for building and running the docker image. 
 
@@ -264,6 +275,21 @@ All the datasets above are included in the [full](https://drive.google.com/file/
 
 ## Usage
 
+### Clone the repository
+
+We use [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to organize some dependencies, so it would be better to use recursive clone.
+
+```bash
+git clone --recursive https://github.com/JiangengDong/CoMPNetX.git
+```
+
+If you forget the `--recursive` argument during cloning, you can still update the submodules with the follow commands.
+
+```bash
+git submodule init
+git submodule update
+```
+
 ### Training
 
 [python/train.py](python/train.py) is the main entrance for training. Apart from some regular arguments like number of epoches, checkpoint interval and output directory, there are some flags that changes the networks' structure. 
@@ -415,6 +441,8 @@ The [TSRChain](src/compnetx/TaskSpaceRegionChain.h) code is adopted from the Con
 
 The definition of the [constraint function](src/compnetx/Constraint.h) is inspired by [CuikSuite], but we use quaternion instead of matrix for rotation representation. 
 
+We also use [HighFive] to read HDF5 in C++.
+
 
 [CoMPS]: https://sourceforge.net/projects/comps/
 [CuikSuite]: https://www.iri.upc.edu/research/webprojects/cuikweb/CuikSuite3-Doc/html/index.html
@@ -429,3 +457,4 @@ The definition of the [constraint function](src/compnetx/Constraint.h) is inspir
 [openrave_catkin]: https://github.com/personalrobotics/openrave_catkin
 [CUDA]: https://developer.nvidia.com/cuda-toolkit
 [nvidia-container]: https://github.com/NVIDIA/nvidia-docker
+[HighFive]: https://bluebrain.github.io/HighFive/
