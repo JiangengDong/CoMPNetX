@@ -439,7 +439,7 @@ We also provide two ways for your to run the docker container. **Note**: both of
 
 ## Bibliography
 ```
-@article{qureshi2020constrained,
+@article{qureshi2021constrained,
   title={Constrained Motion Planning Networks X},
   author={Qureshi, Ahmed H and Dong, Jiangeng and Baig, Asfiya and Yip, Michael C},
   journal={IEEE Transactions on Robotics},
