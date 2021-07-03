@@ -390,7 +390,7 @@ We also provide two ways for your to run the docker container. **Note**: both of
 
 ## Pretrained models
 
-**Note**: These models are trained and tested without reach path.
+**Note**: These models are trained and tested with only pick and place task.
 ### Model list
 
 | folder |    env    | algorithm | task representation | has neural discriminator? |
