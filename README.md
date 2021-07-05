@@ -104,7 +104,7 @@ The structure of this project is as shown above. We depend on OpenRAVE's plugin 
 
     ```bash
     # you can setup the submodules when you clone the repository
-    git clone --recursive --branch v1.1 https://github.com/JiangengDong/CoMPNetX.git
+    git clone --recursive --branch v1.2 https://github.com/JiangengDong/CoMPNetX.git
     # or you can init and update submodules later
     git submodule init
     git submodule update
@@ -280,7 +280,7 @@ All the datasets above are included in the [full](https://drive.google.com/file/
 We use [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to organize some dependencies, so it would be better to use recursive clone.
 
 ```bash
-git clone --recursive --branch v1.1 https://github.com/JiangengDong/CoMPNetX.git
+git clone --recursive --branch v1.2 https://github.com/JiangengDong/CoMPNetX.git
 ```
 
 If you forget the `--recursive` argument during cloning, you can still update the submodules with the follow commands.
@@ -462,6 +462,8 @@ The [TSRChain](src/compnetx/TaskSpaceRegionChain.h) code is adopted from the Con
 
 The definition of the [constraint function](src/compnetx/Constraint.h) is inspired by [CuikSuite], but we use quaternion instead of matrix for rotation representation.
 
+The idea of integrating OpenRAVE's plugin system and OMPL together is inspired by [or_ompl].
+
 We also use [HighFive] to read HDF5 in C++.
 
 
@@ -479,3 +481,4 @@ We also use [HighFive] to read HDF5 in C++.
 [CUDA]: https://developer.nvidia.com/cuda-toolkit
 [nvidia-container]: https://github.com/NVIDIA/nvidia-docker
 [HighFive]: https://bluebrain.github.io/HighFive/
+[or_ompl]: https://github.com/personalrobotics/or_ompl

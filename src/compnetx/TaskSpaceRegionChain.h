@@ -1,6 +1,9 @@
 /* Copyright (c) 2010 Carnegie Mellon University and Intel Corporation
    Author: Dmitry Berenson <dberenso@cs.cmu.edu>
 
+   Copyright (c) 2020 University of California, San Diego
+   Modifier: Jiangeng Dong <jid103@ucsd.edu>
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are met:
 

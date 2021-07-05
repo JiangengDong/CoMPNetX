@@ -2,6 +2,7 @@
 * Software License Agreement (BSD License)
 *
 *  Copyright (c) 2008, Willow Garage, Inc.
+*  Copyright (c) 2020, University of California, San Diego
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -33,6 +34,7 @@
 *********************************************************************/
 
 /* Author: Ioan Sucan */
+/* Modifier: Jiangeng Dong */
 
 #ifndef OMPL_GEOMETRIC_PLANNERS_MPNETX_
 #define OMPL_GEOMETRIC_PLANNERS_MPNETX_
