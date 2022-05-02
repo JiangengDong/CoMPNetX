@@ -34,6 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 *************************************************************************/
 #include "Problem.h"
+#include <cstddef>
+#include <ompl/base/State.h>
+#include <ompl/geometric/PathGeometric.h>
 #include <openrave/openrave.h>
 #include <utility>
 
@@ -52,6 +55,7 @@ CoMPNetX::Problem::Problem(OpenRAVE::EnvironmentBasePtr penv, std::istream &ss) 
     RegisterCommand("GetPlanningTime", boost::bind(&CoMPNetX::Problem::GetPlanningTimeCommand, this, _1, _2),
                     "returns the amount of time (in seconds) spent during the last planning step");
     RegisterCommand("SetLogLevel", boost::bind(&CoMPNetX::Problem::SetLogLevelCommand, this, _1, _2), "set the log level");
+    RegisterCommand("SetShortcutIteration", boost::bind(&CoMPNetX::Problem::SetShortcutIteration, this, _1, _2), "set the log level");
     RegisterCommand("GetDistanceToManifold", boost::bind(&CoMPNetX::Problem::GetDistanceToManifoldCommand, this, _1, _2), "calculate the distance from a config to the manifold");
 }
 
@@ -148,13 +152,10 @@ OpenRAVE::PlannerStatus CoMPNetX::Problem::PlanPath(OpenRAVE::TrajectoryBasePtr 
             break;
         case ompl::base::PlannerStatus::EXACT_SOLUTION: {
             auto ompl_traj = simple_setup_->getSolutionPath();
+            simplfyOnManifold(ompl_traj, ptraj);
+
             ompl::base::StateSpacePtr space = ompl_traj.getSpaceInformation()->getStateSpace();
             std::vector<double> values, robot_values;
-            for (size_t i = 0; i < ompl_traj.getStateCount(); i++) {
-                space->copyToReals(values, ompl_traj.getState(i));
-                robot_values.assign(values.begin(), values.begin() + dof);
-                ptraj->Insert(i, robot_values, true);
-            }
 
             // print the result
             OMPL_INFORM("States in path: %d", ompl_traj.getStateCount());
@@ -215,6 +216,12 @@ bool CoMPNetX::Problem::SetLogLevelCommand(std::ostream &sout, std::istream &sin
     return true;
 }
 
+bool CoMPNetX::Problem::SetShortcutIteration(std::ostream &sout, std::istream &sin) {
+    sin >> shortcut_iteration_;
+    sout << "1";
+    return true;
+}
+
 bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const {
     auto dof = robot_->GetActiveDOF();
     std::vector<double> joint_vals(dof);
@@ -241,6 +248,80 @@ bool CoMPNetX::Problem::GetDistanceToManifoldCommand(std::ostream &sout, std::is
 
     sout << std::sqrt(dist_square);
 
+    return true;
+}
+
+float CoMPNetX::Problem::getPathLength(const std::vector<ompl::base::State *> &path, std::size_t l, std::size_t r) {
+    if (r - l < 2) return 0.0;
+
+    float total_length = 0.0;
+    for (std::size_t m = l; m < r - 1; m++) {
+        total_length += constrained_state_space_->distance(path[m], path[m + 1]);
+    }
+
+    return total_length;
+}
+
+bool CoMPNetX::Problem::simplfyOnManifold(const ompl::geometric::PathGeometric &input_traj, OpenRAVE::TrajectoryBasePtr output_traj) {
+    std::vector<ompl::base::State *> input_path;
+    std::vector<ompl::base::State *> output_path;
+    // copy states out for easier iteration
+    input_path.resize(input_traj.getStateCount(), nullptr);
+    constrained_space_info_->allocStates(input_path);
+    for (std::size_t i = 0; i < input_traj.getStateCount(); i++) {
+        constrained_state_space_->copyState(input_path[i], input_traj.getState(i));
+    }
+
+    for (std::size_t i = 0; i < shortcut_iteration_; i++) {
+        std::size_t input_start = 0;
+        while (input_start < input_traj.getStateCount() - 2) {
+            std::size_t input_end;
+            for (input_end = input_traj.getStateCount() - 1; input_end > input_start + 1; input_end--) {
+                // try to shortcut
+                float original_length = getPathLength(input_path, input_start, input_end + 1);
+                std::vector<ompl::base::State *> shortcut_path;
+                bool succeed = constrained_state_space_->discreteGeodesic(input_path[input_start], input_path[input_end], false, &shortcut_path);
+                if (succeed &&
+                    shortcut_path.size() > 2 &&
+                    getPathLength(shortcut_path, 0, shortcut_path.size()) < original_length) {
+                    // copy shortcut_path to the output_path
+                    for (std::size_t i = 0; i < shortcut_path.size() - 1; i++) {
+                        const auto *state = shortcut_path[i];
+                        ompl::base::State *copy_state = constrained_space_info_->allocState();
+                        constrained_space_info_->copyState(copy_state, state);
+                        output_path.emplace_back(copy_state);
+                    }
+                    // only copy the last point of the shortcut if it is the same as the goal
+                    if (input_end == input_traj.getStateCount() - 1) {
+                        const auto *state = shortcut_path.back();
+                        ompl::base::State *copy_state = constrained_space_info_->allocState();
+                        constrained_space_info_->copyState(copy_state, state);
+                        output_path.emplace_back(copy_state);
+                    }
+                    input_start = input_end;
+                }
+                constrained_space_info_->freeStates(shortcut_path);
+            }
+            // if not shortcut is available from this start, move to the next one
+            if (input_start != input_end) {
+                input_start++;
+            }
+        }
+        input_path.swap(output_path);
+        constrained_space_info_->freeStates(output_path);
+    }
+
+    // copy shortcut traj to output
+    std::vector<double> values, robot_values;
+    std::size_t dof = output_traj->GetConfigurationSpecification().GetDOF();
+    for (std::size_t i = 0; i<input_path.size(); i++) {
+        constrained_state_space_->copyToReals(values, input_path[i]);
+        robot_values.assign(values.begin(), values.begin() + dof);
+        output_traj->Insert(i, robot_values, true);
+    }
+
+    // cleanup
+    constrained_space_info_->freeStates(input_path);
     return true;
 }
 

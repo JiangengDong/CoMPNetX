@@ -5,6 +5,7 @@
 #ifndef COMPNETX_PROBLEM_H
 #define COMPNETX_PROBLEM_H
 
+#include <cstddef>
 #include <ompl/base/ConstrainedSpaceInformation.h>
 #include <ompl/base/Constraint.h>
 #include <ompl/base/StateValidityChecker.h>
@@ -12,6 +13,7 @@
 #include <ompl/base/spaces/constraint/ConstrainedStateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <openrave/openrave.h>
+#include <vector>
 
 #include "Constraint.h"
 #include "Parameters.h"
@@ -43,6 +45,7 @@ public:
     bool GetPlanningTimeCommand(std::ostream &sout, std::istream &sin) const;
     bool SetLogLevelCommand(std::ostream &sout, std::istream &sin) const;
     bool GetDistanceToManifoldCommand(std::ostream &sout, std::istream &sin) const;
+    bool SetShortcutIteration(std::ostream &sout, std::istream &sin);
 
 private:
     bool setTSRChainRobot();
@@ -58,6 +61,10 @@ private:
     bool setStateValidityChecker();
 
     bool setPlanner();
+
+    bool simplfyOnManifold(const ompl::geometric::PathGeometric& input_traj, OpenRAVE::TrajectoryBasePtr output_traj);
+
+    float getPathLength(const std::vector<ompl::base::State *>& path, std::size_t l, std::size_t r);
 
     CoMPNetX::Parameters::Ptr parameters_;
 
@@ -76,6 +83,7 @@ private:
     ompl::geometric::SimpleSetupPtr simple_setup_;
 
     bool initialized_ = false;
+    std::size_t shortcut_iteration_ = 0;
 };
 } // namespace CoMPNetX
 

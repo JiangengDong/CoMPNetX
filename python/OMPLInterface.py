@@ -608,12 +608,13 @@ class EmptyContext(object):
 
 
 class OMPLInterface:
-    def __init__(self, env, robot, loglevel=2):
+    def __init__(self, env, robot, loglevel=2, shortcut_iteration=0):
         self.env = env
         self.robot = robot
         self.planner = orpy.RaveCreatePlanner(self.env, 'CoMPNetX')
         assert self.planner != None
         self.planner.SendCommand("SetLogLevel %d" % loglevel)
+        self.planner.SendCommand("SetShortcutIteration %d" % shortcut_iteration)
 
     def solve(self, start_config, goal_config, planner_params):
         assert isinstance(planner_params, PlannerParameter)
